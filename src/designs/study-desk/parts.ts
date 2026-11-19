@@ -6,12 +6,32 @@
 import { button, icon, manifestFreshness } from '../../components';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import type { ManifestStore } from '../../manifest-store';
-import { semesterLabel } from '../../features/module/logistics';
+import {
+  coverOf,
+  moduleFacts,
+  moduleLongTitle,
+  moduleName,
+  moduleShort,
+  moduleState,
+  unitLabel,
+  type Cover,
+  type UnitLabel,
+} from '../../features/module/labels';
 import { asLabel, asString } from '../../projection/readers';
 import type { ApplicationRouter } from '../../app/router';
 import type { DesignView } from '../screens';
 
-export type Cover = 'wine' | 'teal' | 'ochre' | 'moss' | 'slate' | 'plum' | 'stone';
+export {
+  coverOf,
+  moduleFacts,
+  moduleLongTitle,
+  moduleName,
+  moduleShort,
+  moduleState,
+  unitLabel,
+  type Cover,
+  type UnitLabel,
+};
 const pageClasses = new WeakMap<HTMLElement, string>();
 
 /** Start a page. Classes from another design's last draw stay inert: every rule is scoped. */
@@ -98,97 +118,6 @@ export function stageBars(parent: HTMLElement, total: number, done: number, curr
     bars.createSpan({ cls: `sd-bar ${state}`.trim() });
   }
   return bars;
-}
-
-/**
- * One spine colour per module, everywhere it appears.
- *
- * Presentation only: nothing in Core assigns these and nothing reads them back.
- * The four enrolled modules keep the colours the design gave them; anything else
- * follows its area, and a new academic module gets a stable one from its id.
- */
-const NAMED_COVERS: Readonly<Record<string, Cover>> = {
-  'module-hu-aml': 'wine',
-  'module-hu-m2-statistik-analysis': 'teal',
-  'module-hu-betriebssysteme': 'ochre',
-  'module-hu-icop': 'moss',
-};
-const ACADEMIC_COVERS: readonly Cover[] = ['wine', 'teal', 'ochre', 'moss'];
-
-export function coverOf(module: ProjectionRecord | null | undefined): Cover {
-  const id = asString(module?.id) ?? '';
-  const named = NAMED_COVERS[id];
-  if (named) return named;
-  if (id.startsWith('module-project-') || id.startsWith('module-foundation-')) return 'plum';
-  const area = asString(module?.area_id);
-  if (area === 'program-job' || area === 'program-skills') return 'slate';
-  const hash = [...id].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
-  return ACADEMIC_COVERS[hash % ACADEMIC_COVERS.length] ?? 'wine';
-}
-
-/** "AML" from "Angewandtes Maschinelles Lernen (AML)", else the code, else initials. */
-export function moduleShort(module: ProjectionRecord | null | undefined): string {
-  const title = asLabel(module);
-  const bracket = /\(([^)]{2,10})\)\s*$/.exec(title)?.[1];
-  if (bracket) return bracket;
-  const code = asString(module?.code);
-  if (code) return code;
-  return title.split(/\s+/).filter((word) => /^[A-ZÄÖÜ]/.test(word)).map((word) => word[0]).join('').slice(0, 4) || title.slice(0, 3);
-}
-
-/** "AML", or the whole title when the module has no short name of its own: initials would not say which module. */
-export function moduleName(module: ProjectionRecord | null | undefined): string {
-  const authored = /\(([^)]{2,10})\)\s*$/.test(asLabel(module)) || Boolean(asString(module?.code));
-  return authored ? moduleShort(module) : moduleLongTitle(module);
-}
-
-/** The title without its module prefix, since the row already sits inside that module. */
-export function moduleLongTitle(module: ProjectionRecord | null | undefined): string {
-  return asLabel(module).replace(/\s*\([^)]{2,10}\)\s*$/, '');
-}
-
-export interface UnitLabel {
-  /** "02" for a lecture, null for anything else. */
-  readonly number: string | null;
-  /** "Lecture 02" for a lecture, else the short title. */
-  readonly place: string;
-  readonly title: string;
-}
-
-/** Split "AML Lecture 02 — k-Nearest Neighbors" into what a row and a breadcrumb need. */
-export function unitLabel(unit: ProjectionRecord | null | undefined, module?: ProjectionRecord | null): UnitLabel {
-  const title = asLabel(unit);
-  const lecture = /(?:^|\s)(Lecture|Vorlesung|VL|Chapter|Week)\s+(\d+)\s*[—–:-]\s*(.+)$/i.exec(title);
-  if (lecture?.[1] && lecture[2] && lecture[3]) {
-    return { number: lecture[2], place: `${lecture[1]} ${lecture[2]}`, title: lecture[3] };
-  }
-  const short = module ? moduleShort(module) : '';
-  const bare = short && title.startsWith(`${short} `) ? title.slice(short.length + 1) : title;
-  const cased = bare.charAt(0).toUpperCase() + bare.slice(1);
-  return { number: null, place: cased.split(/\s*[—–:]\s*/)[0] ?? cased, title: cased };
-}
-
-/** Semester or area, then how many units: the line under every module title. */
-export function moduleFacts(store: Pick<ManifestStore, 'progress'>, module: ProjectionRecord): string {
-  const semester = asString(module.semester);
-  const area = asString(module.area_id);
-  const place = semester ? shortSemester(semester)
-    : area === 'program-job' ? 'Job'
-      : area === 'program-skills' ? 'Skills'
-        : asString(module.kind) === 'project' ? 'Thesis & projects' : '';
-  const units = store.progress(asString(module.id) ?? '').units_total;
-  return [place, units ? `${units} unit${units === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ');
-}
-
-function shortSemester(value: string): string {
-  return semesterLabel(value).replace('Summer semester', 'SoSe').replace('Winter semester', 'WiSe');
-}
-
-/** How far along, in words, from the same counts Core publishes. Never a judgement. */
-function moduleState(store: ManifestStore, module: ProjectionRecord): string {
-  const progress = store.progress(asString(module.id) ?? '');
-  if (progress.stages_total && progress.stages_complete === progress.stages_total) return 'Done';
-  return asString(module.status)?.replaceAll('-', ' ') ?? '';
 }
 
 export function moduleRow(

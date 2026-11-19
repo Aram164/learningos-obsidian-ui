@@ -3,6 +3,7 @@ import {
   VIEW_HOME, VIEW_LIBRARY, VIEW_MODULE, VIEW_NAV, VIEW_PROGRAM, VIEW_PROJECT,
   VIEW_REVIEW, VIEW_SHELVING, VIEW_UNIT,
 } from '../constants';
+import { BASE_VIEWS_DESIGN_ID } from './interface-design';
 import type {
   ApplicationRouteV1,
   NavigationEntryV1,
@@ -162,7 +163,7 @@ export class ApplicationRouter {
   normalizeRoute(route: ApplicationRouteV1): ApplicationRouteV1 {
     if (!route || typeof route !== 'object') return { name: 'home' };
     if ((route.name === 'learn' || route.name === 'program') && route.programId === 'program-thesis-projects'
-      && this.plugin.settings.uiDesign !== 'study-desk') {
+      && !this.usesPaneDesign) {
       return { ...route, programId: 'program-bachelors' };
     }
     if (route.name === 'module-detail') {
@@ -434,8 +435,12 @@ export class ApplicationRouter {
     return JSON.stringify(left) === JSON.stringify(right);
   }
 
+  private get usesPaneDesign(): boolean {
+    return this.plugin.settings.uiDesign !== BASE_VIEWS_DESIGN_ID;
+  }
+
   private get curriculumNav(): string {
-    return this.plugin.settings.uiDesign === 'study-desk' ? 'modules' : 'learn';
+    return this.usesPaneDesign ? 'modules' : 'learn';
   }
 
   private paneEntry(leaf: RouterLeaf | null | undefined): NavigationEntryV1 | null {
@@ -468,7 +473,7 @@ export class ApplicationRouter {
   }
 
   currentRoute(leaf?: RouterLeaf): ApplicationRouteV1 {
-    return (this.plugin.settings.uiDesign === 'study-desk' ? this.attendedRoute(leaf) : null) ?? this.navigation.current;
+    return (this.usesPaneDesign ? this.attendedRoute(leaf) : null) ?? this.navigation.current;
   }
 
   paneHistoryAvailable(leaf: RouterLeaf, direction: 'back' | 'forward'): boolean {
@@ -541,7 +546,7 @@ export class ApplicationRouter {
     const remember = options.remember !== false;
     const pushHistory = options.pushHistory !== false;
     const prior = this.navigation.current;
-    const studyDesk = this.plugin.settings.uiDesign === 'study-desk';
+    const studyDesk = this.usesPaneDesign;
     const workspace = this.plugin.app.workspace;
     let pane = options.preferredLeaf ?? (studyDesk ? this.studyDeskPane() : null);
     const panePrior = studyDesk ? this.paneEntry(pane) : null;
@@ -608,7 +613,7 @@ export class ApplicationRouter {
   }
 
   async back() {
-    const pane = this.plugin.settings.uiDesign === 'study-desk' ? this.studyDeskPane() : null;
+    const pane = this.usesPaneDesign ? this.studyDeskPane() : null;
     if (pane) {
       if (this.paneHistoryAvailable(pane, 'back')) return this.movePaneHistory(pane, 'back');
       return this.navigate({ name: 'home' }, { pushHistory: false });

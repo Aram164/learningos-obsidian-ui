@@ -63,6 +63,7 @@ export function primaryNavItems(
   plugin: NavSharedPlugin,
   options: {
     readonly icons?: Partial<Record<'modules' | 'garden' | 'review', string>>;
+    readonly includeLearn?: boolean;
     readonly learnFirst?: boolean;
     readonly openModules?: () => unknown;
   } = {},
@@ -80,9 +81,12 @@ export function primaryNavItems(
     icon: 'graduation-cap',
     go: () => plugin.nav.openLearn(),
   };
+  const curriculum = options.includeLearn === false
+    ? [modules]
+    : (options.learnFirst ? [learn, modules] : [modules, learn]);
   return [
     { key: 'home', label: 'Home', icon: 'home', go: () => plugin.nav.openHome() },
-    ...(options.learnFirst ? [learn, modules] : [modules, learn]),
+    ...curriculum,
     { key: 'library', label: 'Library', icon: 'library', go: () => plugin.nav.openLibrary() },
     {
       key: 'abilities',

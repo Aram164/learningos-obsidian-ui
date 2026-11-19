@@ -9,42 +9,52 @@ const body = () => global.document.body;
 module.exports = async function run() {
   heading('interface designs: the switch');
   {
-    const { app, plugin } = await boot();
+    const { app, plugin } = await boot({ settings: { uiDesign: undefined } });
     const home = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
     const nav = () => app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
-    check('a vault that never chose keeps Classic, with no attribute at all',
-      plugin.settings.uiDesign === 'classic' && !body().hasAttribute('data-los-ui'));
-    check('Classic draws its own screens', home().find('los-continue').length === 1 && home().find('sd-hero').length === 0);
-    check('Classic offers the toggle under More', nav().find('los-design-switch').length === 1
-      && nav().find('los-design-switch-option').length >= 2);
-
-    plugin.settings.palette = 'carbon';
-    await plugin.setInterfaceDesign('study-desk');
-    check('switching sets the attribute and redraws in place',
-      body().getAttribute('data-los-ui') === 'study-desk'
-      && home().find('sd-hero').length === 1 && nav().find('sd-nav-search').length === 1);
-    check('Study Desk does not inherit Classic’s scheme',
-      !body().hasAttribute('data-los-palette') && plugin.settings.palette === 'carbon');
-    check('every design’s sidebar offers the way back',
-      nav().find('los-design-switch').length >= 1
-      && nav().findText('los-design-switch-option', 'Classic') !== null);
+    check('a vault that never chose defaults to Study Desk',
+      plugin.settings.uiDesign === 'study-desk' && body().getAttribute('data-los-ui') === 'study-desk');
+    check('Study Desk draws its own screens', home().find('sd-hero').length === 1 && nav().find('sd-nav-search').length === 1);
+    check('Study Desk offers the toggle under More', nav().find('los-design-switch').length === 2
+      && nav().find('los-design-switch-option').length >= 4);
 
     await plugin.setDesignPalette('lamplight');
-    check('a design keeps its own scheme', body().getAttribute('data-los-palette') === 'lamplight'
-      && plugin.settings.uiDesignPalettes['study-desk'] === 'lamplight' && plugin.settings.palette === 'carbon');
-    await plugin.setInterfaceDesign('classic');
-    check('coming back restores Classic and its scheme exactly',
-      !body().hasAttribute('data-los-ui') && body().getAttribute('data-los-palette') === 'carbon'
-      && home().find('los-continue').length === 1);
+    check('Study Desk remembers its own scheme',
+      body().getAttribute('data-los-palette') === 'lamplight'
+      && plugin.settings.uiDesignPalettes['study-desk'] === 'lamplight');
+    await plugin.setInterfaceDesign('focus');
+    check('switching sets the Focus attribute and redraws in place with Daylight',
+      body().getAttribute('data-los-ui') === 'focus'
+      && body().getAttribute('data-los-palette') === 'daylight'
+      && home().find('focus-resume').length === 1 && nav().find('focus-nav-search').length === 1);
+    check('every design’s sidebar offers the way back',
+      nav().find('los-design-switch').length >= 1
+      && nav().findText('los-design-switch-option', 'Study Desk') !== null);
+
+    await plugin.setDesignPalette('nightfall');
+    check('Focus keeps its own scheme', body().getAttribute('data-los-palette') === 'nightfall'
+      && plugin.settings.uiDesignPalettes.focus === 'nightfall'
+      && plugin.settings.uiDesignPalettes['study-desk'] === 'lamplight');
     await plugin.setInterfaceDesign('study-desk');
-    check('and going again restores that design’s scheme', body().getAttribute('data-los-palette') === 'lamplight');
+    check('coming back restores Study Desk and its scheme exactly',
+      body().getAttribute('data-los-ui') === 'study-desk'
+      && body().getAttribute('data-los-palette') === 'lamplight'
+      && home().find('sd-hero').length === 1);
+    await plugin.setInterfaceDesign('focus');
+    check('and going again restores Focus’s scheme', body().getAttribute('data-los-palette') === 'nightfall');
     await plugin.setDesignPalette('carbon');
-    check('a scheme a design was not drawn for falls back to its default', !body().hasAttribute('data-los-palette'));
+    check('a scheme a design was not drawn for falls back to its default',
+      body().getAttribute('data-los-palette') === 'daylight');
+    await plugin.setInterfaceDesign('classic');
+    check('retired classic degrades to Study Desk',
+      plugin.settings.uiDesign === 'study-desk' && body().getAttribute('data-los-ui') === 'study-desk');
     await plugin.setInterfaceDesign('no-such-design');
-    check('an unknown design degrades to Classic', plugin.settings.uiDesign === 'classic' && !body().hasAttribute('data-los-ui'));
+    check('an unknown design degrades to Study Desk',
+      plugin.settings.uiDesign === 'study-desk' && body().getAttribute('data-los-ui') === 'study-desk');
     check('the switch is reachable as commands',
-      ['next-interface-design', 'use-interface-design-classic', 'use-interface-design-study-desk']
-        .every((id) => plugin.commands.some((command) => command.id === id)));
+      ['next-interface-design', 'use-interface-design-study-desk', 'use-interface-design-focus']
+        .every((id) => plugin.commands.some((command) => command.id === id))
+      && !plugin.commands.some((command) => command.id === 'use-interface-design-classic'));
     plugin.onunload();
     check('unloading leaves the body clean', !body().hasAttribute('data-los-ui'));
   }
@@ -539,11 +549,13 @@ module.exports = async function run() {
   }
 
   heading('interface designs: an incoherent resume pointer draws no resume action');
-  for (const design of ['classic', 'focus', 'study-desk']) {
-    const { app, plugin } = await boot({ patchManifest(manifest) {
-      manifest.resume_pointer = { ...manifest.resume_pointer, study_map_id: 'study-map-fixture-sad-l02' };
-    } });
-    await plugin.setInterfaceDesign(design);
+  for (const design of ['__base_views__', 'focus', 'study-desk']) {
+    const { app, plugin } = await boot({
+      settings: { uiDesign: design },
+      patchManifest(manifest) {
+        manifest.resume_pointer = { ...manifest.resume_pointer, study_map_id: 'study-map-fixture-sad-l02' };
+      },
+    });
     await plugin.nav.openHome();
     const home = app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
     check(`${design}: an unresolvable pointer offers no resume action`,
@@ -553,7 +565,7 @@ module.exports = async function run() {
       && home.findText('los-btn', 'Resume session') === null
       && home.findText('los-btn--cta', 'Continue studying') === null);
     check(`${design}: the ordinary fallback still renders`,
-      design === 'classic'
+      design === '__base_views__'
         ? home.allText().includes('Nothing to resume yet')
         : home.allText().length > 0);
     plugin.onunload();
@@ -726,15 +738,17 @@ module.exports = async function run() {
   }
 
   heading('interface designs: paused sessions stay quiet and explicitly reachable');
-  for (const design of ['classic', 'study-desk', 'focus']) {
-    const { app, plugin, calls } = await boot({ patchManifest(manifest) {
-      manifest.modules.find(row => row.id === 'module-fixture-m2').unit_order = [
-        'unit-fixture-sad-l04', 'unit-fixture-analysis', 'unit-fixture-sad-l02',
-      ];
-      manifest.units.find(row => row.id === 'unit-fixture-sad-l04').status = 'paused';
-      manifest.study_maps.find(row => row.unit_id === 'unit-fixture-sad-l04').status = 'paused';
-    } });
-    await plugin.setInterfaceDesign(design);
+  for (const design of ['__base_views__', 'study-desk', 'focus']) {
+    const { app, plugin, calls } = await boot({
+      settings: { uiDesign: design },
+      patchManifest(manifest) {
+        manifest.modules.find(row => row.id === 'module-fixture-m2').unit_order = [
+          'unit-fixture-sad-l04', 'unit-fixture-analysis', 'unit-fixture-sad-l02',
+        ];
+        manifest.units.find(row => row.id === 'unit-fixture-sad-l04').status = 'paused';
+        manifest.study_maps.find(row => row.unit_id === 'unit-fixture-sad-l04').status = 'paused';
+      },
+    });
     const before = calls.envelopes.length;
     await plugin.nav.openModuleDetail('module-fixture-m2', null, 'units');
     const root = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;
@@ -786,7 +800,7 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
-  heading('Focus projects: one complete collection and a reliable return');
+  heading('Focus projects: unified Modules area filter and reliable return');
   for (const projectCount of [0, 2]) {
     const { app, plugin, calls } = await boot({ patchManifest(manifest) {
       for (const record of [...manifest.modules, ...manifest.records]) {
@@ -796,15 +810,16 @@ module.exports = async function run() {
     } });
     await plugin.setInterfaceDesign('focus');
     const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
-    nav.findText('focus-nav-item', 'Thesis & projects').fire('click');
-    await waitFor(() => app.workspace.getLeavesOfType(VIEW.module)[0]?.view.contentEl.getAttribute('data-focus-collection') === 'projects');
+    nav.findText('focus-nav-item', 'Modules').fire('click');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.module)[0]?.view.contentEl.getAttribute('data-focus-screen') === 'modules');
     const view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
-    check(`sidebar opens all ${projectCount} projected projects without choosing one`,
+    view.contentEl.findText('los-filter-tab', 'Thesis & projects').fire('click');
+    await waitFor(() => view.contentEl.getAttribute('data-focus-collection') === 'projects');
+    check(`Thesis & projects tab opens all ${projectCount} projected projects`,
       view.contentEl.getAttribute('data-focus-screen') === 'modules'
-      && view.contentEl.find('focus-row').length === projectCount
-      && view.contentEl.allText().includes(`${projectCount} of ${projectCount} projects`));
+      && view.contentEl.find('focus-row').length === projectCount);
     if (!projectCount) check('an empty project collection has an honest recovery',
-      view.contentEl.allText().includes('No projects are recorded yet')
+      view.contentEl.allText().includes('No modules in this area')
       && view.contentEl.findText('los-filter-tab', 'All') !== null);
     else {
       const input = view.contentEl.find('focus-search')[0];
@@ -817,22 +832,20 @@ module.exports = async function run() {
       check('project detail returns to the selected collection, query, row and position',
         view.contentEl.getAttribute('data-focus-collection') === 'projects'
         && view.contentEl.find('focus-search')[0].value === 'thesis'
-        && view.contentEl.find('focus-row').length === 1
-        && view.contentEl.find('focus-row')[0].classes.has('is-current')
+        && view.contentEl.find('focus-module-row').length === 1
+        && view.contentEl.find('focus-module-row')[0].classes.has('is-current')
         && view.contentEl.scrollTop === 173);
       const other = app.workspace.getLeaf(true);
       await other.setViewState({ type: VIEW.module, state: { screen: 'groups' } });
       check('a separate module leaf keeps independent collection attention',
-        other.view.contentEl.getAttribute('data-focus-collection') === 'open'
+        other.view.contentEl.getAttribute('data-focus-collection') === 'all'
         && view.contentEl.getAttribute('data-focus-collection') === 'projects');
     }
-    await plugin.nav.openLearn('program-bachelors');
+    await plugin.nav.openLearn('program-thesis-projects');
     const learn = app.workspace.getLeavesOfType(VIEW.program)[0].view;
-    learn.contentEl.findText('los-btn', 'Thesis & projects').fire('click');
-    await waitFor(() => view.contentEl.getAttribute('data-focus-collection') === 'projects');
-    check('Learn uses the same project collection as the sidebar',
-      view.contentEl.getAttribute('data-focus-screen') === 'modules'
-      && view.contentEl.getAttribute('data-focus-collection') === 'projects'
+    check('Learn project route renders Focus Modules with projects pre-selected and no Core write',
+      learn.contentEl.getAttribute('data-focus-screen') === 'modules'
+      && learn.contentEl.getAttribute('data-focus-collection') === 'projects'
       && calls.envelopes.length === 0);
     plugin.onunload();
   }

@@ -9,17 +9,18 @@
  * material ranks the same way wherever its row appears.
  */
 import { filterTabs, icon, plural } from '../../components';
+import { namesOf, splitStage, type StageSplit } from '../../features/unit/lecture-materials';
 import {
   groupByPurpose,
-  rankMaterials,
   type LectureMaterial,
-  type StageUse,
 } from '../../features/unit/material-purpose';
 import type { StageResourceView } from '../../features/stage-resources';
 import type { StageRecordView, StudyMapView, UnitRecordView } from '../../features/unit/model';
 import type { UnitScreenHost } from '../screens';
 import { renderMaterialRow, type MaterialRowContext } from './material-row';
 import { keepFold, materialsState, openInStage, type MaterialsState } from './materials-state';
+
+export { namesOf, splitStage, type StageSplit };
 
 export interface StageMaterialsContext {
   readonly view: UnitScreenHost;
@@ -30,24 +31,6 @@ export interface StageMaterialsContext {
   /** Every material of the lecture, built once per render. */
   readonly materials: readonly LectureMaterial[];
   readonly expected: Readonly<Record<string, number>>;
-}
-
-export interface StageSplit {
-  /** The stage's place in the durable plan, or -1 when it is not there. */
-  readonly index: number;
-  readonly required: readonly LectureMaterial[];
-  readonly helps: readonly LectureMaterial[];
-  /** Deferred and kept for reference: nothing this stage asks you to read now. */
-  readonly kept: readonly LectureMaterial[];
-}
-
-/** A stage's materials by its own triage, each part ranked with that triage first. */
-export function splitStage(materials: readonly LectureMaterial[], durable: StudyMapView, stage: StageRecordView): StageSplit {
-  // A sitting reorders the durable stages themselves, so the id always finds it.
-  const index = durable.stages.findIndex((row) => row.id === stage.id);
-  const where = (...uses: StageUse[]) => (index < 0 ? []
-    : rankMaterials(materials.filter((material) => uses.includes(material.uses[index] ?? null)), index));
-  return { index, required: where('required'), helps: where('helps'), kept: where('deferred', 'reference') };
 }
 
 function rowContext(context: StageMaterialsContext, state: MaterialsState): MaterialRowContext {
@@ -65,18 +48,6 @@ function rowContext(context: StageMaterialsContext, state: MaterialsState): Mate
 function rows(parent: HTMLElement, materials: readonly LectureMaterial[], context: MaterialRowContext, bestFit: LectureMaterial | null = null): void {
   const list = parent.createDiv({ cls: 'sd-stage-rows' });
   for (const material of materials) renderMaterialRow(list, material, context, { compact: true, bestFit: material === bestFit });
-}
-
-/**
- * "Older L02 lecture variant and CS229 lecture 10": what a folded line holds, by
- * full title. Cutting a title short would keep only its first words, and many
- * Job labels begin with role words ("Official reference — …"), so it would say
- * nothing about which material is inside.
- */
-export function namesOf(materials: readonly LectureMaterial[]): string {
-  const titles = materials.map((material) => material.title);
-  if (titles.length <= 2) return titles.join(' and ');
-  return `${titles.slice(0, 2).join(', ')} and ${titles.length - 2} more`;
 }
 
 /** D1's last line: what the stage keeps for reference, one click away and never in the way. */

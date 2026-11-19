@@ -3,7 +3,7 @@ const { boot, check, heading, waitFor, frame, stub, VIEW, FIXTURE_SNAPSHOT } = r
 const { browserDom } = require('./browser-dom');
 
 module.exports = async function run() {
-  heading('Focus: a third interface preserves design choices and local work');
+  heading('Focus 2.0: two-design roster, Daylight/Nightfall, Split Cockpit & Proof CTA shift');
   {
     const { app, plugin, calls } = await boot({ patchManifest(manifest) {
       const map = manifest.module_source_maps.find(item => item.module_id === 'module-fixture-m2');
@@ -12,37 +12,53 @@ module.exports = async function run() {
         depth: 'derivation', scope: 'current', locator: 'Chapter 2', url: 'https://example.com/chapter',
         source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] });
     } });
-    plugin.settings.palette = 'carbon';
     await plugin.setInterfaceDesign('study-desk');
     await plugin.setDesignPalette('lamplight');
     await plugin.setInterfaceDesign('focus');
     const home = app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
-    check('Focus is a third registered interface with its own light scheme',
+    const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
+    check('Focus is registered with its Daylight light scheme and unified 6-item sidebar',
       global.document.body.getAttribute('data-los-ui') === 'focus'
       && global.document.body.getAttribute('data-los-palette') === 'daylight'
-      && home.find('focus-resume').length === 1);
+      && home.find('focus-resume').length === 1
+      && nav.allText().includes('Focus 2.0')
+      && nav.findText('focus-nav-item', 'Learn') === null
+      && nav.find('focus-nav-dot').length > 0);
     await plugin.setDesignPalette('nightfall');
-    await plugin.setInterfaceDesign('classic');
-    check('Classic retains Carbon and its own renderer',
-      global.document.body.getAttribute('data-los-palette') === 'carbon' && home.find('los-continue').length === 1);
     await plugin.setInterfaceDesign('study-desk');
     check('Study Desk retains Lamplight and its renderer',
       global.document.body.getAttribute('data-los-palette') === 'lamplight' && home.find('sd-hero').length === 1);
     await plugin.setInterfaceDesign('focus');
-    check('Focus restores its dark scheme',
+    check('Focus restores Nightfall across switches',
       global.document.body.getAttribute('data-los-palette') === 'nightfall');
     const before = calls.envelopes.length;
     home.findText('los-btn', 'Resume session').fire('click');
     await waitFor(() => app.workspace.getLeavesOfType(VIEW.unit).length > 0);
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
-    check('Resume enters a focused session on the recorded stage', view.contentEl.getAttribute('data-focus-screen') === 'session'
+    check('Resume enters Focus 2.0 60/40 Split Cockpit with horizontal stage strip and inline Working scratch',
+      view.contentEl.getAttribute('data-focus-screen') === 'session'
+      && view.contentEl.find('focus-stage-strip').length === 1
+      && view.contentEl.find('focus-cockpit-main').length === 1
+      && view.contentEl.find('focus-cockpit-dock').length === 1
+      && view.contentEl.find('focus-note-scratch').length === 1
       && view.contentEl.allText().includes('Conditional probability and Bayes'));
     check('an unclassified route leads with its authored action rather than an evaluation placeholder',
       view.contentEl.find('focus-current-work')[0].find('los-material-purpose')[0].allText() === 'Watch');
+    const completeBefore = view.contentEl.findText('los-btn', 'Complete stage');
+    check('before proofs are verified, Complete stage stays secondary while Start here owns the primary CTA',
+      completeBefore && !completeBefore.classes.has('los-btn--cta')
+      && !view.contentEl.find('focus-proof-card')[0].classes.has('is-verified'));
     const box = view.contentEl.find('focus-criterion')[0].children.find(node => node.tag === 'input');
     box.checked = true; box.fire('change');
-    check('criteria update independent local marks and the count without a write',
-      view.contentEl.allText().includes('1 of 1') && calls.envelopes.length === before);
+    check('ticking all proof criteria marks the proof card verified and promotes Complete stage to primary CTA without writes',
+      view.contentEl.allText().includes('1 of 1')
+      && view.contentEl.find('focus-proof-card')[0].classes.has('is-verified')
+      && view.contentEl.findText('los-btn', 'Complete stage').classes.has('los-btn--cta')
+      && calls.envelopes.length === before);
+    const scratch = view.contentEl.find('focus-note-scratch')[0];
+    scratch.value = 'Bayes posterior equals likelihood times prior up to Z.'; scratch.fire('input');
+    check('inline Working scratch updates the local unit-note draft without a gateway write',
+      plugin.getUnitNoteDraft('unit-fixture-sad-l04').text === scratch.value && calls.envelopes.length === before);
     view.contentEl.findText('los-btn', 'Compare all').fire('click');
     check('comparison reconciles every placement in three groups',
       view.contentEl.getAttribute('data-focus-screen') === 'materials'
@@ -50,11 +66,18 @@ module.exports = async function run() {
       && view.contentEl.allText().includes('Required now · 2')
       && view.contentEl.allText().includes('Depth & reference · 1'));
     view.contentEl.findText('los-filter-tab', 'Unit materials').fire('click');
-    check('the complete lecture menu retains source selection', view.contentEl.allText().includes('Choose your learning material')
-      && view.contentEl.findText('los-btn', 'Choose') !== null);
+    check('Unit materials renders Purpose groups, S1..SN stage matrix and inline row choice',
+      view.contentEl.find('focus-mgroup').length > 0
+      && view.contentEl.find('focus-stage-matrix').length > 0
+      && view.contentEl.allText().includes('Stage matrix legend'));
+    const chapterRow = view.contentEl.find('focus-mrow').find(row => row.allText().includes('Focus probability chapter'));
+    chapterRow?.find('focus-mrow-chevron')[0]?.fire('click');
+    check('expanding a Unit material row reveals Choose for this lecture',
+      view.contentEl.findText('los-btn', 'Choose for this lecture') !== null);
     view.contentEl.findText('los-btn', 'Back to session').fire('click');
-    check('returning from comparison retains the criterion mark',
-      view.contentEl.find('focus-criterion')[0].children.find(node => node.tag === 'input').checked === true);
+    check('returning from comparison retains the criterion mark and inline scratch draft',
+      view.contentEl.find('focus-criterion')[0].children.find(node => node.tag === 'input').checked === true
+      && view.contentEl.find('focus-note-scratch')[0].value === scratch.value);
     view.contentEl.findText('los-btn', 'End session').fire('click');
     const wrapup = view.contentEl.find('focus-wrapup')[0];
     check('wrap-up puts the concrete change review and return point before optional writing',
@@ -62,7 +85,7 @@ module.exports = async function run() {
       && wrapup.children.indexOf(wrapup.find('focus-return-point')[0]) < wrapup.children.indexOf(wrapup.find('focus-note-editor')[0]));
     const editor = view.contentEl.find('focus-note-editor')[0];
     editor.value = 'A useful stopping point for the next fixture session.'; editor.fire('input');
-    check('wrap-up only saves a local unit-note draft', calls.envelopes.length === before
+    check('wrap-up saves local draft text', calls.envelopes.length === before
       && plugin.getUnitNoteDraft('unit-fixture-sad-l04').text === editor.value);
     view.contentEl.findText('los-btn', 'Keep studying').fire('click');
     view.contentEl.findText('los-btn', 'End session').fire('click');
@@ -90,20 +113,26 @@ module.exports = async function run() {
       && !calls.envelopes.some(item => item.capability.startsWith('learner.') || item.capability.startsWith('ability.')));
     plugin.onunload();
   }
-  heading('Focus: blocked instructions, independent material facets and safe returns');
+
+  heading('Focus 2.0: blocked instructions, inline Stuck helpers, independent facets and safe returns');
   {
     const { app, plugin, calls } = await boot({ patchManifest(manifest) {
       const stage = manifest.study_maps.find(item => item.unit_id === 'unit-fixture-sad-l04').stages[1];
       const sourceMap = manifest.module_source_maps.find(item => item.module_id === 'module-fixture-m2');
-      sourceMap.sources[0].unit_routes.push({ id: 'route-focus-setup', unit_id: 'unit-fixture-sad-l04',
-        title: 'Fixture environment instructions', format: 'documentation', depth: 'implementation', scope: 'current',
-        angle: 'Pin the environment before checking the backend.', source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] },
-      { id: 'route-focus-exercise', unit_id: 'unit-fixture-sad-l04', title: 'Fixture parity notebook',
-        format: 'code', depth: 'practice', scope: 'current', angle: 'Work through the parity checks.',
-        source_id: 'source-fixture-islp', covers: ['knowledge-fixture-conditioning'] },
-      { id: 'route-focus-other-unit', unit_id: 'unit-fixture-sad-l02', title: 'Fixture background chapter',
-        format: 'book', depth: 'orientation', scope: 'current', angle: 'Prepare for the later lecture.',
-        source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] });
+      sourceMap.sources[0].unit_routes.push(
+        { id: 'route-focus-setup', unit_id: 'unit-fixture-sad-l04',
+          title: 'Fixture environment instructions', format: 'documentation', depth: 'implementation', scope: 'current',
+          angle: 'Pin the environment before checking the backend.', source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] },
+        { id: 'route-focus-exercise', unit_id: 'unit-fixture-sad-l04', title: 'Fixture parity notebook',
+          format: 'code', depth: 'practice', scope: 'current', angle: 'Work through the parity checks.',
+          source_id: 'source-fixture-islp', covers: ['knowledge-fixture-conditioning'] },
+        { id: 'route-focus-other-unit', unit_id: 'unit-fixture-sad-l02', title: 'Fixture background chapter',
+          format: 'book', depth: 'orientation', scope: 'current', angle: 'Prepare for the later lecture.',
+          source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] },
+        { id: 'route-focus-helper', unit_id: 'unit-fixture-sad-l04', title: 'Visual Bayes intuition',
+          format: 'video', depth: 'intuition', scope: 'current', angle: 'Short intuition helper.',
+          source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] },
+      );
       stage.resources[0] = { id: 'resource-fixture-setup', kind: 'read', route_id: 'route-focus-setup',
         scope_triage: 'required-now', is_entry: true, label: 'Freeze the fixture environment', locator: 'fixture.lock',
         angle: 'Pin the environment before checking the backend.',
@@ -111,6 +140,9 @@ module.exports = async function run() {
       stage.resources[1].scope_triage = 'required-now';
       stage.resources[1].is_entry = false;
       stage.resources[1].route_id = 'route-focus-exercise';
+      stage.resources.push({ id: 'resource-fixture-helper', kind: 'watch', route_id: 'route-focus-helper',
+        scope_triage: 'helpful-now', is_entry: false, label: 'Visual Bayes intuition', locator: '00:00',
+        angle: 'Short intuition helper.' });
     } });
     await plugin.setInterfaceDesign('focus');
     await plugin.nav.openUnit('unit-fixture-sad-l04');
@@ -120,10 +152,10 @@ module.exports = async function run() {
     root.scrollTop = 147;
     const materialTab = root.findText('los-filter-tab', 'Materials');
     materialTab.focus(); materialTab.fire('click');
-    check('Plan opens the unit material scope at its heading with a truthful return',
+    check('Plan opens Unit materials at its heading with a truthful return and Purpose-first facts',
       root.getAttribute('data-focus-screen') === 'materials' && root.scrollTop === 0
       && root.find('focus-title')[0].allText() === 'Unit materials'
-      && root.allText().includes('2 material routes for this lecture.')
+      && root.allText().includes('materials for 3 stages')
       && root.findText('los-btn', 'Back to study plan') !== null);
     root.findText('los-btn', 'Back to study plan').fire('click');
     check('Materials returns to the exact Study plan entry and its scroll',
@@ -133,12 +165,15 @@ module.exports = async function run() {
     check('focused peer navigation starts Session at its own heading',
       root.scrollTop === 0 && global.document.activeElement.getAttribute('data-los-tab') === 'session');
     const before = calls.envelopes.length;
-    const session = view.contentEl.find('focus-stage')[0];
-    const work = session.find('focus-current-work')[0];
-    check('current work precedes criteria, with the exact authored missing-location instructions',
-      session.children.indexOf(work) < session.children.indexOf(session.find('focus-criteria')[0])
-      && work.find('los-material-instructions')[0].allText().includes('Run the version probe.\nKeep its exact output with the parity results.')
-      && work.allText().includes('Location needed') && work.allText().includes('Access details'));
+    const cockpit = view.contentEl.find('focus-cockpit')[0];
+    const main = cockpit.find('focus-cockpit-main')[0];
+    const dock = cockpit.find('focus-cockpit-dock')[0];
+    const work = main.find('focus-current-work')[0];
+    check('60/40 Split Cockpit puts Start here + inline If you get stuck in left column and Done when + Scratch in right dock',
+      work.find('los-material-instructions')[0].allText().includes('Run the version probe.\nKeep its exact output with the parity results.')
+      && work.allText().includes('Location needed') && work.allText().includes('Access details')
+      && main.find('focus-stuck-panel')[0]?.allText().includes('Visual Bayes intuition')
+      && dock.find('focus-criteria').length === 1 && dock.find('focus-scratch').length === 1);
     check('the next authored required task is inspectable without advancing or waiving setup',
       work.find('focus-next-required')[0].allText().includes('Fixture exercise B3')
       && calls.envelopes.length === before);
@@ -153,12 +188,12 @@ module.exports = async function run() {
     check('a medium filter preserves the full group count and the authored exercise placement',
       view.contentEl.find('los-material-card').length === 1
       && view.contentEl.find('los-material-card')[0].allText().includes('Fixture exercise B3')
-      && view.contentEl.allText().includes('1 of 3 materials')
+      && view.contentEl.allText().includes('1 of 4 materials')
       && view.contentEl.allText().includes('Required now · 1 of 3'));
     action.value = 'read'; action.fire('change');
     check('action and medium are independent, with an honest empty filtered view',
       view.contentEl.find('los-material-card').length === 0
-      && view.contentEl.allText().includes('0 of 3 materials')
+      && view.contentEl.allText().includes('0 of 4 materials')
       && view.contentEl.allText().includes('Clear the filters to restore this group.'));
     view.contentEl.findText('los-btn', 'Clear filters').fire('click');
     access.value = 'none'; access.fire('change');
@@ -179,25 +214,25 @@ module.exports = async function run() {
     view.contentEl.findText('los-btn', 'Clear filters').fire('click');
     check('clearing all facets restores every placement in authored order without writes',
       view.contentEl.find('los-material-card').map(card => card.find('los-material-title')[0].allText()).join('|')
-        === 'Freeze the fixture environment|Fixture exercise B3|Fixture unranked reading'
+        === 'Freeze the fixture environment|Fixture exercise B3|Fixture unranked reading|Visual Bayes intuition'
       && calls.envelopes.length === before);
     root.scrollTop = 196;
     const unitScope = root.findText('los-filter-tab', 'Unit materials');
     unitScope.focus(); unitScope.fire('click');
-    check('changing scope uses its own heading, inventory count and scroll context',
+    check('changing scope to Unit materials uses Purpose-first rows and clears scroll',
       root.scrollTop === 0 && root.find('focus-title')[0].allText() === 'Unit materials'
-      && root.allText().includes('2 of 2 materials') && root.find('los-material-option').length === 2);
+      && root.find('focus-mrow').length > 0 && root.allText().includes('Stage matrix'));
     const courseScope = root.findText('los-filter-tab', 'Course sources');
     courseScope.focus(); courseScope.fire('click');
     check('course scope names its complete other-lecture inventory without suggesting required study work',
       root.find('focus-title')[0].allText() === 'Course sources'
-      && root.allText().includes('1 of 1 materials')
+      && root.allText().includes('1 of 1 material')
       && root.find('los-material-card')[0].allText().includes('Fixture background chapter'));
     const stageScope = root.findText('los-filter-tab', 'This stage');
     stageScope.focus(); stageScope.fire('click');
     check('returning to stage scope restores its position and complete current-stage count',
       root.scrollTop === 196 && root.find('focus-title')[0].allText() === 'Stage materials'
-      && root.allText().includes('3 of 3 materials'));
+      && root.allText().includes('4 of 4 materials'));
     const overview = root.findText('los-filter-tab', 'Overview');
     overview.focus(); overview.fire('click');
     root.findText('los-filter-tab', 'Materials').fire('click');
@@ -208,9 +243,20 @@ module.exports = async function run() {
       root.getAttribute('data-focus-screen') === 'overview' && calls.envelopes.length === before);
     plugin.onunload();
   }
-  heading('Focus: complete row targets and shared feature reachability');
+
+  heading('Focus 2.0: complete row targets, mapless units, and native Atlas (D1/D2)');
   {
-    const { app, plugin } = await boot();
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      const node = (id, title, ...builds) => ({ id, title, summary: `${title}: one sentence.`, ...(builds.length ? { builds_on: builds } : {}) });
+      manifest.units.find(row => row.id === 'unit-fixture-sad-l02').knowledge_map = {
+        summary: 'Probability from first principles.',
+        nodes: [node('knowledge-fx-l02-space', 'Sample spaces'), node('knowledge-fx-l02-axioms', 'Probability axioms', 'knowledge-fx-l02-space')],
+      };
+      manifest.units.find(row => row.id === 'unit-fixture-sad-l04').knowledge_map = {
+        summary: 'Bayes from conditioning.',
+        nodes: [node('knowledge-fx-l04-cond', 'Conditioning'), node('knowledge-fx-l04-bayes', 'Bayes theorem', 'knowledge-fx-l04-cond')],
+      };
+    } });
     await plugin.setInterfaceDesign('focus');
     await plugin.nav.openModules();
     const modules = app.workspace.getLeavesOfType(VIEW.module)[0].view;
@@ -218,8 +264,10 @@ module.exports = async function run() {
     check('module whitespace belongs to one native button target', target?.tag === 'button' && !target.children.some(node => node.tag === 'button'));
     target.fire('click');
     await waitFor(() => modules.contentEl.getAttribute('data-focus-screen') === 'module');
-    check('the whole module row opens its complete tabbed detail',
-      modules.contentEl.allText().includes('Logistics') && modules.contentEl.allText().includes('Resources'));
+    check('the whole module row opens its complete tabbed detail with Your plan sidebar',
+      modules.contentEl.allText().includes('Logistics')
+      && modules.contentEl.allText().includes('Resources')
+      && modules.contentEl.allText().includes('Your plan'));
     modules.contentEl.find('focus-row').find(node => node.allText().includes('Probability & Bayes')).fire('click');
     await waitFor(() => app.workspace.getLeavesOfType(VIEW.unit).length > 0);
     const unit = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
@@ -227,19 +275,38 @@ module.exports = async function run() {
       unit.contentEl.getAttribute('data-focus-screen') === 'plan' && unit.contentEl.find('focus-row').length === 3
       && unit.contentEl.allText().includes('Sequence for this sitting'));
     unit.contentEl.findText('los-btn', 'Resume stage').fire('click');
-    check('compact plan access and every secondary stage action stay reachable',
-      unit.contentEl.find('focus-compact-plan').length === 1
+    check('horizontal stage strip and every secondary stage action stay reachable',
+      unit.contentEl.find('focus-stage-pill').length === 3
       && ['Pause unit', 'Skip stage', 'Prepare shelving', 'Report prerequisite gap'].every(label => unit.contentEl.allText().includes(label)));
-    await plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' });
-    check('Atlas retains its complete feature renderer',
-      app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.allText().includes('Notes & shelves'));
+
+    await plugin.nav.openUnit('unit-fixture-analysis');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.unit)[0]?.view.unitId === 'unit-fixture-analysis');
+    check('a mapless unit renders an explicit Needs a study map screen without falling through',
+      unit.contentEl.getAttribute('data-focus-screen') === 'mapless'
+      && unit.contentEl.allText().includes('Needs a study map'));
+
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
+    const atlas = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    check('Focus 2.0 Atlas renders the 3-column Concept Dependency Flow and See it in its module signpost',
+      atlas.contentEl.getAttribute('data-focus-screen') === 'atlas'
+      && atlas.contentEl.find('focus-atlas-flow').length === 1
+      && atlas.contentEl.allText().includes('1. You need first')
+      && atlas.contentEl.allText().includes('2. This concept')
+      && atlas.contentEl.allText().includes('3. Leads to')
+      && atlas.contentEl.allText().includes('See it in its module'));
+
+    await plugin.nav.openAtlas({ concept: null, module: 'module-fixture-m2', lens: 'prerequisites' });
+    check('Focus 2.0 Atlas renders the read-only Module Revision Map',
+      atlas.contentEl.find('focus-mm-lecture').length > 0 && atlas.contentEl.find('focus-mm-idea').length > 0);
+
+    await plugin.nav.openAtlas({ concept: null, lens: 'domains' });
+    check('Notes & shelves retains its complete shared renderer',
+      atlas.contentEl.allText().includes('Notes & shelves'));
     plugin.onunload();
   }
+
   heading('Focus: a placement keeps its route when its stage overrides the locator');
   {
-    // Core manifest v18 writes the resolved route_id onto every expanded
-    // material_ref. Two routes share one source here; the second placement
-    // overrides its locator, so source + locator can no longer find its route.
     const { app, plugin } = await boot({ patchManifest(manifest) {
       const stage = manifest.study_maps.find(item => item.unit_id === 'unit-fixture-sad-l04').stages[1];
       const sourceMap = manifest.module_source_maps.find(item => item.module_id === 'module-fixture-m2');
@@ -275,13 +342,6 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
-  /*
-   * A lecture detour (product research 2026-11-11, §5 and the evidence
-   * appendix). Course sources → Go to lecture replaces the unit in the same
-   * tab. Before Plan B nothing on the destination led back, and the
-   * application's Back landed on the origin's Study plan with the comparison,
-   * its scope, filters and scroll discarded.
-   */
   const ORIGIN = 'unit-fixture-sad-l04';
   const ORIGIN_TITLE = 'SaD Lecture 04 — Probability & Bayes';
   const DESTINATION = 'unit-fixture-sad-l02';
@@ -298,7 +358,6 @@ module.exports = async function run() {
   const where = (view) => `unit=${view.unitId} stage=${view.stageId} screen=${view.contentEl.getAttribute('data-focus-screen')}`
     + ` title=${view.contentEl.find('focus-title')[0]?.allText() ?? ''} scroll=${view.contentEl.scrollTop} query=${courseQuery(view)?.value ?? ''}`
     + ` return=${detourReturn(view)?.allText() ?? 'none'}`;
-  /** Stage N of the origin → tick → Compare all → Course sources → filter → scroll → Go to lecture. */
   async function leaveForAnotherLecture(view, stageTitle, { tickCriterion = true, query = 'background', scroll = 333 } = {}) {
     view.contentEl.find('focus-row').find(node => node.getAttribute('aria-label') === `Open stage: ${stageTitle}`).fire('click');
     await waitFor(() => view.contentEl.getAttribute('data-focus-screen') === 'session');

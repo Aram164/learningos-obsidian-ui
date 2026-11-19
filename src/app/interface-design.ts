@@ -12,10 +12,14 @@
  *
  * Like the palette, the choice is an attribute on `document.body`, and for the
  * same reason: `los-root` is applied in ten places including modals mounted
- * outside the view tree. 'classic' is the absence of the attribute, so Classic's
- * cascade is byte-for-byte what it was before designs existed.
+ * outside the view tree. Study Desk (`study-desk`) and Focus (`focus`) both
+ * set `data-los-ui` on `document.body`. An internal test-only sentinel
+ * (`BASE_VIEWS_DESIGN_ID`) removes the attribute and lets base feature-view
+ * regression suites exercise `src/views/*` + `src/features/*` directly.
  */
-import { applyPaletteEverywhere, normalizePalette, PALETTES, type PaletteId } from './palette';
+import { applyPaletteEverywhere, normalizePalette, type PaletteId } from './palette';
+
+export const BASE_VIEWS_DESIGN_ID = '__base_views__';
 
 export interface InterfaceDesignInfo {
   readonly id: string;
@@ -28,13 +32,6 @@ export interface InterfaceDesignInfo {
 
 /** Add a design by adding a row here and one in `src/designs/registry.ts`. */
 export const INTERFACE_DESIGNS: readonly InterfaceDesignInfo[] = [
-  {
-    id: 'classic',
-    label: 'Classic',
-    description: 'The interface LearningOS shipped with. Every colour scheme stays available.',
-    palettes: PALETTES.map(([id]) => id).filter((id) => !['lamplight', 'daylight', 'nightfall'].includes(id)),
-    defaultPalette: 'wine',
-  },
   {
     id: 'study-desk',
     label: 'Study Desk',
@@ -51,7 +48,7 @@ export const INTERFACE_DESIGNS: readonly InterfaceDesignInfo[] = [
   },
 ];
 
-export const DEFAULT_INTERFACE_DESIGN = 'classic';
+export const DEFAULT_INTERFACE_DESIGN = 'study-desk';
 
 /** The settings the switch reads and writes. */
 export interface InterfaceDesignSettings {
@@ -60,7 +57,7 @@ export interface InterfaceDesignSettings {
   uiDesignPalettes: Record<string, string>;
 }
 
-/** A stale or hand-edited id degrades to Classic, never to an unstyled app. */
+/** A stale, retired or hand-edited id degrades to Study Desk, never to an unstyled app. */
 export function normalizeInterfaceDesign(value: unknown): string {
   return typeof value === 'string' && INTERFACE_DESIGNS.some((design) => design.id === value)
     ? value
@@ -75,24 +72,33 @@ export function interfaceDesign(value: unknown): InterfaceDesignInfo {
 /**
  * The colour scheme a design shows.
  *
- * Each design remembers its own, so switching away and back restores what was
- * there. Classic keeps using the original `palette` setting, which means a vault
- * that never touches this feature reads and writes exactly what it always did. A
- * remembered scheme the design was not drawn for falls back to its default.
+ * Each design remembers its own scheme under `uiDesignPalettes[design.id]`, so
+ * switching away and back restores what was there. If a design has not saved a
+ * scheme yet, it adopts `settings.palette` when compatible, otherwise its own
+ * defaultPalette.
  */
 export function designPalette(settings: InterfaceDesignSettings): PaletteId {
+  if (settings.uiDesign === BASE_VIEWS_DESIGN_ID) return normalizePalette(settings.palette);
   const design = interfaceDesign(settings.uiDesign);
-  if (design.id === DEFAULT_INTERFACE_DESIGN) return normalizePalette(settings.palette);
-  const remembered = normalizePalette(settings.uiDesignPalettes?.[design.id] ?? design.defaultPalette);
-  return design.palettes.includes(remembered) ? remembered : design.defaultPalette;
+  const raw = settings.uiDesignPalettes?.[design.id];
+  if (raw !== undefined) {
+    const remembered = normalizePalette(raw);
+    return design.palettes.includes(remembered) ? remembered : design.defaultPalette;
+  }
+  const fallback = normalizePalette(settings.palette);
+  return design.palettes.includes(fallback) ? fallback : design.defaultPalette;
 }
 
 /** Store a scheme for the design on screen; returns what will actually show. */
 export function rememberDesignPalette(settings: InterfaceDesignSettings, value: unknown): PaletteId {
-  const design = interfaceDesign(settings.uiDesign);
   const palette = normalizePalette(value);
-  if (design.id === DEFAULT_INTERFACE_DESIGN) settings.palette = palette;
-  else settings.uiDesignPalettes = { ...settings.uiDesignPalettes, [design.id]: palette };
+  if (settings.uiDesign === BASE_VIEWS_DESIGN_ID) {
+    settings.palette = palette;
+    return designPalette(settings);
+  }
+  const design = interfaceDesign(settings.uiDesign);
+  const applied = design.palettes.includes(palette) ? palette : design.defaultPalette;
+  settings.uiDesignPalettes = { ...settings.uiDesignPalettes, [design.id]: applied };
   return designPalette(settings);
 }
 
@@ -101,11 +107,12 @@ export function applyInterfaceDesign(
   bodies: Iterable<HTMLElement | null | undefined>,
   settings: InterfaceDesignSettings,
 ): string {
-  const id = normalizeInterfaceDesign(settings.uiDesign);
+  const isBaseViews = settings.uiDesign === BASE_VIEWS_DESIGN_ID;
+  const id = isBaseViews ? BASE_VIEWS_DESIGN_ID : normalizeInterfaceDesign(settings.uiDesign);
   const targets = [...new Set(bodies)];
   for (const body of targets) {
     if (!body) continue;
-    if (id === DEFAULT_INTERFACE_DESIGN) body.removeAttribute('data-los-ui');
+    if (isBaseViews) body.removeAttribute('data-los-ui');
     else body.setAttribute('data-los-ui', id);
   }
   applyPaletteEverywhere(targets, designPalette(settings));

@@ -305,7 +305,10 @@ async function build(options = {}) {
   calls.envelope = (capability) => envelopes.find((e) => e.capability === capability);
   calls.envelopes = envelopes;
   const plugin = new LearningOSUI(app, { id: 'learningos-ui', version: 'test' });
-  plugin._data = options.settings || {};
+  const rawSettings = options.settings || {};
+  plugin._data = Object.prototype.hasOwnProperty.call(rawSettings, 'uiDesign')
+    ? rawSettings
+    : { uiDesign: '__base_views__', ...rawSettings };
   /*
    * `onload` can now start a process of its own — an unfinished write from the
    * previous session is replayed during startup — so a test that needs to see

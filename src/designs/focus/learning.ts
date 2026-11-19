@@ -1,77 +1,167 @@
-import { button, empty, filterTabs } from '../../components';
+/**
+ * Focus 2.0 Home & Learn landing screens.
+ * Home uses a 2-column workspace: Continue where you stopped + Continue elsewhere on
+ * the left; Plans suggest, Today/Coming up, and Needs a study map on the right.
+ */
+import { button, empty } from '../../components';
+import { currentWorkResource } from '../../features/stage-resources';
 import { elsewhereRows } from '../../features/home/elsewhere';
 import { todayItems } from '../../features/home/focus';
 import { candidateModules, resolveResumeTarget } from '../../features/home/model';
+import { orderedUnits } from '../../features/home/study-work';
 import { readStudyMap, stageProgress } from '../../features/unit/model';
-import { LEARN_AREAS } from '../../constants';
-import type { ManifestStore } from '../../manifest-store';
+import type { ProjectionRecord } from '../../contracts/manifest';
+import { asLabel, asString, asText } from '../../projection/readers';
 import type { HomeScreenHost, LearnScreenHost } from '../screens';
-import type { AppNavigator } from '../../app/navigator';
-import { asLabel, asString } from '../../projection/readers';
-import { heading, moduleRow, page, progress, row, toolbar } from './parts';
-import { requestFocusSession } from './unit';
-import { openFocusCollection } from './collection';
+import { openFocusCollection, requestFocusPlan, requestFocusSession } from './collection';
+import { renderFocusModulesForLearn } from './modules';
+import {
+  commandBar,
+  heading,
+  moduleName,
+  moduleRow,
+  page,
+  progress,
+  sideCard,
+  stageBars,
+  textLink,
+  unitLabel,
+} from './parts';
 
-function resume(parent: HTMLElement, plugin: { store: ManifestStore; nav: Pick<AppNavigator, 'openUnit'> }): boolean {
+function renderResumeHero(parent: HTMLElement, view: HomeScreenHost): boolean {
+  const { plugin } = view;
   const { pointer, unit, unitMap: projected, module } = resolveResumeTarget(plugin.store);
   const map = projected ? readStudyMap(projected) : null;
-  const stage = map?.stages.find(item => item.id === pointer.stage_id);
+  const stage = map?.stages.find((item) => item.id === pointer.stage_id);
   if (!unit || !stage || !map || !pointer.unit_id) return false;
   const unitId = pointer.unit_id;
-  const card = parent.createDiv({ cls: 'focus-resume' });
-  card.createDiv({ cls: 'focus-eyebrow', text: 'Continue' });
-  card.createSpan({ cls: 'focus-muted', text: module ? asLabel(module) : '' });
-  card.createEl('h2', { text: asLabel(unit) });
-  card.createEl('p', { text: `Next: ${stage.title}` });
-  const foot = card.createDiv({ cls: 'focus-resume-foot' });
+  const stageIndex = map.stages.indexOf(stage);
   const { done, total } = stageProgress(map.stages);
+  const startsWith = currentWorkResource(stage.resources);
+
+  const card = parent.createDiv({ cls: 'focus-resume' });
+  const top = card.createDiv({ cls: 'focus-resume-head' });
+  top.createDiv({ cls: 'focus-eyebrow', text: 'Continue where you stopped' });
+  if (module) top.createSpan({ cls: 'focus-pill is-accent', text: moduleName(module) });
+  card.createEl('h2', { text: asLabel(unit) });
+  card.createEl('p', {
+    cls: 'focus-resume-meta',
+    text: `Next: Stage ${stageIndex + 1} · ${stage.title}`,
+  });
+  if (startsWith) {
+    card.createEl('p', {
+      cls: 'focus-muted',
+      text: `Starts with: ${startsWith.label}`,
+    });
+  }
+  const foot = card.createDiv({ cls: 'focus-resume-foot' });
+  stageBars(foot, total, done, stageIndex >= 0 ? stageIndex : null);
   progress(foot, done, total);
-  button(foot, 'Resume session', () => { requestFocusSession(unitId); return plugin.nav.openUnit(unitId, stage.id); }, 'cta');
+  const actions = foot.createDiv({ cls: 'focus-resume-actions' });
+  button(actions, 'Study plan', () => {
+    requestFocusPlan(unitId);
+    return plugin.nav.openUnit(unitId, stage.id);
+  }, 'quiet');
+  button(actions, 'Resume session', () => {
+    requestFocusSession(unitId);
+    return plugin.nav.openUnit(unitId, stage.id);
+  }, 'cta');
   return true;
 }
+
 export function renderFocusLearn(view: LearnScreenHost): boolean {
   const { plugin } = view;
-  if (!view.programId || !plugin.store.get(view.programId) || ['inbox', 'queue-needs-map'].includes(view.programId)) return false;
-  const root = page(view.contentEl, 'learn', plugin.store);
-  toolbar(root, 'Learn', 'Your study workspace');
-  const body = root.createDiv({ cls: 'focus-page' });
-  heading(body, 'Your learning', 'Pick up where you left off.', 'Resume a session, or choose another module.');
-  const areas = body.createDiv({ cls: 'focus-area-tabs' });
-  filterTabs(areas, 'Study areas', LEARN_AREAS, view.programId, id => plugin.nav.openLearn(id));
-  button(areas, 'Thesis & projects', () => openFocusCollection(plugin.nav, 'projects'), 'quiet');
-  if (!resume(body, plugin)) empty(body.createDiv({ cls: 'focus-resume is-empty' }), 'Choose where to begin', 'No previous study session has been recorded. Open a module below.');
-  const head = body.createDiv({ cls: 'focus-section-head' });
-  head.createEl('h2', { text: 'Continue elsewhere' });
-  button(head, 'All modules', () => openFocusCollection(plugin.nav, 'all'), 'quiet');
-  const list = body.createDiv({ cls: 'focus-module-list' });
-  const modules = candidateModules(plugin.store).filter(module => module.area_id === view.programId);
-  for (const module of modules) moduleRow(list, plugin.store, module, () => plugin.nav.openModule(asString(module.id) ?? ''));
-  if (!modules.length) empty(list, 'No open modules in this area', 'All modules keeps the complete curriculum available.');
-  return true;
+  if (!view.programId || !plugin.store.get(view.programId) || ['inbox', 'queue-needs-map'].includes(view.programId)) {
+    return false;
+  }
+  return renderFocusModulesForLearn(view);
 }
+
 export function renderFocusHome(view: HomeScreenHost): void {
   const { plugin } = view;
-  const root = page(view.contentEl, 'home', plugin.store);
-  const actions = toolbar(root, 'Home', 'Your study workspace');
-  button(actions, 'Capture', () => plugin.nav.openCapture(), 'quiet');
+  const { store, nav } = plugin;
+  const root = page(view.contentEl, 'home', store);
+  const barActions = commandBar(root, [{ label: 'Home' }], view);
+  button(barActions, 'Search', () => nav.openGlobalSearch(), 'quiet');
+  button(barActions, 'Quick capture', () => nav.openCapture(), 'quiet');
+
   const body = root.createDiv({ cls: 'focus-page' });
-  heading(body, 'LearningOS', 'A clear place to begin.');
-  if (!resume(body, plugin)) {
-    const card = body.createDiv({ cls: 'focus-resume' });
+  heading(body, 'LearningOS', 'Focus workspace');
+
+  const grid = body.createDiv({ cls: 'focus-home-grid' });
+  const main = grid.createDiv({ cls: 'focus-home-main' });
+  if (!renderResumeHero(main, view)) {
+    const card = main.createDiv({ cls: 'focus-resume' });
     empty(card, 'Choose where to begin', 'No previous study session has been recorded.');
-    button(card, 'Open Learn', () => plugin.nav.openLearn(), 'cta');
+    button(card, 'Open Modules', () => openFocusCollection(nav, 'all'), 'cta');
   }
-  body.createEl('h2', { text: 'Today' });
-  const items = todayItems(view);
-  if (!items.length) body.createEl('p', { cls: 'focus-muted', text: 'Nothing time-sensitive is recorded.' });
-  for (const item of items.slice(0, 4)) {
-    const target = row(body, item.title, () => item.action?.());
-    const copy = target.createDiv({ cls: 'focus-row-copy' });
-    copy.createEl('strong', { text: item.title });
-    copy.createSpan({ cls: 'focus-muted', text: item.detail });
-    target.createSpan({ cls: 'focus-row-state', text: item.actionLabel });
-    target.disabled = !item.action;
+
+  const elsewhereHead = main.createDiv({ cls: 'focus-section-head' });
+  elsewhereHead.createEl('h2', { text: 'Continue elsewhere' });
+  textLink(elsewhereHead, 'All modules', () => openFocusCollection(nav, 'all'));
+  const elsewhereList = main.createDiv({ cls: 'focus-module-list' });
+  const elsewhere = elsewhereRows(view).slice(0, 5);
+  for (const item of elsewhere) moduleRow(elsewhereList, store, item.record, item.open);
+  if (!elsewhere.length) {
+    elsewhereList.createEl('p', { cls: 'focus-muted', text: 'No other open study modules right now.' });
   }
-  body.createEl('h2', { text: 'Continue elsewhere' });
-  for (const item of elsewhereRows(view).slice(0, 5)) moduleRow(body, plugin.store, item.record, item.open);
+
+  const dock = grid.createDiv({ cls: 'focus-home-dock' });
+
+  const openPlans: { readonly module: ProjectionRecord; readonly workspace: ProjectionRecord }[] = [];
+  for (const module of candidateModules(store)) {
+    const moduleId = asString(module.id);
+    if (!moduleId) continue;
+    const workspace = store.workspacesForModule(moduleId).find((entry) => entry.is_open === true && asText(entry.next_action));
+    if (workspace) openPlans.push({ module, workspace });
+  }
+  if (openPlans.length) {
+    const plansCard = sideCard(dock, 'Plans suggest', { text: `${openPlans.length}` });
+    const list = plansCard.createDiv({ cls: 'focus-dock-list' });
+    for (const { module, workspace } of openPlans.slice(0, 3)) {
+      const moduleId = asString(module.id) ?? '';
+      const entry = list.createEl('button', { cls: 'focus-dock-item is-clickable', attr: { type: 'button' } });
+      entry.createEl('strong', { text: `${moduleName(module)} · ${asLabel(workspace)}` });
+      entry.createSpan({ cls: 'focus-muted', text: asText(workspace.next_action) ?? '' });
+      entry.addEventListener('click', () => { void nav.openModule(moduleId); });
+    }
+  }
+
+  const todayCard = sideCard(dock, 'Today & coming up');
+  const items = todayItems(view).slice(0, 5);
+  if (!items.length) {
+    todayCard.createEl('p', { cls: 'focus-muted', text: 'Nothing time-sensitive is recorded.' });
+  } else {
+    const list = todayCard.createDiv({ cls: 'focus-dock-list' });
+    for (const item of items) {
+      const rowEl = item.action
+        ? list.createEl('button', { cls: 'focus-dock-item is-clickable', attr: { type: 'button' } })
+        : list.createDiv({ cls: 'focus-dock-item' });
+      rowEl.createEl('strong', { text: item.title });
+      rowEl.createSpan({ cls: 'focus-muted', text: item.detail });
+      if (item.actionLabel) rowEl.createSpan({ cls: 'focus-eyebrow', text: item.actionLabel });
+      if (item.action) rowEl.addEventListener('click', () => item.action?.());
+    }
+  }
+
+  const unmappedUnits: { readonly module: ProjectionRecord; readonly unit: ProjectionRecord }[] = [];
+  for (const module of candidateModules(store)) {
+    const moduleId = asString(module.id);
+    if (!moduleId) continue;
+    for (const unit of orderedUnits(store, moduleId)) {
+      if (unit.needs_study_map === true) unmappedUnits.push({ module, unit });
+    }
+  }
+  if (unmappedUnits.length) {
+    const needMapCard = sideCard(dock, 'Needs a study map', { text: `${unmappedUnits.length}`, tone: 'warning' });
+    const list = needMapCard.createDiv({ cls: 'focus-dock-list' });
+    for (const { module, unit } of unmappedUnits.slice(0, 4)) {
+      const unitId = asString(unit.id) ?? '';
+      const label = unitLabel(unit, module);
+      const entry = list.createEl('button', { cls: 'focus-dock-item is-clickable', attr: { type: 'button' } });
+      entry.createEl('strong', { text: `${moduleName(module)} · ${label.title}` });
+      entry.createSpan({ cls: 'focus-muted', text: 'Ready for a study map' });
+      entry.addEventListener('click', () => { void nav.openUnit(unitId); });
+    }
+  }
 }

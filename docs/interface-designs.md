@@ -15,31 +15,35 @@ writes and drafts. It may not add a write path, a route, or a fact of its own.
    `src/designs/<id>/`. `src/designs/screens.ts` lists what can be replaced: `nav`,
    `home`, `learn`, `moduleList`, `moduleDetail`, `unit`, `atlas`.
    Every one is optional. Anything left out, and any screen that returns `false`,
-   falls through to the classic renderer. That is how a design ships part-built
-   without losing a capability.
+   falls through to the shared base renderer in `src/views/`. That is how a
+   design ships part-built or leaves utility surfaces shared without losing a capability.
 3. **Add its stylesheet** as `src/styles/4x-design-<id>.css` and list it in
    `STYLESHEET_MODULES` in `build-styles.mjs`. Put every rule inside one block,
    `body[data-los-ui="<id>"] { … }`, using native nesting. A test enforces this: it
    is what guarantees that switching away removes the whole design and leaves
-   Classic untouched. Colours come from `--los-*` tokens only.
+   other designs untouched. Colours come from `--los-*` tokens only.
 4. **Draw the toggle** in your `nav` screen with `renderDesignSwitch` from
    `src/app/design-switch.ts`, if you replace the sidebar. No design may strand the
    learner inside it.
+
+Classic is retired from `INTERFACE_DESIGNS`; `'study-desk'` is the default
+design (`DEFAULT_INTERFACE_DESIGN`), and legacy `'classic'` or unknown values
+normalize to `'study-desk'`. A test-only `'__base_views__'` sentinel lets the
+base feature-view regression suites exercise `src/views/*` directly.
 
 A new colour scheme goes in `src/styles/25-palettes.css` and `PALETTES` in
 `src/app/palette.ts`, where the existing contrast gate checks it automatically.
 
 ## Rules a design keeps
 
-- **Reuse the feature logic.** Writes go through the helpers the classic screens
-  use, such as `completeStage`, `stageMenuItems`, `openMaterialComparison` and
-  `renderPlanControls`. If a classic renderer holds logic you need, extract it into
-  a function both can call rather than copying it, and keep Classic's behaviour
-  identical.
-- **Everything stays reachable.** A capability the design does not redraw must still
-  be one click away, usually by calling the classic section renderer inside a
-  disclosure.
-- **Classic's hard rules still bind:** `CLAUDE.md` and the anti-patterns in
+- **Reuse the feature logic.** Writes and pure domain models belong in
+  `src/features/` (`material-purpose.ts`, `lecture-materials.ts`, `study-work.ts`,
+  `atlas-model.ts`, `module-map.ts`, `labels.ts`, `completeStage`,
+  `stageMenuItems`, `renderPlanControls`), never duplicated across designs or
+  imported across `src/designs/*`.
+- **Everything stays reachable.** A capability the design does not redraw stays
+  reachable through the shared feature renderer or a disclosure.
+- **Boundary rules still bind:** `CLAUDE.md` and the anti-patterns in
   `DESIGN.md`. Regions, spines and similar groupings are presentation; they never
   become a graph edge, an evidence claim or a record.
 - **View-owned attention stays view-owned.** Which tab is open is not a route.
@@ -67,48 +71,34 @@ Two sessions building designs at once should each work on their own branch from
 `main`. They meet in only two registry files and the `build-styles.mjs` list, one row
 each, so merging them is trivial.
 
-## Focus
+## Focus 2.0
 
-Focus implements the [refined Learn design](https://www.figma.com/design/gVh0ebCrqHsxpyaDBX5pzf?node-id=149-1057)
-in `src/designs/focus/`: Home/Learn, whole-row Modules, module detail, study plan,
-focused session, grouped material comparison and session wrap-up. Light and Dark
-are remembered independently of Classic and Study Desk. Other destinations keep
-their existing feature renderer, with Focus tokens and typography.
+Focus 2.0 implements the [Focus 2.0 design](https://www.figma.com/design/p4Mpw78mLv8FxJAa6SPAEQ)
+("LearningOS — Focus 2.0") in `src/designs/focus/`: architectural 224 px sidebar
+with six unified destinations (Learn merged into Modules) and `In progress` unit
+shortcuts (`study-work.ts`), 44 px top command bar with per-leaf Back/Forward
+history and breadcrumbs, Home/Modules/Module detail, 48 px horizontal stage
+timeline strip, 60/40 Split Session Cockpit (`Start here`, inline Purpose-tabbed
+`If you get stuck`, folded `Kept for reference` | `Prove to complete` shifting CTA
+from `Open` to `Complete stage`, inline `Working scratch` local note draft, and
+stage concepts), Purpose-first `Unit materials` with `Best fit`/`Course` marks and
+`S1..SN` stage matrix, explicit mapless `Needs a study map` screen, and native
+Focus Atlas (`D1` 3-column Concept Dependency Flow with prerequisite reasons and
+`See it in its module` signpost + `D2` deterministic Module Revision Map).
+Daylight and Nightfall are remembered independently under `uiDesignPalettes`.
+`Notes & shelves`, `Diagnostics`, `Review`, `Garden`, and `Library` retain their
+shared feature renderers styled in Focus tokens.
 
-The refined foundation uses warm paper, forest navigation and one teal interaction
-family in Light and Dark. An inset marker distinguishes persistent selection from
-keyboard focus; named warnings retain their amber treatment. The same controls,
-spacing and reading surfaces carry through the inherited feature renderers.
+Modular macOS 26/27 UI Kit styling (`01b-macos-ui-kit-foundations.png` in
+`outputs/2026-11-19-focus-ui-2.0-redesign/screens/`) is adapted cleanly to
+Obsidian's DOM controls and bundled Lucide icons using `--los-*` tokens only; no
+Swift/AppKit binary or copied bitmap screen is shipped. Criteria remain local
+working marks; completion remains study progress; learner evidence remains a
+separate reviewed record.
 
-Both **Thesis & projects** entries open the complete collection of projected
-`kind: project` modules. The existing Modules route and leaf-owned collection
-attention retain search, selection and scroll on return from a detail. No first
-project is selected automatically. The empty state offers the full curriculum.
-
-Session leads with the current authored task, its instructions and access state,
-then exact criteria and the completion action. Optional material facets separate
-action/purpose, medium and access while retaining authored order, triage, complete
-inventory counts and reset. Short unit menus stay flat with the existing explicit
-route-choice controls. Criteria remain local working marks; completion remains
-study progress; learner evidence remains a separate reviewed record.
-
-Atlas retains its complete domain inventory, graph/outline and Plane/List views.
-Selecting a concept inspects it in place; **Explore from here** changes the centre.
-Mode meanings, depth and active scope are visible. Details/Routes retain the
-ability camera; **Fit selection** explicitly changes its framing. Global search
-names its supported record types and offers separate Atlas destinations.
-
-The stage rail becomes an explicit Study plan control below 800px of pane width.
-Plan, materials, overview and wrap-up attention belongs to the leaf, not the
-route. Criteria use the existing local marks. Wrap-up edits the existing local
-unit-note draft; Review and save note opens the existing guarded note dialog,
-and Review session changes opens the existing exact-change review. Entering
-wrap-up never advances progress, saves a note, commits or pushes.
-
-The Figma macOS kit's Swift components are adapted to the existing DOM controls
-and bundled Obsidian icons; no Swift runtime or copied bitmap screen is shipped.
-The semantic control and navigation pairs pass the existing contrast gate.
-No illustrative Figma progress is copied into learner state.
+Returning from a Course-source lecture detour keeps *Back to ‹lecture› · Stage N*
+and leaf-scoped attention (bounded to the eight most recent lectures) in memory.
+Entering wrap-up never advances progress, saves a note, commits or pushes.
 
 ## Study Desk
 

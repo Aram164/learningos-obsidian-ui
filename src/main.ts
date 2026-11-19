@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 
 import { APPLICATION_VIEW_TYPES, detachApplication, registerApplication } from './app/registration';
-import { applyInterfaceDesign, normalizeInterfaceDesign, rememberDesignPalette } from './app/interface-design';
+import { applyInterfaceDesign, BASE_VIEWS_DESIGN_ID, normalizeInterfaceDesign, rememberDesignPalette } from './app/interface-design';
 import { AppNavigator } from './app/navigator';
 import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
@@ -203,10 +203,14 @@ export class LearningOSUI extends Plugin implements AppSurface {
     >();
     if (!this.isLifecycleActive()) return;
     const savedSettings = loadedSettings ?? {};
+    const savedUiDesign = savedSettings.uiDesign;
 
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...savedSettings,
+      uiDesign: savedUiDesign === BASE_VIEWS_DESIGN_ID
+        ? BASE_VIEWS_DESIGN_ID
+        : normalizeInterfaceDesign(savedUiDesign),
       uiDrafts: normalizeUiDrafts(savedSettings.uiDrafts),
     };
     this.drafts = new DraftStore(this.settings, () => this.persistSettings());

@@ -48,33 +48,39 @@ The interface carries usability while the core carries meaning.
 
 ## Interface designs
 
-The system can be drawn by more than one interface design, and the learner flips
+The system offers two selectable interface designs, and the learner flips
 between them at will (Settings → Interface, under More in the sidebar, or the
 *Switch to the next interface design* command). A design changes how things are
 drawn and nothing else: the same manifest, routes, gateway writes and drafts.
-Each design remembers its own colour scheme. **Classic** is everything else in
-this document. **Study Desk** (Figma `OYWzCiANiWjVWwwu5GTYrz`) is warm paper with
-Literata for reading, an open-book session and a map-first Atlas; its rules are
-that file's frame 15, and it departs from this document deliberately where the
-two differ. How to add one: [docs/interface-designs.md](docs/interface-designs.md).
+Each design remembers its own colour scheme (`uiDesignPalettes`). Classic is
+retired from the switcher (`study-desk` is the default, and unknown or legacy
+`'classic'` values normalize to it); shared base renderers in `src/views/` and
+`src/features/` still back un-overridden destinations. **Study Desk** (Figma
+`OYWzCiANiWjVWwwu5GTYrz`) is warm paper with Literata for reading, an open-book
+session and a map-first Atlas. **Focus 2.0** (Figma `p4Mpw78mLv8FxJAa6SPAEQ`)
+uses macOS 26/27 UI Kit styling in Daylight and Nightfall. How designs work:
+[docs/interface-designs.md](docs/interface-designs.md).
 
 ## Navigation
 
-**Focus** is the native Mac alternative from the refined Learn design in Figma
-`gVh0ebCrqHsxpyaDBX5pzf`, page `149:92`. It uses SF Pro
-through the system font stack, warm paper and forest Light/Dark surfaces, complete row targets,
-an ordered plan and a focused stage rail. Its full-page material groups and
-explicit wrap-up retain the existing feature actions and local drafts. Its
-presentation rules live in `src/styles/41-design-focus.css`; the interface
-registration and shared behavior remain governed by `docs/interface-designs.md`.
-Focus places current work before criteria, retains blocked task instructions,
-and offers optional material facets without changing authored order or obligation.
+**Focus 2.0** (`src/designs/focus/`, `src/styles/41-design-focus.css`) implements
+Figma `p4Mpw78mLv8FxJAa6SPAEQ` ("LearningOS — Focus 2.0"). It uses SF Pro
+through the system font stack paired with monospace indices, cool alabaster
+Daylight and carbon-pine Nightfall surfaces, a 224 px architectural sidebar with
+six unified destinations (merging *Learn* into *Modules*) plus live *In progress*
+unit shortcuts, a 44 px top command bar with per-leaf Back/Forward history and
+breadcrumbs, a 48 px horizontal stage timeline, and a 60/40 Split Session
+Cockpit (`Start here` + inline *If you get stuck* purpose tabs + folded *Kept
+for reference* alongside interactive *Done when* proof cards that shift the
+primary CTA from *Open* to *Complete stage*, inline *Working scratch* local
+drafting, and stage concepts). *Unit materials* groups materials by purpose and
+rank with `Best fit` / `Course` marks and an `S1..SN` stage-usage matrix;
+mapless units show an explicit *Needs a study map* screen; and Focus Atlas
+renders the 3-column Concept Dependency Flow and read-only Module Revision Map.
 *Go to lecture* from Course sources offers *Back to ‹lecture› · Stage N* on the
 other lecture, which returns by ID to the same stage, comparison scope, filters
 and scroll; attention is kept per lecture (the eight most recent) in the leaf's
-memory only.
-Both project entries open the complete project-module collection. Its detailed
-interaction decisions are recorded in `docs/interface-designs.md`.
+memory only. Its detailed contracts are recorded in `docs/interface-designs.md`.
 
 Seven permanent destinations: **Home, Modules, Learn, Library, Atlas, Garden,
 Review.** Projects routes to Modules. (Amended 2026-10-01: Atlas opens on Concepts;

@@ -52,11 +52,11 @@ export const DEFAULT_SETTINGS = {
    */
   palette: 'wine',
   /**
-   * Which interface design is on screen (`app/interface-design.ts`). 'classic'
-   * sets no attribute. An unknown value falls back to 'classic'.
+   * Which interface design is on screen (`app/interface-design.ts`). Defaults to
+   * 'study-desk'; an unknown or retired value falls back to 'study-desk'.
    */
-  uiDesign: 'classic',
-  /** The colour scheme each non-classic design last showed, by design id. */
+  uiDesign: 'study-desk',
+  /** The colour scheme each design last showed, by design id. */
   uiDesignPalettes: {} as Record<string, string>,
   pythonPath: '',
   preferredAiProvider: 'manual-bundle',

@@ -10,13 +10,15 @@
  * Short lists read flat; larger lists keep their ranked purpose groups open.
  * A pinned toolbar and purpose index keep long menus navigable.
  */
-import { disclosure, icon, plural } from '../../components';
+import { disclosure, icon } from '../../components';
 import { asRecords, asString } from '../../projection/readers';
 import { compareStrings } from '../../sorting';
 import { renderMaterialOverview } from '../../features/unit/materials';
-import { routeForResource } from '../../features/unit/material-card';
 import {
-  buildLectureMaterials,
+  lectureMaterialsFacts,
+  lectureMaterialsFor as buildLectureMaterialList,
+} from '../../features/unit/lecture-materials';
+import {
   groupByPurpose,
   lectureLayout,
   matchesFilter,
@@ -37,6 +39,8 @@ import { availabilityOf, renderMaterialRow, renderStageDots, shortTitle, type Ma
 import { materialsState, setFilter, type MaterialsState } from './materials-state';
 import { sideGroup, textLink } from './parts';
 
+export { lectureMaterialsFacts };
+
 export interface LectureMaterialsContext {
   readonly view: UnitScreenHost;
   readonly unit: UnitRecordView;
@@ -48,29 +52,7 @@ export interface LectureMaterialsContext {
 
 /** Every material of this lecture, read once from the projection. */
 export function lectureMaterialsFor(view: UnitScreenHost, unit: UnitRecordView, durable: StudyMapView, options: readonly MaterialOptionView[]): LectureMaterial[] {
-  const roles = new Map<string, string | null>();
-  for (const entry of asRecords(view.plugin.store.sourceMap(unit.moduleId)?.sources)) {
-    const id = asString(entry.source_id);
-    if (id && !roles.has(id)) roles.set(id, asString(entry.role));
-  }
-  return buildLectureMaterials({
-    stages: durable.stages,
-    options,
-    routeOf: (resource) => routeForResource(resource, options),
-    roleOf: (id) => roles.get(id) ?? null,
-    sourceTypeOf: (id) => asString(view.plugin.store.get(id)?.source_type),
-  });
-}
-
-/** The one facts line under the title (Figma: "29 materials for 6 stages · 4 from your course · …"). */
-export function lectureMaterialsFacts(materials: readonly LectureMaterial[], stages: number): string {
-  const course = materials.filter((material) => material.course).length;
-  const layout = lectureLayout(materials.length);
-  return [
-    `${plural(materials.length, 'material')} for ${plural(stages, 'stage')}`,
-    course ? `${course} from your course` : '',
-    layout === 'flat' ? 'best first' : 'grouped by what they are for, then type, best first',
-  ].filter(Boolean).join(' · ');
+  return buildLectureMaterialList(view.plugin.store, unit, durable, options);
 }
 
 function whereOf(context: MaterialRowContext, material: LectureMaterial): Exclude<WhereFilter, 'anywhere'> {

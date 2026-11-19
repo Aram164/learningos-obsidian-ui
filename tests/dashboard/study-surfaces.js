@@ -167,6 +167,7 @@ module.exports = async function run() {
     const plugin = new LearningOSUI(app, { id: 'learningos-ui', version: 'test' });
     app._plugin = plugin;
     plugin._data = {
+      uiDesign: '__base_views__',
       learnArea: 'program-thesis-projects',
       navigation: { version: 1,
         current: { name: 'project-detail', projectId: 'project-fixture-thesis' }, history: [] },

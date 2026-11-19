@@ -16,14 +16,20 @@
 import { Notice } from 'obsidian';
 import { button, icon, overflowMenu } from '../../components';
 import type { ProjectionRecord } from '../../contracts/manifest';
-import { hasDirectResourceTarget } from '../../infrastructure/resource-target';
 import { asLabel, errorMessage } from '../../projection/readers';
 import { safeWebUrl } from '../../security/safe-url';
 import { renderMaterialCautions } from '../../features/stage-resources';
 import {
+  materialAvailability,
+  materialOpener,
+  materialOrigin,
+  shortLocator,
+  shortTitle,
+  usedInWords,
+  whereLabel,
+} from '../../features/unit/lecture-materials';
+import {
   inspectRouteSpan,
-  placementAvailability,
-  projectedAvailability,
   renderRouteSpan,
   routeSpanStatus,
   toggleRouteChoice,
@@ -39,7 +45,8 @@ import {
 import type { StageRecordView, UnitRecordView } from '../../features/unit/model';
 import { stageResourceRenderer } from '../../features/unit/stage';
 import type { UnitScreenHost } from '../screens';
-import { moduleShort } from './parts';
+
+export { shortLocator, shortTitle, usedInWords, whereLabel };
 
 export interface MaterialRowContext {
   readonly view: UnitScreenHost;
@@ -66,60 +73,6 @@ export interface MaterialRowMarks {
   readonly compact?: boolean;
 }
 
-/* ───────────────────────────────── words ───────────────────────────────── */
-
-/** "Probabilistic Machine Learning" from "Probabilistic Machine Learning: An Introduction". */
-export function shortTitle(title: string): string {
-  const cut = title.split(/\s+[—–]\s+|:\s+|\s+\(/)[0]?.trim();
-  return cut || title;
-}
-
-const FILE_NAME = /\.(?:pdf|tex|md|html?|ipynb|py|txt|epub|djvu|zip)(?=$|[\s,;:)])/i;
-
-/**
- * The part of a locator a reader uses: "§3.5 …" from "islp.pdf §3.5 …", or the
- * file's own name when that is all it says. The exact locator stays in the
- * opened row; this only shortens the scanning line.
- */
-export function shortLocator(locator: string | null): string | null {
-  const text = locator?.trim();
-  if (!text) return null;
-  const match = FILE_NAME.exec(text);
-  if (!match) return text;
-  const rest = text.slice(match.index + match[0].length).replace(/^[\s,;:)]+/, '').trim();
-  if (rest && !/^(?:and|&|\+)\s/i.test(rest)) return rest;
-  if (rest) return text;
-  return text.slice(0, match.index).split('/').pop()?.trim() || text;
-}
-
-export function whereLabel(availability: Availability): string {
-  switch (availability.kind) {
-    case 'local': return 'On this Mac';
-    case 'remote': return 'Web';
-    case 'local-missing': return 'Copy missing';
-    default: return 'No copy or link';
-  }
-}
-
-const USE_WORDS: Readonly<Record<Exclude<StageUse, null>, string>> = {
-  required: 'required in',
-  helps: 'helps in',
-  deferred: 'deferred in',
-  reference: 'kept for reference in',
-};
-
-/** "Required in stages 1–3, 6 · helps in 4": the dot strip in words. */
-export function usedInWords(uses: readonly StageUse[]): string {
-  const parts = (Object.keys(USE_WORDS) as Exclude<StageUse, null>[]).flatMap((kind) => {
-    const only = uses.map((use) => (use === kind ? use : null));
-    if (!only.some(Boolean)) return [];
-    return [`${USE_WORDS[kind]} ${stageRuns(only).replace(/^Stages? /, (word) => word.toLowerCase())}`];
-  });
-  if (!parts.length) return 'Not used in any stage yet';
-  const text = parts.join(' · ');
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
 /* ──────────────────────────────── reading ──────────────────────────────── */
 
 function sourceOf(context: MaterialRowContext, material: LectureMaterial): ProjectionRecord | null {
@@ -127,31 +80,17 @@ function sourceOf(context: MaterialRowContext, material: LectureMaterial): Proje
 }
 
 export function availabilityOf(context: MaterialRowContext, material: LectureMaterial): Availability {
-  const source = sourceOf(context, material);
-  if (material.resource) return placementAvailability(material.resource, material.route, source);
-  const projected = projectedAvailability(material.route?.record ?? {});
-  return projected.kind === 'none' && source && hasDirectResourceTarget(source) ? projectedAvailability(source) : projected;
+  return materialAvailability(context.view.plugin.store, material);
 }
 
 /** Where a material opens, in the order the classic card uses; null when it cannot. */
 export function openerOf(context: MaterialRowContext, material: LectureMaterial): { readonly label: string; readonly go: () => unknown } | null {
-  const { view } = context;
-  const { resource, route } = material;
-  const web = availabilityOf(context, material).kind === 'remote';
-  if (resource?.canOpen) return { label: web ? 'Open on the web' : 'Open', go: () => view.plugin.openResource(resource.record) };
-  if (route?.canOpen) return { label: web ? 'Open on the web' : 'Open', go: () => view.plugin.openResource(route.record) };
-  const source = sourceOf(context, material);
-  if (source && hasDirectResourceTarget(source)) return { label: 'Open the source', go: () => view.plugin.openResource(source) };
-  return null;
+  return materialOpener(context.view.plugin, material);
 }
 
 /** The second word on the meta line: the course for its own files, else the source's short name, else the link's host. */
 function originOf(context: MaterialRowContext, material: LectureMaterial): string | null {
-  if (material.course) return moduleShort(context.view.plugin.store.get(context.unit.moduleId));
-  const source = sourceOf(context, material);
-  if (source) return shortTitle(asLabel(source));
-  const url = safeWebUrl(material.resource?.record.url ?? material.route?.record.url);
-  return url ? url.hostname.replace(/^www\./, '') : null;
+  return materialOrigin(context.view.plugin.store, context.unit.moduleId, material);
 }
 
 /* ─────────────────────────────────── row ───────────────────────────────── */

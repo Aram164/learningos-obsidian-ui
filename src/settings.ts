@@ -103,13 +103,7 @@ export class LearningOSSettingsTab extends PluginSettingTab {
           });
       });
     new Setting(root).setName('Colour scheme')
-      .setDesc(
-        active.id === 'classic'
-          ? 'Choose a richer light or dark palette. Wine, Graphite and Indigo have light surfaces; '
-            + 'Ink, Midnight, Slate and Carbon have dark canvases. Green marks applied, blue information '
-            + 'and amber attention. Every scheme meets the same contrast floor.'
-          : `${active.label} remembers its own scheme, separately from any other interface.`,
-      )
+      .setDesc(`${active.label} remembers its own scheme, separately from any other interface.`)
       .addDropdown((dropdown: DropdownComponent) => {
         for (const [id, label] of PALETTES) {
           if (active.palettes.includes(id)) dropdown.addOption(id, label);

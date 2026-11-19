@@ -24,6 +24,7 @@
  */
 import { Notice, type App, type WorkspaceLeaf } from 'obsidian';
 import { GlobalSearchModal } from './global-search';
+import { BASE_VIEWS_DESIGN_ID } from './interface-design';
 import type { ApplicationRouter } from './router';
 import type { DraftStore } from '../application/draft-store';
 import { LEARN_AREAS } from '../constants';
@@ -77,7 +78,9 @@ export class AppNavigator {
   /** Learn is one destination; the areas are sub-areas inside it. */
   openLearn(programId: string | null = null) {
     const requested = programId || this.settings.learnArea || LEARN_AREAS[0][0];
-    const area = requested === 'program-thesis-projects' && this.settings.uiDesign !== 'study-desk' ? 'program-bachelors' : requested;
+    const area = requested === 'program-thesis-projects' && this.settings.uiDesign === BASE_VIEWS_DESIGN_ID
+      ? 'program-bachelors'
+      : requested;
     this.settings.learnArea = area;
     this.drafts.scheduleSave();
     return this.router.navigate({ name: 'learn', programId: area });

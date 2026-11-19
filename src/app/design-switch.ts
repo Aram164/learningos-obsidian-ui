@@ -33,14 +33,13 @@ function group(
 
 /**
  * The toggle, drawn by every design's sidebar so no design can strand you in it.
- * A design that offers more than one scheme gets its scheme here too; Classic's
- * long list stays in Settings, where it always was.
+ * Any design that offers more than one scheme gets its scheme switch here too.
  */
 export function renderDesignSwitch(parent: HTMLElement, host: SwitchHost): void {
   const design = interfaceDesign(host.settings.uiDesign);
   group(parent, 'Interface', INTERFACE_DESIGNS.map((row) => [row.id, row.label] as const), design.id,
     (id) => host.setInterfaceDesign(id));
-  if (design.id === 'classic' || design.palettes.length < 2) return;
+  if (design.palettes.length < 2) return;
   const labels = new Map<string, string>(PALETTES);
   group(parent, 'Appearance', design.palettes.map((id) => [id, SHORT_PALETTE[id] ?? labels.get(id) ?? id] as const),
     designPalette(host.settings), (id) => host.setDesignPalette(id));

@@ -30214,7 +30214,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian28 = require("obsidian");
+var import_obsidian29 = require("obsidian");
 var fs5 = __toESM(require("node:fs"));
 var nodePath5 = __toESM(require("node:path"));
 
@@ -30316,11 +30316,11 @@ var DEFAULT_SETTINGS = {
    */
   palette: "wine",
   /**
-   * Which interface design is on screen (`app/interface-design.ts`). 'classic'
-   * sets no attribute. An unknown value falls back to 'classic'.
+   * Which interface design is on screen (`app/interface-design.ts`). Defaults to
+   * 'study-desk'; an unknown or retired value falls back to 'study-desk'.
    */
-  uiDesign: "classic",
-  /** The colour scheme each non-classic design last showed, by design id. */
+  uiDesign: "study-desk",
+  /** The colour scheme each design last showed, by design id. */
   uiDesignPalettes: {},
   pythonPath: "",
   preferredAiProvider: "manual-bundle",
@@ -30361,8 +30361,8 @@ var PALETTES = [
   ["slate", "Slate \u2014 dark blue-grey, cyan brand"],
   ["carbon", "Carbon \u2014 dark near-black, no brand hue"],
   ["lamplight", "Lamplight \u2014 warm dark, for the evening"],
-  ["daylight", "Daylight \u2014 warm paper, forest actions"],
-  ["nightfall", "Nightfall \u2014 forest dark, soft teal actions"],
+  ["daylight", "Daylight \u2014 cool paper, emerald actions"],
+  ["nightfall", "Nightfall \u2014 carbon-pine dark, emerald actions"],
   ["custom", "Custom \u2014 your own, via a CSS snippet (not contrast-checked)"]
 ];
 var KNOWN = new Set(PALETTES.map(([id]) => id));
@@ -30390,14 +30390,8 @@ function clearPalette(body) {
 }
 
 // src/app/interface-design.ts
+var BASE_VIEWS_DESIGN_ID = "__base_views__";
 var INTERFACE_DESIGNS = [
-  {
-    id: "classic",
-    label: "Classic",
-    description: "The interface LearningOS shipped with. Every colour scheme stays available.",
-    palettes: PALETTES.map(([id]) => id).filter((id) => !["lamplight", "daylight", "nightfall"].includes(id)),
-    defaultPalette: "wine"
-  },
   {
     id: "study-desk",
     label: "Study Desk",
@@ -30413,7 +30407,7 @@ var INTERFACE_DESIGNS = [
     defaultPalette: "daylight"
   }
 ];
-var DEFAULT_INTERFACE_DESIGN = "classic";
+var DEFAULT_INTERFACE_DESIGN = "study-desk";
 function normalizeInterfaceDesign(value) {
   return typeof value === "string" && INTERFACE_DESIGNS.some((design) => design.id === value) ? value : DEFAULT_INTERFACE_DESIGN;
 }
@@ -30422,24 +30416,34 @@ function interfaceDesign(value) {
   return INTERFACE_DESIGNS.find((design) => design.id === id) ?? INTERFACE_DESIGNS[0];
 }
 function designPalette(settings) {
+  if (settings.uiDesign === BASE_VIEWS_DESIGN_ID) return normalizePalette(settings.palette);
   const design = interfaceDesign(settings.uiDesign);
-  if (design.id === DEFAULT_INTERFACE_DESIGN) return normalizePalette(settings.palette);
-  const remembered = normalizePalette(settings.uiDesignPalettes?.[design.id] ?? design.defaultPalette);
-  return design.palettes.includes(remembered) ? remembered : design.defaultPalette;
+  const raw = settings.uiDesignPalettes?.[design.id];
+  if (raw !== void 0) {
+    const remembered = normalizePalette(raw);
+    return design.palettes.includes(remembered) ? remembered : design.defaultPalette;
+  }
+  const fallback = normalizePalette(settings.palette);
+  return design.palettes.includes(fallback) ? fallback : design.defaultPalette;
 }
 function rememberDesignPalette(settings, value) {
-  const design = interfaceDesign(settings.uiDesign);
   const palette = normalizePalette(value);
-  if (design.id === DEFAULT_INTERFACE_DESIGN) settings.palette = palette;
-  else settings.uiDesignPalettes = { ...settings.uiDesignPalettes, [design.id]: palette };
+  if (settings.uiDesign === BASE_VIEWS_DESIGN_ID) {
+    settings.palette = palette;
+    return designPalette(settings);
+  }
+  const design = interfaceDesign(settings.uiDesign);
+  const applied = design.palettes.includes(palette) ? palette : design.defaultPalette;
+  settings.uiDesignPalettes = { ...settings.uiDesignPalettes, [design.id]: applied };
   return designPalette(settings);
 }
 function applyInterfaceDesign(bodies, settings) {
-  const id = normalizeInterfaceDesign(settings.uiDesign);
+  const isBaseViews = settings.uiDesign === BASE_VIEWS_DESIGN_ID;
+  const id = isBaseViews ? BASE_VIEWS_DESIGN_ID : normalizeInterfaceDesign(settings.uiDesign);
   const targets = [...new Set(bodies)];
   for (const body of targets) {
     if (!body) continue;
-    if (id === DEFAULT_INTERFACE_DESIGN) body.removeAttribute("data-los-ui");
+    if (isBaseViews) body.removeAttribute("data-los-ui");
     else body.setAttribute("data-los-ui", id);
   }
   applyPaletteEverywhere(targets, designPalette(settings));
@@ -30502,6 +30506,13 @@ function asLabel(record7, fallback = "Untitled") {
   if (!record7) return fallback;
   return asString(record7.title) ?? asString(record7.label) ?? asString(record7.name) ?? asString(record7.id) ?? fallback;
 }
+function stageProgress(stages) {
+  let done = 0;
+  for (const stage of stages) {
+    if (stage.status === "complete") done += 1;
+  }
+  return { done, total: stages.length };
+}
 
 // src/accessibility/button-group.ts
 function enableButtonGroupKeyboardNavigation(group2, orientation = "horizontal") {
@@ -30537,13 +30548,6 @@ function safeWebUrl(value) {
 }
 
 // src/components.ts
-function stageProgress(stages) {
-  let done = 0;
-  for (const stage of stages) {
-    if (stage.status === "complete") done += 1;
-  }
-  return { done, total: stages.length };
-}
 function manifestFreshness(parent, store) {
   if (!store.stale) return;
   const banner = parent.createDiv({
@@ -30942,9 +30946,7 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
         this.display();
       });
     });
-    new import_obsidian2.Setting(root).setName("Colour scheme").setDesc(
-      active.id === "classic" ? "Choose a richer light or dark palette. Wine, Graphite and Indigo have light surfaces; Ink, Midnight, Slate and Carbon have dark canvases. Green marks applied, blue information and amber attention. Every scheme meets the same contrast floor." : `${active.label} remembers its own scheme, separately from any other interface.`
-    ).addDropdown((dropdown) => {
+    new import_obsidian2.Setting(root).setName("Colour scheme").setDesc(`${active.label} remembers its own scheme, separately from any other interface.`).addDropdown((dropdown) => {
       for (const [id, label] of PALETTES) {
         if (active.palettes.includes(id)) dropdown.addOption(id, label);
       }
@@ -34016,7 +34018,7 @@ var AbilitiesView = class extends import_obsidian4.ItemView {
 };
 
 // src/views/atlas-view.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/features/atlas/graph.ts
 var STRICT_RELATION_TYPES = ["builds-on", "requires"];
@@ -36694,7 +36696,7 @@ function resolveResumeTarget(store) {
   const unitMap = store.mapForUnit(pointer2.unit_id);
   const map = store.get(pointer2.study_map_id);
   const module2 = store.get(pointer2.module_id);
-  if (!unit || !unitMap || !map || !module2 || asString(unitMap.id) !== pointer2.study_map_id) {
+  if (!unit || !unitMap || !map || !module2 || asString(unit.module_id) !== pointer2.module_id || asString(unitMap.id) !== pointer2.study_map_id || asString(unitMap.unit_id) !== pointer2.unit_id || asString(unitMap.module_id) !== pointer2.module_id) {
     return unresolved;
   }
   const stage = asRecords(unitMap.stages).find(
@@ -36715,7 +36717,7 @@ function firstProjectedModuleId(value) {
   return null;
 }
 
-// src/designs/study-desk/atlas-model.ts
+// src/features/atlas/atlas-model.ts
 var UNGROUPED = "ungrouped";
 var regionTitle = (catalog, id) => id === UNGROUPED ? "Not yet grouped" : domainLabel(catalog, id);
 function buildConceptMap(catalog, notes, graph) {
@@ -37286,6 +37288,66 @@ function renderDeadlineRows(wrap, module2, rows2) {
   }
 }
 
+// src/features/module/labels.ts
+var NAMED_COVERS = {
+  "module-hu-aml": "wine",
+  "module-hu-m2-statistik-analysis": "teal",
+  "module-hu-betriebssysteme": "ochre",
+  "module-hu-icop": "moss"
+};
+var ACADEMIC_COVERS = ["wine", "teal", "ochre", "moss"];
+function coverOf(module2) {
+  const id = asString(module2?.id) ?? "";
+  const named = NAMED_COVERS[id];
+  if (named) return named;
+  if (id.startsWith("module-project-") || id.startsWith("module-foundation-")) return "plum";
+  const area = asString(module2?.area_id);
+  if (area === "program-job" || area === "program-skills") return "slate";
+  const hash = [...id].reduce((sum, char) => sum * 31 + char.charCodeAt(0) >>> 0, 7);
+  return ACADEMIC_COVERS[hash % ACADEMIC_COVERS.length] ?? "wine";
+}
+function moduleShort(module2) {
+  const title2 = asLabel(module2);
+  const bracket = /\(([^)]{2,10})\)\s*$/.exec(title2)?.[1];
+  if (bracket) return bracket;
+  const code = asString(module2?.code);
+  if (code) return code;
+  return title2.split(/\s+/).filter((word) => /^[A-ZÄÖÜ]/.test(word)).map((word) => word[0]).join("").slice(0, 4) || title2.slice(0, 3);
+}
+function moduleName(module2) {
+  const authored = /\(([^)]{2,10})\)\s*$/.test(asLabel(module2)) || Boolean(asString(module2?.code));
+  return authored ? moduleShort(module2) : moduleLongTitle(module2);
+}
+function moduleLongTitle(module2) {
+  return asLabel(module2).replace(/\s*\([^)]{2,10}\)\s*$/, "");
+}
+function unitLabel(unit, module2) {
+  const title2 = asLabel(unit);
+  const lecture = /(?:^|\s)(Lecture|Vorlesung|VL|Chapter|Week)\s+(\d+)\s*[—–:-]\s*(.+)$/i.exec(title2);
+  if (lecture?.[1] && lecture[2] && lecture[3]) {
+    return { number: lecture[2], place: `${lecture[1]} ${lecture[2]}`, title: lecture[3] };
+  }
+  const short = module2 ? moduleShort(module2) : "";
+  const bare = short && title2.startsWith(`${short} `) ? title2.slice(short.length + 1) : title2;
+  const cased = bare.charAt(0).toUpperCase() + bare.slice(1);
+  return { number: null, place: cased.split(/\s*[—–:]\s*/)[0] ?? cased, title: cased };
+}
+function shortSemester(value) {
+  return semesterLabel(value).replace("Summer semester", "SoSe").replace("Winter semester", "WiSe");
+}
+function moduleFacts(store, module2) {
+  const semester = asString(module2.semester);
+  const area = asString(module2.area_id);
+  const place = semester ? shortSemester(semester) : area === "program-job" ? "Job" : area === "program-skills" ? "Skills" : asString(module2.kind) === "project" ? "Thesis & projects" : "";
+  const units = store.progress(asString(module2.id) ?? "").units_total;
+  return [place, units ? `${units} unit${units === 1 ? "" : "s"}` : ""].filter(Boolean).join(" \xB7 ");
+}
+function moduleState(store, module2) {
+  const progress2 = store.progress(asString(module2.id) ?? "");
+  if (progress2.stages_total && progress2.stages_complete === progress2.stages_total) return "Done";
+  return asString(module2.status)?.replaceAll("-", " ") ?? "";
+}
+
 // src/designs/study-desk/parts.ts
 var pageClasses = /* @__PURE__ */ new WeakMap();
 function deskPage(root, name, store) {
@@ -37348,64 +37410,6 @@ function stageBars(parent, total, done, current = null) {
     bars.createSpan({ cls: `sd-bar ${state}`.trim() });
   }
   return bars;
-}
-var NAMED_COVERS = {
-  "module-hu-aml": "wine",
-  "module-hu-m2-statistik-analysis": "teal",
-  "module-hu-betriebssysteme": "ochre",
-  "module-hu-icop": "moss"
-};
-var ACADEMIC_COVERS = ["wine", "teal", "ochre", "moss"];
-function coverOf(module2) {
-  const id = asString(module2?.id) ?? "";
-  const named = NAMED_COVERS[id];
-  if (named) return named;
-  if (id.startsWith("module-project-") || id.startsWith("module-foundation-")) return "plum";
-  const area = asString(module2?.area_id);
-  if (area === "program-job" || area === "program-skills") return "slate";
-  const hash = [...id].reduce((sum, char) => sum * 31 + char.charCodeAt(0) >>> 0, 7);
-  return ACADEMIC_COVERS[hash % ACADEMIC_COVERS.length] ?? "wine";
-}
-function moduleShort(module2) {
-  const title2 = asLabel(module2);
-  const bracket = /\(([^)]{2,10})\)\s*$/.exec(title2)?.[1];
-  if (bracket) return bracket;
-  const code = asString(module2?.code);
-  if (code) return code;
-  return title2.split(/\s+/).filter((word) => /^[A-ZÄÖÜ]/.test(word)).map((word) => word[0]).join("").slice(0, 4) || title2.slice(0, 3);
-}
-function moduleName(module2) {
-  const authored = /\(([^)]{2,10})\)\s*$/.test(asLabel(module2)) || Boolean(asString(module2?.code));
-  return authored ? moduleShort(module2) : moduleLongTitle(module2);
-}
-function moduleLongTitle(module2) {
-  return asLabel(module2).replace(/\s*\([^)]{2,10}\)\s*$/, "");
-}
-function unitLabel(unit, module2) {
-  const title2 = asLabel(unit);
-  const lecture = /(?:^|\s)(Lecture|Vorlesung|VL|Chapter|Week)\s+(\d+)\s*[—–:-]\s*(.+)$/i.exec(title2);
-  if (lecture?.[1] && lecture[2] && lecture[3]) {
-    return { number: lecture[2], place: `${lecture[1]} ${lecture[2]}`, title: lecture[3] };
-  }
-  const short = module2 ? moduleShort(module2) : "";
-  const bare = short && title2.startsWith(`${short} `) ? title2.slice(short.length + 1) : title2;
-  const cased = bare.charAt(0).toUpperCase() + bare.slice(1);
-  return { number: null, place: cased.split(/\s*[—–:]\s*/)[0] ?? cased, title: cased };
-}
-function moduleFacts(store, module2) {
-  const semester = asString(module2.semester);
-  const area = asString(module2.area_id);
-  const place = semester ? shortSemester(semester) : area === "program-job" ? "Job" : area === "program-skills" ? "Skills" : asString(module2.kind) === "project" ? "Thesis & projects" : "";
-  const units = store.progress(asString(module2.id) ?? "").units_total;
-  return [place, units ? `${units} unit${units === 1 ? "" : "s"}` : ""].filter(Boolean).join(" \xB7 ");
-}
-function shortSemester(value) {
-  return semesterLabel(value).replace("Summer semester", "SoSe").replace("Winter semester", "WiSe");
-}
-function moduleState(store, module2) {
-  const progress2 = store.progress(asString(module2.id) ?? "");
-  if (progress2.stages_total && progress2.stages_complete === progress2.stages_total) return "Done";
-  return asString(module2.status)?.replaceAll("-", " ") ?? "";
 }
 function moduleRow(parent, store, module2, open, state = moduleState(store, module2)) {
   const title2 = asLabel(module2);
@@ -37737,7 +37741,7 @@ function fallbackRecord(id) {
   };
 }
 
-// src/designs/study-desk/module-map.ts
+// src/features/atlas/module-map.ts
 function moduleMap(store, moduleId) {
   const record7 = store.get(moduleId);
   const module2 = record7 ? readModuleRecord(record7) : null;
@@ -37763,7 +37767,7 @@ function moduleMaps(store) {
 function moduleMapFacts(map) {
   return `${plural(map.rows.length, "lecture")} \xB7 ${plural(map.ideas, "idea")}`;
 }
-function progressTag(store, unitId) {
+function mapProgressTag(store, unitId) {
   const projected = store.mapForUnit(unitId);
   if (!projected) return null;
   const stages = readStudyMap(projected).stages;
@@ -37772,6 +37776,88 @@ function progressTag(store, unitId) {
   if (done === total) return { text: "Studied", tone: "success" };
   return { text: `In progress \xB7 ${done} of ${plural(total, "stage")}`, tone: "accent" };
 }
+var SVG3 = "http://www.w3.org/2000/svg";
+var sequence2 = 0;
+function mountIdeaLinks(host, canvases, prefix = "sd-mm") {
+  const first = canvases[0]?.canvas;
+  const doc = first?.ownerDocument;
+  const win = doc?.defaultView;
+  if (!first || !doc?.createElementNS || !win || typeof first.getBoundingClientRect !== "function") return;
+  let frame = 0;
+  let disposed = false;
+  const layers = canvases.map(({ canvas, links }) => {
+    const svg = doc.createElementNS(SVG3, "svg");
+    svg.setAttribute("class", `${prefix}-links`);
+    svg.setAttribute("aria-hidden", "true");
+    canvas.prepend(svg);
+    return { canvas, links, svg, marker: `${prefix}-arrow-${++sequence2}` };
+  });
+  const draw = () => {
+    frame = 0;
+    if (disposed) return;
+    for (const { canvas, links, svg, marker } of layers) {
+      if (!canvas.isConnected) continue;
+      svg.replaceChildren();
+      const defs = doc.createElementNS(SVG3, "defs");
+      const head = doc.createElementNS(SVG3, "marker");
+      for (const [key, value] of Object.entries({ id: marker, viewBox: "0 0 8 8", refX: "6.5", refY: "4", markerWidth: "8", markerHeight: "8", markerUnits: "userSpaceOnUse", orient: "auto" })) head.setAttribute(key, value);
+      const chevron3 = doc.createElementNS(SVG3, "path");
+      chevron3.setAttribute("d", "M 2 1 L 6.5 4 L 2 7");
+      chevron3.setAttribute("class", `${prefix}-arrowhead`);
+      head.append(chevron3);
+      defs.append(head);
+      svg.append(defs);
+      const base = canvas.getBoundingClientRect();
+      const box = (node) => {
+        const rect = node.getBoundingClientRect();
+        const left = rect.left - base.left + canvas.scrollLeft, top = rect.top - base.top + canvas.scrollTop;
+        return { left, top, right: left + rect.width, bottom: top + rect.height, width: rect.width };
+      };
+      const nodes = new Map(Array.from(canvas.querySelectorAll("[data-idea]")).map((node) => [node.getAttribute("data-idea"), box(node)]));
+      const boxes = [...nodes.values()];
+      svg.setAttribute("width", String(Math.ceil(Math.max(0, ...boxes.map((node) => node.right))) + 4));
+      svg.setAttribute("height", String(Math.ceil(Math.max(0, ...boxes.map((node) => node.bottom))) + 15));
+      let under = 0;
+      for (const link of links) {
+        const a = nodes.get(link.from), b = nodes.get(link.to);
+        if (!a || !b || !a.width || !b.width || b.left <= a.right) continue;
+        const x1 = a.right + 2, y1 = (a.top + a.bottom) / 2, x2 = b.left - 3, y2 = (b.top + b.bottom) / 2;
+        const between = [...nodes.values()].filter((node) => node.left > a.right && node.right < b.left);
+        const yAt = (x) => y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+        const blocked = between.some((node) => {
+          const top = Math.min(yAt(node.left), yAt(node.right)), bottom = Math.max(yAt(node.left), yAt(node.right));
+          return bottom >= node.top - 4 && top <= node.bottom + 4;
+        });
+        let d = `M ${x1} ${y1} L ${x2} ${y2}`;
+        if (blocked) {
+          const below = Math.max(...between.map((node) => node.bottom)) + 5 + Math.min(under, 2) * 4;
+          under += 1;
+          d = `M ${x1} ${y1} C ${x1 + 12} ${y1}, ${x1 + 10} ${below}, ${x1 + 22} ${below} L ${x2 - 22} ${below} C ${x2 - 10} ${below}, ${x2 - 12} ${y2}, ${x2} ${y2}`;
+        }
+        const path = doc.createElementNS(SVG3, "path");
+        path.setAttribute("d", d);
+        path.setAttribute("class", `${prefix}-link`);
+        path.setAttribute("marker-end", `url(#${marker})`);
+        svg.append(path);
+      }
+    }
+  };
+  const schedule = () => {
+    if (!disposed && !frame) frame = win.requestAnimationFrame(draw);
+  };
+  const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
+  for (const { canvas } of layers) observer?.observe(canvas);
+  win.addEventListener("resize", schedule);
+  schedule();
+  host.addRenderCleanup(() => {
+    disposed = true;
+    if (frame) win.cancelAnimationFrame(frame);
+    observer?.disconnect();
+    win.removeEventListener("resize", schedule);
+  });
+}
+
+// src/designs/study-desk/module-map.ts
 var headings = 0;
 var landing = /* @__PURE__ */ new WeakMap();
 function openModuleMap(host, moduleId, unitId = null) {
@@ -37817,7 +37903,7 @@ function renderModuleMap(root, host, map) {
     line.createSpan({ cls: "sd-mm-number", text: (row3.label.number ?? String(index + 1)).padStart(2, "0") });
     const heading2 = `sd-mm-lecture-${++headings}`;
     line.createEl("h3", { cls: "sd-mm-lecture-title", text: row3.label.title, attr: { id: heading2 } });
-    const tag2 = progressTag(store, row3.unit.id);
+    const tag2 = mapProgressTag(store, row3.unit.id);
     if (tag2) line.createSpan({ cls: `sd-tag is-${tag2.tone}`, text: tag2.text });
     line.createSpan({ cls: "sd-mat-flex" });
     textLink(line, "Open lecture", () => nav.openUnit(row3.unit.id)).addClass("sd-mm-open");
@@ -37851,91 +37937,11 @@ function renderModuleMap(root, host, map) {
       foot.createDiv({ cls: "sd-mm-foot-line", text: `No idea map yet: ${map.unmapped.map((unit) => unitLabel(unit.record, module2).place).join(", ")}.` });
     }
   }
-  mountIdeaLinks(host, canvases);
+  mountIdeaLinks(host, canvases, "sd-mm");
   const target = landed;
   if (target && typeof target.scrollIntoView === "function") {
     root.ownerDocument?.defaultView?.requestAnimationFrame(() => target.scrollIntoView({ block: "center" }));
   }
-}
-var SVG3 = "http://www.w3.org/2000/svg";
-var sequence2 = 0;
-function mountIdeaLinks(host, canvases) {
-  const first = canvases[0]?.canvas;
-  const doc = first?.ownerDocument;
-  const win = doc?.defaultView;
-  if (!first || !doc?.createElementNS || !win || typeof first.getBoundingClientRect !== "function") return;
-  let frame = 0;
-  let disposed = false;
-  const layers = canvases.map(({ canvas, links }) => {
-    const svg = doc.createElementNS(SVG3, "svg");
-    svg.setAttribute("class", "sd-mm-links");
-    svg.setAttribute("aria-hidden", "true");
-    canvas.prepend(svg);
-    return { canvas, links, svg, marker: `sd-mm-arrow-${++sequence2}` };
-  });
-  const draw = () => {
-    frame = 0;
-    if (disposed) return;
-    for (const { canvas, links, svg, marker } of layers) {
-      if (!canvas.isConnected) continue;
-      svg.replaceChildren();
-      const defs = doc.createElementNS(SVG3, "defs");
-      const head = doc.createElementNS(SVG3, "marker");
-      for (const [key, value] of Object.entries({ id: marker, viewBox: "0 0 8 8", refX: "6.5", refY: "4", markerWidth: "8", markerHeight: "8", markerUnits: "userSpaceOnUse", orient: "auto" })) head.setAttribute(key, value);
-      const chevron3 = doc.createElementNS(SVG3, "path");
-      chevron3.setAttribute("d", "M 2 1 L 6.5 4 L 2 7");
-      chevron3.setAttribute("class", "sd-mm-arrowhead");
-      head.append(chevron3);
-      defs.append(head);
-      svg.append(defs);
-      const base = canvas.getBoundingClientRect();
-      const box = (node) => {
-        const rect = node.getBoundingClientRect();
-        const left = rect.left - base.left + canvas.scrollLeft, top = rect.top - base.top + canvas.scrollTop;
-        return { left, top, right: left + rect.width, bottom: top + rect.height, width: rect.width };
-      };
-      const nodes = new Map(Array.from(canvas.querySelectorAll("[data-idea]")).map((node) => [node.getAttribute("data-idea"), box(node)]));
-      const boxes = [...nodes.values()];
-      svg.setAttribute("width", String(Math.ceil(Math.max(0, ...boxes.map((node) => node.right))) + 4));
-      svg.setAttribute("height", String(Math.ceil(Math.max(0, ...boxes.map((node) => node.bottom))) + 15));
-      let under = 0;
-      for (const link of links) {
-        const a = nodes.get(link.from), b = nodes.get(link.to);
-        if (!a || !b || !a.width || !b.width || b.left <= a.right) continue;
-        const x1 = a.right + 2, y1 = (a.top + a.bottom) / 2, x2 = b.left - 3, y2 = (b.top + b.bottom) / 2;
-        const between = [...nodes.values()].filter((node) => node.left > a.right && node.right < b.left);
-        const yAt = (x) => y1 + (y2 - y1) * (x - x1) / (x2 - x1);
-        const blocked = between.some((node) => {
-          const top = Math.min(yAt(node.left), yAt(node.right)), bottom = Math.max(yAt(node.left), yAt(node.right));
-          return bottom >= node.top - 4 && top <= node.bottom + 4;
-        });
-        let d = `M ${x1} ${y1} L ${x2} ${y2}`;
-        if (blocked) {
-          const below = Math.max(...between.map((node) => node.bottom)) + 5 + Math.min(under, 2) * 4;
-          under += 1;
-          d = `M ${x1} ${y1} C ${x1 + 12} ${y1}, ${x1 + 10} ${below}, ${x1 + 22} ${below} L ${x2 - 22} ${below} C ${x2 - 10} ${below}, ${x2 - 12} ${y2}, ${x2} ${y2}`;
-        }
-        const path = doc.createElementNS(SVG3, "path");
-        path.setAttribute("d", d);
-        path.setAttribute("class", "sd-mm-link");
-        path.setAttribute("marker-end", `url(#${marker})`);
-        svg.append(path);
-      }
-    }
-  };
-  const schedule = () => {
-    if (!disposed && !frame) frame = win.requestAnimationFrame(draw);
-  };
-  const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
-  for (const { canvas } of layers) observer?.observe(canvas);
-  win.addEventListener("resize", schedule);
-  schedule();
-  host.addRenderCleanup(() => {
-    disposed = true;
-    if (frame) win.cancelAnimationFrame(frame);
-    observer?.disconnect();
-    win.removeEventListener("resize", schedule);
-  });
 }
 
 // src/designs/study-desk/atlas.ts
@@ -38930,7 +38936,7 @@ function setUnitMode(host, unitId, mode) {
   modesFor(host).set(unitId, mode);
 }
 
-// src/designs/study-desk/study-work.ts
+// src/features/home/study-work.ts
 function orderedUnits(store, moduleId, componentId = null) {
   const rows2 = store.unitsFor(moduleId, componentId);
   const module2 = readModuleRecord(store.get(moduleId), moduleId);
@@ -38991,22 +38997,22 @@ function renderDeskHome(view) {
     const module2 = asStrings(record7.module_ids).map((id) => byId.get(id)).find((row3) => row3 !== void 0);
     return action && module2 && record7.is_open === true ? [{ record: record7, module: module2, action }] : [];
   });
-  const resume2 = resolveResumeTarget(store);
-  const resumeId = resume2.unit ? asString(resume2.unit.id) : null;
-  const resumeStageId = resume2.stage ? asString(resume2.stage.id) : null;
+  const resume = resolveResumeTarget(store);
+  const resumeId = resume.unit ? asString(resume.unit.id) : null;
+  const resumeStageId = resume.stage ? asString(resume.stage.id) : null;
   const work = resumeId ? unitWork(store, resumeId) : null;
   const stage = work?.map.stages.find((row3) => row3.id === resumeStageId);
   let resumed = false;
   let focusModule = null;
-  if (resumeId && resume2.unit && work && stage) {
+  if (resumeId && resume.unit && work && stage) {
     resumed = true;
-    focusModule = resume2.module;
+    focusModule = resume.module;
     const position = work.map.stages.indexOf(stage);
     const hero = main.createDiv({ cls: "sd-hero" });
     const copy = hero.createDiv({ cls: "sd-hero-copy" });
     copy.createDiv({ cls: "sd-hero-kicker", text: "Continue where you stopped" });
     copy.createEl("h2", { cls: "sd-hero-title", text: stage.title });
-    copy.createDiv({ cls: "sd-hero-facts", text: [resume2.module && moduleName(resume2.module), unitLabel(resume2.unit, resume2.module).place, `Stage ${position + 1} of ${work.map.stages.length}`].filter(Boolean).join(" \xB7 ") });
+    copy.createDiv({ cls: "sd-hero-facts", text: [resume.module && moduleName(resume.module), unitLabel(resume.unit, resume.module).place, `Stage ${position + 1} of ${work.map.stages.length}`].filter(Boolean).join(" \xB7 ") });
     stageBars(copy, work.map.stages.length, work.done, position);
     const action = hero.createDiv({ cls: "sd-hero-action" });
     button(action, "Continue studying", () => start(view, resumeId, stage.id), "choice").addClass("sd-hero-button");
@@ -39652,7 +39658,7 @@ function renderDesignSwitch(parent, host) {
     design.id,
     (id) => host.setInterfaceDesign(id)
   );
-  if (design.id === "classic" || design.palettes.length < 2) return;
+  if (design.palettes.length < 2) return;
   const labels = new Map(PALETTES);
   group(
     parent,
@@ -39686,9 +39692,10 @@ function primaryNavItems(plugin, options = {}) {
     icon: "graduation-cap",
     go: () => plugin.nav.openLearn()
   };
+  const curriculum = options.includeLearn === false ? [modules] : options.learnFirst ? [learn, modules] : [modules, learn];
   return [
     { key: "home", label: "Home", icon: "home", go: () => plugin.nav.openHome() },
-    ...options.learnFirst ? [learn, modules] : [modules, learn],
+    ...curriculum,
     { key: "library", label: "Library", icon: "library", go: () => plugin.nav.openLibrary() },
     {
       key: "abilities",
@@ -40655,8 +40662,8 @@ function renderImportDiff(root, answer, stageTitles = /* @__PURE__ */ new Map())
   if (preserved.length) {
     line(`Recorded work carried forward on ${preserved.length} stage${preserved.length === 1 ? "" : "s"}.`);
   }
-  const resume2 = asString(diff.resume_stage);
-  if (resume2) line(`Resumes at ${named(resume2)}.`);
+  const resume = asString(diff.resume_stage);
+  if (resume) line(`Resumes at ${named(resume)}.`);
   const reset = asString(diff.state_reset_reason);
   if (reset) line(`Recorded stage state is reset: ${reset}.`);
   const evidence2 = stageIds(diff.retired_stage_evidence);
@@ -41693,9 +41700,9 @@ var MaterialComparisonModal = class extends import_obsidian9.Modal {
     });
     search.value = this.query;
     const typeSections = [];
-    const toolbar2 = body.createDiv({ cls: "los-compare-toolbar" });
-    const status = toolbar2.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" } });
-    const collapse = button(toolbar2, "Collapse types", () => {
+    const toolbar = body.createDiv({ cls: "los-compare-toolbar" });
+    const status = toolbar.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" } });
+    const collapse = button(toolbar, "Collapse types", () => {
       for (const details of typeSections) {
         details.open = false;
         this.expandedTypes.delete(`${this.group}|${details.getAttribute("data-material-type")}`);
@@ -42530,8 +42537,40 @@ function stageRuns(uses) {
   return `${used.length === 1 ? "Stage" : "Stages"} ${runs.join(", ")}`;
 }
 
-// src/designs/study-desk/material-row.ts
-var import_obsidian10 = require("obsidian");
+// src/features/unit/lecture-materials.ts
+function lectureMaterialsFor(store, unit, durable, options) {
+  const roles = /* @__PURE__ */ new Map();
+  for (const entry of asRecords(store.sourceMap(unit.moduleId)?.sources)) {
+    const id = asString(entry.source_id);
+    if (id && !roles.has(id)) roles.set(id, asString(entry.role));
+  }
+  return buildLectureMaterials({
+    stages: durable.stages,
+    options,
+    routeOf: (resource) => routeForResource(resource, options),
+    roleOf: (id) => roles.get(id) ?? null,
+    sourceTypeOf: (id) => asString(store.get(id)?.source_type)
+  });
+}
+function lectureMaterialsFacts(materials2, stages) {
+  const course = materials2.filter((material) => material.course).length;
+  const layout = lectureLayout(materials2.length);
+  return [
+    `${plural(materials2.length, "material")} for ${plural(stages, "stage")}`,
+    course ? `${course} from your course` : "",
+    layout === "flat" ? "best first" : "grouped by what they are for, then type, best first"
+  ].filter(Boolean).join(" \xB7 ");
+}
+function splitStage(materials2, durable, stage) {
+  const index = durable.stages.findIndex((row3) => row3.id === stage.id);
+  const where = (...uses) => index < 0 ? [] : rankMaterials(materials2.filter((material) => uses.includes(material.uses[index] ?? null)), index);
+  return { index, required: where("required"), helps: where("helps"), kept: where("deferred", "reference") };
+}
+function namesOf(materials2) {
+  const titles = materials2.map((material) => material.title);
+  if (titles.length <= 2) return titles.join(" and ");
+  return `${titles.slice(0, 2).join(", ")} and ${titles.length - 2} more`;
+}
 function shortTitle(title2) {
   const cut = title2.split(/\s+[—–]\s+|:\s+|\s+\(/)[0]?.trim();
   return cut || title2;
@@ -42575,31 +42614,42 @@ function usedInWords(uses) {
   const text4 = parts.join(" \xB7 ");
   return text4.charAt(0).toUpperCase() + text4.slice(1);
 }
-function sourceOf(context, material) {
-  return material.sourceId ? context.view.plugin.store.get(material.sourceId) : null;
-}
-function availabilityOf(context, material) {
-  const source = sourceOf(context, material);
+function materialAvailability(store, material) {
+  const source = material.sourceId ? store.get(material.sourceId) : null;
   if (material.resource) return placementAvailability(material.resource, material.route, source);
   const projected = projectedAvailability(material.route?.record ?? {});
   return projected.kind === "none" && source && hasDirectResourceTarget(source) ? projectedAvailability(source) : projected;
 }
-function openerOf(context, material) {
-  const { view } = context;
+function materialOpener(plugin, material) {
   const { resource, route: route2 } = material;
-  const web = availabilityOf(context, material).kind === "remote";
-  if (resource?.canOpen) return { label: web ? "Open on the web" : "Open", go: () => view.plugin.openResource(resource.record) };
-  if (route2?.canOpen) return { label: web ? "Open on the web" : "Open", go: () => view.plugin.openResource(route2.record) };
-  const source = sourceOf(context, material);
-  if (source && hasDirectResourceTarget(source)) return { label: "Open the source", go: () => view.plugin.openResource(source) };
+  const web = materialAvailability(plugin.store, material).kind === "remote";
+  if (resource?.canOpen) return { label: web ? "Open on the web" : "Open", go: () => plugin.openResource(resource.record) };
+  if (route2?.canOpen) return { label: web ? "Open on the web" : "Open", go: () => plugin.openResource(route2.record) };
+  const source = material.sourceId ? plugin.store.get(material.sourceId) : null;
+  if (source && hasDirectResourceTarget(source)) return { label: "Open the source", go: () => plugin.openResource(source) };
   return null;
 }
-function originOf(context, material) {
-  if (material.course) return moduleShort(context.view.plugin.store.get(context.unit.moduleId));
-  const source = sourceOf(context, material);
+function materialOrigin(store, moduleId, material) {
+  if (material.course) return moduleShort(store.get(moduleId));
+  const source = material.sourceId ? store.get(material.sourceId) : null;
   if (source) return shortTitle(asLabel(source));
   const url = safeWebUrl(material.resource?.record.url ?? material.route?.record.url);
   return url ? url.hostname.replace(/^www\./, "") : null;
+}
+
+// src/designs/study-desk/material-row.ts
+var import_obsidian10 = require("obsidian");
+function sourceOf(context, material) {
+  return material.sourceId ? context.view.plugin.store.get(material.sourceId) : null;
+}
+function availabilityOf(context, material) {
+  return materialAvailability(context.view.plugin.store, material);
+}
+function openerOf(context, material) {
+  return materialOpener(context.view.plugin, material);
+}
+function originOf(context, material) {
+  return materialOrigin(context.view.plugin.store, context.unit.moduleId, material);
 }
 function tag(parent, text4, tone = "neutral") {
   parent.createSpan({ cls: `sd-tag is-${tone}`, text: text4 });
@@ -42737,7 +42787,7 @@ function renderDetails(row3, material, context, availability, opener2, compact) 
   if (!actionCount) actions.createSpan({ cls: "sd-quiet", text: "Nothing to open here yet; the details above say what is missing." });
 }
 
-// src/designs/study-desk/materials-state.ts
+// src/features/unit/materials-state.ts
 var statesByHost = /* @__PURE__ */ new WeakMap();
 function materialsState(host, unitId) {
   let states = statesByHost.get(host);
@@ -42775,28 +42825,8 @@ function keepFold(fold, state, key, openNow = false) {
 }
 
 // src/designs/study-desk/lecture-materials.ts
-function lectureMaterialsFor(view, unit, durable, options) {
-  const roles = /* @__PURE__ */ new Map();
-  for (const entry of asRecords(view.plugin.store.sourceMap(unit.moduleId)?.sources)) {
-    const id = asString(entry.source_id);
-    if (id && !roles.has(id)) roles.set(id, asString(entry.role));
-  }
-  return buildLectureMaterials({
-    stages: durable.stages,
-    options,
-    routeOf: (resource) => routeForResource(resource, options),
-    roleOf: (id) => roles.get(id) ?? null,
-    sourceTypeOf: (id) => asString(view.plugin.store.get(id)?.source_type)
-  });
-}
-function lectureMaterialsFacts(materials2, stages) {
-  const course = materials2.filter((material) => material.course).length;
-  const layout = lectureLayout(materials2.length);
-  return [
-    `${plural(materials2.length, "material")} for ${plural(stages, "stage")}`,
-    course ? `${course} from your course` : "",
-    layout === "flat" ? "best first" : "grouped by what they are for, then type, best first"
-  ].filter(Boolean).join(" \xB7 ");
+function lectureMaterialsFor2(view, unit, durable, options) {
+  return lectureMaterialsFor(view.plugin.store, unit, durable, options);
 }
 function whereOf(context, material) {
   const kind = availabilityOf(context, material).kind;
@@ -42816,7 +42846,7 @@ function haystack(context, material) {
 function renderLectureMaterials(main, side, context) {
   const { view, unit, durable, options } = context;
   const state = materialsState(view.leaf, unit.id);
-  const all = lectureMaterialsFor(view, unit, durable, options);
+  const all = lectureMaterialsFor2(view, unit, durable, options);
   const layout = lectureLayout(all.length);
   const rowContext2 = (stageIndex) => ({
     view,
@@ -42829,8 +42859,8 @@ function renderLectureMaterials(main, side, context) {
   });
   if (state.filter.stage !== null && !durable.stages[state.filter.stage]) setFilter(state, { ...state.filter, stage: null });
   const pinned = main.createDiv({ cls: "sd-mat-pinned" });
-  const toolbar2 = pinned.createDiv({ cls: "sd-mat-toolbar", attr: { role: "search" } });
-  const field2 = toolbar2.createEl("label", { cls: "sd-mat-search" });
+  const toolbar = pinned.createDiv({ cls: "sd-mat-toolbar", attr: { role: "search" } });
+  const field2 = toolbar.createEl("label", { cls: "sd-mat-search" });
   icon(field2.createSpan({ cls: "sd-search-glyph" }), "search");
   const input = field2.createEl("input", {
     cls: "sd-mat-search-input",
@@ -42838,22 +42868,22 @@ function renderLectureMaterials(main, side, context) {
   });
   input.value = state.filter.query;
   const presentTypes = MATERIAL_TYPES.filter((type) => all.some((material) => material.type === type.key));
-  const stageChoice = chipSelect(toolbar2, "Stage", [
+  const stageChoice = chipSelect(toolbar, "Stage", [
     ["", `Stage: All ${durable.stages.length}`],
     ...durable.stages.map((stage, index) => [String(index), `Stage ${index + 1}: ${stage.title}`])
   ], state.filter.stage === null ? "" : String(state.filter.stage));
-  const typeChoice = chipSelect(toolbar2, "Type", [
+  const typeChoice = chipSelect(toolbar, "Type", [
     ["", "Type: All"],
     ...presentTypes.map((type) => [type.key, `Type: ${type.plural}`])
   ], state.filter.type ?? "");
-  const whereChoice = chipSelect(toolbar2, "Where", [
+  const whereChoice = chipSelect(toolbar, "Where", [
     ["anywhere", "Where: Anywhere"],
     ["local", "Where: On this Mac"],
     ["web", "Where: On the web"],
     ["missing", "Where: Missing a copy"]
   ], state.filter.where);
-  toolbar2.createSpan({ cls: "sd-mat-flex" });
-  const count4 = toolbar2.createSpan({ cls: "sd-mat-count", attr: { "aria-live": "polite" } });
+  toolbar.createSpan({ cls: "sd-mat-flex" });
+  const count4 = toolbar.createSpan({ cls: "sd-mat-count", attr: { "aria-live": "polite" } });
   const note2 = pinned.createDiv({ cls: "sd-mat-note" });
   const columns = pinned.createDiv({ cls: "sd-mat-stage-head" });
   if (durable.stages.length > 9) {
@@ -43130,11 +43160,6 @@ function renderPicks(side, context, all) {
 }
 
 // src/designs/study-desk/stage-materials.ts
-function splitStage(materials2, durable, stage) {
-  const index = durable.stages.findIndex((row3) => row3.id === stage.id);
-  const where = (...uses) => index < 0 ? [] : rankMaterials(materials2.filter((material) => uses.includes(material.uses[index] ?? null)), index);
-  return { index, required: where("required"), helps: where("helps"), kept: where("deferred", "reference") };
-}
 function rowContext(context, state) {
   return {
     view: context.view,
@@ -43149,11 +43174,6 @@ function rowContext(context, state) {
 function rows(parent, materials2, context, bestFit = null) {
   const list3 = parent.createDiv({ cls: "sd-stage-rows" });
   for (const material of materials2) renderMaterialRow(list3, material, context, { compact: true, bestFit: material === bestFit });
-}
-function namesOf(materials2) {
-  const titles = materials2.map((material) => material.title);
-  if (titles.length <= 2) return titles.join(" and ");
-  return `${titles.slice(0, 2).join(", ")} and ${titles.length - 2} more`;
 }
 function renderKept(parent, kept, context, state) {
   if (!kept.length) return;
@@ -43283,7 +43303,7 @@ function renderDeskUnit(view) {
     stage,
     options,
     expected: view.plugin.store.artifactGuard(unit.id, typeof studyMap.record.id === "string" ? studyMap.record.id : null),
-    materials: () => materials2 ??= lectureMaterialsFor(view, unit, durable, options)
+    materials: () => materials2 ??= lectureMaterialsFor2(view, unit, durable, options)
   };
   const mode = unitMode(view.leaf, unit.id);
   if (mode === "session") renderSession(context);
@@ -43594,74 +43614,618 @@ var studyDeskScreens = {
   atlas: renderDeskAtlas
 };
 
-// src/designs/focus/collection.ts
-var collections = /* @__PURE__ */ new WeakMap();
-function focusCollection(root) {
-  let state = collections.get(root);
-  if (!state) {
-    state = { scope: "open", query: "", scroll: 0, selected: null };
-    collections.set(root, state);
-  }
-  return state;
+// src/designs/focus/parts.ts
+function page(root, name, store) {
+  root.onscroll = null;
+  root.empty();
+  root.addClass("los-root", "focus-root");
+  root.setAttr("data-focus-screen", name);
+  manifestFreshness(root, store);
+  return root;
 }
-async function openFocusCollection(nav, scope) {
-  const leaf = await nav.openModules();
-  const root = leaf?.view?.contentEl;
-  if (!root) return;
-  const state = focusCollection(root);
-  if (scope && scope !== state.scope) {
-    Object.assign(state, { scope, query: "", scroll: 0, selected: null });
+function commandBar(root, crumbs, view) {
+  const bar = root.createDiv({ cls: "focus-commandbar" });
+  const location = bar.createDiv({ cls: "focus-location" });
+  const { leaf, plugin: { router } } = view;
+  const history = location.createDiv({ cls: "focus-history", attr: { role: "group", "aria-label": "Navigation history" } });
+  for (const [direction, label, glyph] of [["back", "Back", "chevron-left"], ["forward", "Forward", "chevron-right"]]) {
+    const control = history.createEl("button", { cls: "focus-history-btn", attr: { type: "button", "aria-label": label } });
+    control.disabled = !router.paneHistoryAvailable(leaf, direction);
+    icon(control.createSpan({ attr: { "aria-hidden": "true" } }), glyph);
+    control.addEventListener("click", () => {
+      void router.movePaneHistory(leaf, direction);
+    });
   }
-  state.refresh?.();
+  const trail = location.createEl("nav", { cls: "focus-crumbs", attr: { "aria-label": "Location" } });
+  crumbs.forEach((crumb, index) => {
+    if (index) icon(trail.createSpan({ cls: "focus-crumb-sep", attr: { "aria-hidden": "true" } }), "chevron-right");
+    const last = index === crumbs.length - 1;
+    if (crumb.go && !last) {
+      trail.createEl("button", { cls: "focus-crumb is-clickable", text: crumb.label, attr: { type: "button" } }).addEventListener("click", () => crumb.go?.());
+    } else {
+      trail.createSpan({ cls: `focus-crumb${last ? " is-current" : ""}`, text: crumb.label, ...last ? { attr: { "aria-current": "page" } } : {} });
+    }
+  });
+  return bar.createDiv({ cls: "focus-toolbar-actions" });
+}
+function heading(parent, eyebrow, title2, detail = "") {
+  if (eyebrow) parent.createDiv({ cls: "focus-eyebrow", text: eyebrow });
+  parent.createEl("h1", { cls: "focus-title", text: title2 });
+  if (detail) parent.createEl("p", { cls: "focus-lede", text: detail });
+}
+function row(parent, label, action) {
+  const target = parent.createEl("button", { cls: "focus-row is-clickable", attr: { type: "button", "aria-label": label } });
+  target.addEventListener("click", () => action());
+  return target;
+}
+function chevron2(parent, glyph = "chevron-right") {
+  icon(parent.createSpan({ cls: "focus-chevron", attr: { "aria-hidden": "true" } }), glyph);
+}
+function stageBars2(parent, total, done, current = null) {
+  const capped = Math.min(10, total);
+  const filled = capped && total ? done === total ? capped : Math.min(capped - 1, Math.round(capped * done / total)) : 0;
+  const active = current !== null && capped && total ? Math.min(capped - 1, Math.round(capped * current / total)) : null;
+  const bars = parent.createDiv({ cls: "focus-bars", attr: { "aria-hidden": "true" } });
+  for (let index = 0; index < capped; index += 1) {
+    const state = index === active ? "is-current" : index < filled ? "is-done" : "";
+    bars.createSpan({ cls: `focus-bar ${state}`.trim() });
+  }
+  return bars;
+}
+function progress(parent, complete, total) {
+  const wrap = parent.createDiv({ cls: "focus-progress" });
+  const bar = wrap.createEl("progress", { attr: { max: String(Math.max(total, 1)), value: String(complete), "aria-label": "Recorded study stages" } });
+  bar.value = complete;
+  bar.max = Math.max(total, 1);
+  wrap.createSpan({ cls: "focus-muted", text: `${complete} of ${total} stages complete` });
+}
+function moduleRow2(parent, store, module2, open) {
+  const target = row(parent, `Open module: ${asLabel(module2)}`, open);
+  const id = asString(module2.id) ?? "";
+  target.addClass("focus-module-row");
+  target.setAttrs({ "data-record-id": id, "data-cover": coverOf(module2) });
+  target.createSpan({ cls: "focus-spine", attr: { "aria-hidden": "true" } });
+  const copy = target.createDiv({ cls: "focus-row-copy" });
+  copy.createEl("strong", { text: asLabel(module2) });
+  const units = store.unitsFor(id);
+  const stages = units.flatMap((unit) => asRecords(store.mapForUnit(asString(unit.id) ?? "")?.stages));
+  const { done, total } = stageProgress(stages);
+  copy.createSpan({ cls: "focus-muted", text: moduleFacts(store, module2) });
+  if (total) stageBars2(target, total, done);
+  const isDone = Boolean(total && done === total);
+  const stateText = isDone ? "Done" : done ? `${done} of ${total} stages complete` : moduleState(store, module2) || "Open module";
+  target.createSpan({ cls: `focus-row-state${isDone ? " is-complete" : ""}`, text: stateText });
+  chevron2(target);
+  return target;
+}
+function textLink2(parent, label, go) {
+  const link = button(parent, label, go, "tertiary");
+  link.addClass("focus-link");
+  return link;
+}
+function sideCard(parent, title2, pill) {
+  const card = parent.createDiv({ cls: "focus-dock-card" });
+  const head = card.createDiv({ cls: "focus-section-head" });
+  head.createDiv({ cls: "focus-eyebrow", text: title2 });
+  if (pill) head.createSpan({ cls: `focus-pill${pill.tone ? ` is-${pill.tone}` : ""}`, text: pill.text });
+  return card;
 }
 
-// src/designs/focus/nav.ts
-function renderFocusNav(view) {
-  const { plugin, contentEl: root } = view;
-  root.empty();
-  root.addClass("los-root", "los-app-nav", "focus-root", "focus-nav");
-  const brand = root.createDiv({ cls: "focus-brand" });
-  brand.createEl("strong", { text: "LearningOS" });
-  brand.createDiv({ cls: "focus-eyebrow", text: "Focus" });
-  const search = root.createEl("button", { cls: "focus-nav-search is-clickable", attr: { type: "button", "aria-label": "Search LearningOS" } });
-  icon(search.createSpan({ attr: { "aria-hidden": "true" } }), "search");
-  search.createSpan({ text: "Search LearningOS" });
-  search.addEventListener("click", () => plugin.nav.openGlobalSearch());
-  const item = (parent, glyph, label, key, go, count4 = 0) => {
-    const current = plugin.activeNav === key || plugin.activeNav === "learn" && key === plugin.settings.learnArea;
-    const control = parent.createEl("button", { cls: `focus-nav-item is-clickable${current ? " is-active" : ""}`, attr: { type: "button", "aria-current": current ? "page" : "false", "aria-label": count4 ? `${label}, ${count4} waiting` : label } });
-    icon(control.createSpan({ cls: "focus-nav-icon", attr: { "aria-hidden": "true" } }), glyph);
-    control.createSpan({ text: label });
-    if (count4) control.createSpan({ cls: "focus-nav-count", text: String(count4) });
-    control.addEventListener("click", () => go());
-  };
-  const primary = root.createDiv({ cls: "focus-nav-primary", attr: { role: "navigation", "aria-label": "Main destinations" } });
-  enableButtonGroupKeyboardNavigation(primary, "vertical");
-  renderNavItems(
-    primary,
-    primaryNavItems(plugin, {
-      icons: { garden: "leaf", review: "circle-check" },
-      learnFirst: true,
-      openModules: () => openFocusCollection(plugin.nav, "open")
-    }),
-    item
-  );
-  const areas = root.createDiv({ cls: "focus-nav-areas", attr: { role: "navigation", "aria-label": "Study areas" } });
-  areas.createDiv({ cls: "focus-eyebrow", text: "Study areas" });
-  for (const [id, label] of [["program-bachelors", "Bachelor\u2019s"], ["program-skills", "Skills"], ["program-job", "Job"]]) {
-    item(areas, "chevron-right", label, id, () => plugin.nav.openLearn(id));
+// src/designs/focus/atlas.ts
+var landing2 = /* @__PURE__ */ new WeakMap();
+var overlapSelection2 = /* @__PURE__ */ new WeakMap();
+var revisionHeadings = 0;
+function focusConcept(host, id) {
+  host.go({ concept: id, lens: "prerequisites" });
+}
+function chooseRegion2(host, id) {
+  if (host.state.concept || host.state.lens !== "prerequisites") {
+    host.showConceptOverview(id);
+    return;
   }
-  item(areas, "chevron-right", "Thesis & projects", "projects", () => openFocusCollection(plugin.nav, "projects"));
-  const footer = root.createDiv({ cls: "focus-nav-footer" });
-  item(footer, "plus", "Capture", "capture", () => plugin.nav.openCapture());
-  mountNavMore(footer, plugin, {
-    detailsCls: "focus-nav-more",
-    secondaryCls: "focus-nav-secondary",
-    includeCapture: false,
-    buildSummary: (more) => more.createEl("summary", { text: "More", cls: "focus-nav-item" }),
-    draw: item
+  Object.assign(host.concepts, { domain: id, subdomain: null, selected: null, recentsOnly: false, browseAll: false, visibleLimit: 30 });
+  host.query = "";
+  host.render();
+}
+function openRevisionMap(host, moduleId, unitId = null) {
+  if (unitId) landing2.set(host, unitId);
+  else landing2.delete(host);
+  host.go({ concept: null, module: moduleId, lens: "prerequisites" });
+}
+function leaveRevisionMap(host) {
+  landing2.delete(host);
+  Object.assign(host.concepts, { domain: null, subdomain: null, browseAll: false, recentsOnly: false });
+  host.go({ concept: null, module: null, lens: "prerequisites" });
+}
+function renderSearchBox(parent, host, placeholder) {
+  const wrap = parent.createDiv({ cls: "focus-search-field" });
+  icon(wrap.createSpan({ attr: { "aria-hidden": "true" } }), "search");
+  const input = wrap.createEl("input", {
+    cls: "focus-search",
+    attr: { type: "search", placeholder, "aria-label": placeholder }
   });
-  footer.createDiv({ cls: "focus-nav-status", text: `Focus \xB7 ${designPalette(plugin.settings) === "nightfall" ? "Dark" : "Light"}` });
+  input.value = host.query;
+  const results = parent.createDiv({ cls: "focus-module-list", attr: { "aria-live": "polite" } });
+  const draw = () => {
+    results.empty();
+    const query = host.query.trim();
+    if (!query) return;
+    const hits = host.plugin.store.search(query, ["concept"]).slice(0, 8);
+    if (!hits.length) {
+      results.createDiv({ cls: "focus-muted", text: `No concept matches \u201C${query}\u201D.` });
+      return;
+    }
+    for (const record7 of hits) {
+      const id = asString(record7.id);
+      if (!id) continue;
+      const item = row(results, `Open ${asLabel(record7)}`, () => {
+        host.query = "";
+        focusConcept(host, id);
+      });
+      item.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: asLabel(record7) });
+      chevron2(item);
+    }
+  };
+  input.addEventListener("input", () => {
+    host.query = input.value;
+    draw();
+  });
+  draw();
+}
+function renderConceptFlowCard(parent, context, edge, otherId, focusId) {
+  const { host, graph } = context;
+  const concept = conceptOf(graph, otherId);
+  const label = `${concept.label} \u2014 ${relationPhrase(edge.type)}`;
+  const card = parent.createEl("button", {
+    cls: "focus-atlas-card is-clickable",
+    attr: { type: "button", "aria-label": label, "data-atlas-concept": otherId }
+  });
+  card.createEl("strong", { text: concept.label });
+  const modules = modulesFor(graph, otherId).map((mod) => moduleShort(host.plugin.store.get(mod.id))).join(", ");
+  const sub = [relationPhrase(edge.type), modules].filter(Boolean).join(" \xB7 ");
+  card.createSpan({ cls: "focus-muted", text: sub });
+  if (edge.from === focusId && edge.layer !== "strict") card.addClass("is-soft");
+  card.addEventListener("click", () => focusConcept(host, otherId));
+}
+function renderModuleSignposts2(side, context, id, units) {
+  const { host, graph } = context;
+  const { store } = host.plugin;
+  const teaches = (unitId) => {
+    const plan2 = store.mapForUnit(unitId);
+    return (Array.isArray(plan2?.stages) ? plan2.stages : []).some((stage) => asStrings(stage.concepts).includes(id));
+  };
+  const moduleIds = [.../* @__PURE__ */ new Set([
+    ...modulesFor(graph, id).map((module2) => module2.id),
+    ...units.map((unit) => asString(unit.module_id)).filter((moduleId) => Boolean(moduleId))
+  ])];
+  const maps = moduleIds.map((moduleId) => moduleMap(store, moduleId)).filter((m) => m !== null);
+  if (!maps.length) return;
+  const card = sideCard(side, "See it in its module");
+  card.addClass("is-signpost");
+  const list3 = card.createDiv({ cls: "focus-dock-list" });
+  for (const map of maps) {
+    const rowHit = map.rows.find((entry) => teaches(entry.unit.id)) ?? null;
+    const label = `${moduleName(store.get(map.moduleId))} module map`;
+    const pos = rowHit ? map.rows.indexOf(rowHit) + 1 : 0;
+    const where = !rowHit ? "" : !rowHit.label.number ? rowHit.label.title : Number(rowHit.label.number) === pos ? `${rowHit.label.place} of ${map.rows.length}` : rowHit.label.place;
+    const btn = list3.createEl("button", { cls: "focus-dock-item is-clickable", attr: { type: "button" } });
+    btn.createEl("strong", { text: label });
+    btn.createSpan({ cls: "focus-muted", text: [where, `all ${map.ideas} ideas, one row per lecture`].filter(Boolean).join(" \xB7 ") });
+    btn.addEventListener("click", () => openRevisionMap(host, map.moduleId, rowHit?.unit.id ?? null));
+  }
+}
+function renderConceptDetail(root, context, id) {
+  const { host, graph, map } = context;
+  const { store, nav } = host.plugin;
+  const concept = conceptOf(graph, id);
+  const aliases = asStrings(concept.record?.aliases);
+  const modules = modulesFor(graph, id).map((m) => moduleShort(store.get(m.id))).join(", ");
+  const body = root.createDiv({ cls: "focus-page" });
+  const head = body.createDiv({ cls: "focus-page-head" });
+  const copy = head.createDiv({ cls: "focus-heading-copy" });
+  heading(copy, "Concept", concept.label, [aliases.length ? `Also called ${aliases.join(", ")}` : "", modules].filter(Boolean).join(" \xB7 "));
+  const tools = body.createDiv({ cls: "focus-filters" });
+  const lens = host.state.lens === "path" ? "path" : "connections";
+  filterTabs(
+    tools,
+    "What to see about this concept",
+    [["connections", "Connections"], ["path", "Path to it"]],
+    lens,
+    (next) => {
+      if (next !== lens) host.go({ lens: next === "path" ? "path" : "prerequisites" });
+    }
+  );
+  renderSearchBox(tools, host, "Find a concept");
+  if (lens === "path") {
+    const path = strictPath(graph, id);
+    const sheet2 = body.createDiv({ cls: "focus-atlas-sheet" });
+    if (!path.ok) {
+      renderPath(sheet2, host, graph, id);
+      return;
+    }
+    const stops = path.layers.flat();
+    heading(sheet2, "Prerequisite route", `Path to ${concept.label}`, "Concepts in strict build order.");
+    const list3 = sheet2.createDiv({ cls: "focus-module-list" });
+    for (const [idx, stop] of stops.entries()) {
+      const target = row(list3, `Open ${stop.label}`, () => host.go({ concept: stop.id, lens: "path" }));
+      if (stop.id === id) target.addClass("is-current");
+      target.createSpan({ cls: "focus-stage-number focus-mono", text: String(idx + 1).padStart(2, "0") });
+      const rowCopy = target.createDiv({ cls: "focus-row-copy" });
+      rowCopy.createEl("strong", { text: stop.label });
+      const notes = linkedConceptNotes(store, stop.id).length;
+      rowCopy.createSpan({ cls: "focus-muted", text: `${plural(notes, "note")} \xB7 ${modulesFor(graph, stop.id).map((m) => moduleShort(store.get(m.id))).join(", ") || "No module"}` });
+      chevron2(target);
+    }
+    button(sheet2, `Inspect ${concept.label} connections`, () => focusConcept(host, id), "cta");
+    return;
+  }
+  const before = graph.prerequisiteEdges.get(id) ?? [];
+  const after = graph.dependentEdges.get(id) ?? [];
+  const semantic = graph.semanticEdges.get(id) ?? [];
+  const layout = body.createDiv({ cls: "focus-atlas-layout" });
+  const sheet = layout.createDiv({ cls: "focus-atlas-sheet" });
+  if (!before.length && !after.length && !semantic.length) {
+    const gap = sheet.createDiv({ cls: "focus-atlas-gap" });
+    gap.createEl("strong", { text: "No links recorded for this concept" });
+    gap.createEl("p", { cls: "focus-muted", text: "Its notes and sources are still available on the right, and you can connect it to another concept." });
+    button(gap, "Connect this concept", () => {
+      host.editor = newDraft(id);
+      host.render();
+    }, "quiet");
+  } else {
+    const flow = sheet.createDiv({ cls: "focus-atlas-flow" });
+    const lane = (eyebrow) => {
+      const col = flow.createDiv({ cls: "focus-atlas-lane" });
+      col.createDiv({ cls: "focus-eyebrow", text: eyebrow });
+      return col;
+    };
+    const first = lane("1. You need first");
+    for (const edge of before) {
+      if (!edge.prerequisiteId) continue;
+      const need = first.createDiv({ cls: "focus-need" });
+      renderConceptFlowCard(need, context, edge, edge.prerequisiteId, id);
+      if (edge.context) need.createDiv({ cls: "focus-need-why", text: edge.context });
+    }
+    if (!before.length) first.createDiv({ cls: "focus-atlas-gap", text: "Nothing recorded comes before this." });
+    const middle = lane("2. This concept");
+    const self = middle.createDiv({
+      cls: "focus-atlas-card is-selected",
+      attr: { "data-atlas-concept": id }
+    });
+    self.createEl("strong", { text: concept.label });
+    const region = map.regions.find((r) => r.id === map.regionOf.get(id));
+    if (region) self.createSpan({ cls: "focus-muted", text: region.title });
+    const leads = lane("3. Leads to");
+    for (const edge of after) {
+      if (edge.dependentId) renderConceptFlowCard(leads, context, edge, edge.dependentId, id);
+    }
+    if (!after.length) leads.createDiv({ cls: "focus-atlas-gap", text: "Nothing recorded builds on this yet." });
+    mountEdges(flow, host, graph, [...before, ...after]);
+    const related = sheet.createDiv({ cls: "focus-module-group" });
+    const relHead = related.createDiv({ cls: "focus-section-head" });
+    relHead.createDiv({ cls: "focus-eyebrow", text: "Related, not an order" });
+    relHead.createSpan({ cls: "focus-muted", text: "Semantic bridges never change prerequisites." });
+    if (!semantic.length) related.createEl("p", { cls: "focus-muted", text: "No related ideas are recorded." });
+    for (const edge of semantic) {
+      const other = edge.from === id ? edge.to : edge.from;
+      const item = row(related, `Open ${conceptOf(graph, other).label}`, () => focusConcept(host, other));
+      item.createSpan({ cls: "focus-pill", text: relationPhrase(edge.type) });
+      const rCopy = item.createDiv({ cls: "focus-row-copy" });
+      rCopy.createEl("strong", { text: conceptOf(graph, other).label });
+      rCopy.createSpan({ cls: "focus-muted", text: edge.context ?? "Authored without a rationale." });
+      chevron2(item);
+    }
+  }
+  if (host.editor) renderRelationEditor(sheet, host, graph, host.editor);
+  const foot = sheet.createDiv({ cls: "focus-section-head" });
+  const navBtns = foot.createDiv({ cls: "focus-nearby" });
+  const back = button(navBtns, "Back", () => host.conceptBack(), "quiet");
+  back.disabled = !host.canConceptBack;
+  const forward = button(navBtns, "Forward", () => host.conceptForward(), "quiet");
+  forward.disabled = !host.canConceptForward;
+  if (!host.editor) {
+    textLink2(foot, "Connect this concept", () => {
+      host.editor = newDraft(id);
+      host.render();
+    });
+  }
+  const side = layout.createDiv({ cls: "focus-home-dock" });
+  const known = buildConceptContext(store, id);
+  const reference = known.notes.find((note2) => asString(note2.role) === "reference") ?? null;
+  if (reference) button(side, "Open the reference", () => nav.openRecord(reference), "cta");
+  const units = store.of("unit").filter((unit) => {
+    const unitMap = asString(unit.id) ? store.mapForUnit(asString(unit.id)) : null;
+    return (Array.isArray(unitMap?.stages) ? unitMap.stages : []).some((stage) => asStrings(stage.concepts).includes(id));
+  });
+  const listCard = (title2, items) => {
+    const card = sideCard(side, `${title2} \xB7 ${items.length}`);
+    if (!items.length) {
+      card.createEl("p", { cls: "focus-muted", text: "None recorded." });
+      return;
+    }
+    for (const item of items.slice(0, 4)) textLink2(card, item.label, item.open);
+    if (items.length > 4) {
+      const more = disclosure(card, `All ${items.length}`);
+      for (const item of items.slice(4)) textLink2(more, item.label, item.open);
+    }
+  };
+  listCard("Where you meet it", units.map((unit) => ({
+    label: unitLabel(unit, store.get(asString(unit.module_id) ?? "")).title,
+    open: () => nav.openUnit(asString(unit.id) ?? "")
+  })));
+  renderModuleSignposts2(side, context, id, units);
+  listCard("Notes", known.notes.map((n) => ({ label: asLabel(n), open: () => nav.openRecord(n) })));
+  listCard("Sources", known.sources.map((s) => ({ label: asLabel(s), open: () => nav.openSourceDetail(asString(s.id) ?? "") })));
+  const view = neighbourhood(graph, id, { depth: host.state.depth, includeSemanticNeighbours: true });
+  renderInspector2(disclosure(side, "Where each link comes from, and questions"), host, graph, view);
+  renderOutline(disclosure(side, "Full text outline"), host, graph, view);
+}
+function renderAtlasModuleMap(root, host, map) {
+  const { store, nav } = host.plugin;
+  const module2 = store.get(map.moduleId);
+  const short = moduleName(module2);
+  const body = root.createDiv({ cls: "focus-page" });
+  const head = body.createDiv({ cls: "focus-page-head" });
+  heading(
+    head.createDiv({ cls: "focus-heading-copy" }),
+    "Module revision map",
+    moduleLongTitle(module2),
+    `${plural(map.rows.length, "lecture")} \xB7 ${map.ideas} ideas from your lecture maps \xB7 left to right shows builds-on order.`
+  );
+  const here = landing2.get(host) ?? null;
+  let landed = null;
+  const sheet = body.createDiv({ cls: "focus-atlas-sheet" });
+  const lectures = sheet.createDiv({ cls: "focus-mm-lectures" });
+  const canvases = [];
+  for (const [index, entry] of map.rows.entries()) {
+    const lecture = lectures.createDiv({
+      cls: `focus-mm-lecture${entry.unit.id === here ? " is-here" : ""}`,
+      attr: { "data-unit": entry.unit.id }
+    });
+    if (entry.unit.id === here) landed = lecture;
+    const line = lecture.createDiv({ cls: "focus-mm-lecture-head" });
+    line.createSpan({ cls: "focus-mm-number focus-mono", text: (entry.label.number ?? String(index + 1)).padStart(2, "0") });
+    const headingId = `focus-mm-lecture-${++revisionHeadings}`;
+    line.createEl("h3", { text: entry.label.title, attr: { id: headingId } });
+    const tag2 = mapProgressTag(store, entry.unit.id);
+    if (tag2) line.createSpan({ cls: `focus-pill is-${tag2.tone}`, text: tag2.text });
+    textLink2(line, "Open lecture", () => nav.openUnit(entry.unit.id));
+    if (entry.unit.knowledgeSummary) lecture.createDiv({ cls: "focus-muted", text: entry.unit.knowledgeSummary });
+    const layout = layoutLectureMap(entry.ideas);
+    const byId = new Map(entry.ideas.map((idea) => [idea.id, idea]));
+    const canvas = lecture.createDiv({ cls: "focus-mm-ideas", attr: { role: "group", "aria-labelledby": headingId } });
+    for (const column of layout.columns) {
+      const stack2 = canvas.createDiv({ cls: "focus-mm-column", attr: { role: "list" } });
+      for (const id of column) {
+        const idea = byId.get(id);
+        if (!idea) continue;
+        const node = stack2.createDiv({ cls: "focus-mm-idea", attr: { role: "listitem", "data-idea": id, title: idea.summary } });
+        node.createSpan({ text: idea.title });
+        const before = layout.links.filter((link) => link.to === id).map((link) => byId.get(link.from)?.title).filter(nonNull);
+        if (before.length) node.createSpan({ cls: "los-sr-only", text: `, builds on ${before.join(" and ")}` });
+      }
+    }
+    canvases.push({ canvas, links: layout.links });
+  }
+  if (map.examBlocks.length || map.unmapped.length) {
+    const foot = sheet.createDiv({ cls: "focus-dock-list" });
+    for (const unit of map.examBlocks) {
+      const note2 = foot.createDiv({ cls: "focus-muted" });
+      note2.createSpan({ text: `${short} ${unitLabel(unit.record, module2).place.toLowerCase()} is an exam block. ` });
+      textLink2(note2, "Open it", () => nav.openUnit(unit.id));
+    }
+    if (map.unmapped.length) {
+      foot.createDiv({ cls: "focus-muted", text: `No idea map yet: ${map.unmapped.map((unit) => unitLabel(unit.record, module2).place).join(", ")}.` });
+    }
+  }
+  mountIdeaLinks(host, canvases, "focus-mm");
+  const target = landed;
+  if (target && typeof target.scrollIntoView === "function") {
+    root.ownerDocument?.defaultView?.requestAnimationFrame(() => target.scrollIntoView({ block: "center" }));
+  }
+}
+function renderRegionOrder(root, context, region) {
+  const { host, graph } = context;
+  const body = root.createDiv({ cls: "focus-page" });
+  const head = body.createDiv({ cls: "focus-page-head" });
+  heading(
+    head.createDiv({ cls: "focus-heading-copy" }),
+    "Region study order",
+    region.title,
+    `${plural(region.concepts.length, "concept")} \xB7 ${plural(region.linked, "linked")}. Left to right shows prerequisite order.`
+  );
+  button(head, "All Atlas areas", () => chooseRegion2(host, null), "quiet");
+  const sheet = body.createDiv({ cls: "focus-atlas-sheet" });
+  const layout = studyOrderLayout(region.concepts, graph);
+  if (layout.placed.length) {
+    const columns = sheet.createDiv({ cls: "focus-study-columns" });
+    for (let colIdx = 0; colIdx < layout.columns; colIdx += 1) {
+      const here = layout.placed.filter((item) => item.column === colIdx).sort((a, b) => a.row - b.row);
+      if (!here.length) continue;
+      const col = columns.createDiv({ cls: "focus-study-col" });
+      col.createDiv({
+        cls: "focus-eyebrow",
+        text: layout.beyond === colIdx ? "Unlocks next" : `Step ${colIdx + 1}`
+      });
+      for (const item of here) {
+        const c = conceptOf(graph, item.id);
+        const btn = col.createEl("button", { cls: "focus-atlas-card is-clickable", attr: { type: "button" } });
+        btn.createEl("strong", { text: c.label });
+        if (item.visiting) btn.createSpan({ cls: "focus-muted", text: "Outside region" });
+        btn.addEventListener("click", () => focusConcept(host, item.id));
+      }
+    }
+  }
+  if (layout.unlinked.length) {
+    sheet.createDiv({ cls: "focus-eyebrow", text: `Other concepts in ${region.title} \xB7 ${layout.unlinked.length}` });
+    const list3 = sheet.createDiv({ cls: "focus-module-list" });
+    for (const id of layout.unlinked) {
+      const c = conceptOf(graph, id);
+      const item = row(list3, `Open ${c.label}`, () => focusConcept(host, id));
+      item.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: c.label });
+      chevron2(item);
+    }
+  }
+}
+function renderOverlap2(root, context) {
+  const { host, graph } = context;
+  const { store } = host.plugin;
+  const body = root.createDiv({ cls: "focus-page" });
+  const head = body.createDiv({ cls: "focus-page-head" });
+  heading(head.createDiv({ cls: "focus-heading-copy" }), "Across modules", "Shared concepts", "Where modules touch the same ideas without implying module order.");
+  const sheet = body.createDiv({ cls: "focus-atlas-sheet" });
+  const modules = graph.modules.filter((m) => m.conceptCount > 0);
+  const shared = moduleOverlap(graph);
+  const selected = overlapSelection2.get(host) ?? null;
+  const list3 = sheet.createDiv({ cls: "focus-module-list" });
+  for (let i = 0; i < modules.length; i += 1) {
+    for (let j = i + 1; j < modules.length; j += 1) {
+      const a = modules[i];
+      const b = modules[j];
+      const key = overlapKey(a.id, b.id);
+      const concepts = shared.get(key) ?? [];
+      if (!concepts.length) continue;
+      const item = row(list3, `${a.label} and ${b.label}`, () => {
+        overlapSelection2.set(host, key);
+        host.render();
+      });
+      if (selected === key) item.addClass("is-current");
+      const copy = item.createDiv({ cls: "focus-row-copy" });
+      copy.createEl("strong", { text: `${moduleShort(store.get(a.id))} \u2194 ${moduleShort(store.get(b.id))}` });
+      copy.createSpan({ cls: "focus-muted", text: `${a.label} \xB7 ${b.label}` });
+      item.createSpan({ cls: "focus-row-state", text: plural(concepts.length, "shared concept") });
+      chevron2(item);
+    }
+  }
+  if (selected) {
+    const concepts = shared.get(selected) ?? [];
+    sheet.createDiv({ cls: "focus-eyebrow", text: `Shared ideas \xB7 ${concepts.length}` });
+    for (const id of concepts) {
+      const c = conceptOf(graph, id);
+      const hit = row(sheet, `Open ${c.label}`, () => focusConcept(host, id));
+      hit.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: c.label });
+      chevron2(hit);
+    }
+  }
+}
+function renderAtlasOverview(root, context) {
+  const { host, graph, map } = context;
+  const { store } = host.plugin;
+  const body = root.createDiv({ cls: "focus-page" });
+  const head = body.createDiv({ cls: "focus-page-head" });
+  heading(
+    head.createDiv({ cls: "focus-heading-copy" }),
+    "Knowledge graph",
+    "Atlas",
+    `${plural(graph.concepts.filter((c) => c.record).length, "concept")} \xB7 ${plural(graph.edges.filter((e) => e.layer === "strict").length, "prerequisite link")}.`
+  );
+  const tools = body.createDiv({ cls: "focus-filters" });
+  const navGroup = tools.createDiv({ cls: "focus-nearby" });
+  button(navGroup, "Across modules", () => host.go({ concept: null, lens: "bridges" }), "quiet");
+  button(navGroup, "All concepts", () => {
+    host.concepts.browseAll = true;
+    host.render();
+  }, "quiet");
+  renderSearchBox(tools, host, "Search concepts");
+  const layout = body.createDiv({ cls: "focus-atlas-layout" });
+  const sheet = layout.createDiv({ cls: "focus-atlas-sheet" });
+  if (host.concepts.browseAll) {
+    const bar = sheet.createDiv({ cls: "focus-section-head" });
+    bar.createEl("h2", { text: "All concepts" });
+    textLink2(bar, "Back to regions", () => {
+      host.concepts.browseAll = false;
+      host.render();
+    });
+    const rows2 = graph.concepts.filter((c) => c.record);
+    const shown = rows2.slice(0, host.concepts.visibleLimit);
+    const list3 = sheet.createDiv({ cls: "focus-module-list", attr: { role: "group", "aria-label": "Concepts" } });
+    enableButtonGroupKeyboardNavigation(list3, "vertical");
+    for (const c of shown) {
+      const target = row(list3, `Open ${c.label}`, () => focusConcept(host, c.id));
+      target.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: c.label });
+      chevron2(target);
+    }
+    if (shown.length < rows2.length) {
+      button(sheet, `Show more \xB7 ${rows2.length - shown.length} remaining`, () => {
+        host.concepts.visibleLimit += 30;
+        host.render();
+      }, "quiet");
+    }
+  } else {
+    sheet.createEl("h2", { text: "Study areas" });
+    const grid = sheet.createDiv({ cls: "focus-atlas-regions" });
+    for (const region of map.regions) {
+      if (!region.concepts.length) continue;
+      const card = grid.createEl("button", { cls: "focus-region-card is-clickable", attr: { type: "button" } });
+      card.createEl("strong", { text: region.title });
+      card.createSpan({ cls: "focus-muted", text: `${plural(region.concepts.length, "concept")} \xB7 ${region.linked} linked` });
+      card.addEventListener("click", () => chooseRegion2(host, region.id));
+    }
+  }
+  const side = layout.createDiv({ cls: "focus-home-dock" });
+  const maps = moduleMaps(store);
+  if (maps.length) {
+    const rev = sideCard(side, "Module revision maps", { text: `${maps.length}` });
+    const list3 = rev.createDiv({ cls: "focus-dock-list" });
+    for (const entry of maps) {
+      const mod = store.get(entry.moduleId);
+      const item = list3.createEl("button", { cls: "focus-dock-item is-clickable", attr: { type: "button" } });
+      item.createEl("strong", { text: moduleName(mod) });
+      item.createSpan({ cls: "focus-muted", text: moduleMapFacts(entry) });
+      item.addEventListener("click", () => openRevisionMap(host, entry.moduleId));
+    }
+  }
+}
+function renderFocusAtlas(host) {
+  const lens = host.state.lens;
+  if (lens === "domains" || lens === "diagnostics") return false;
+  const graph = buildAtlasGraph(host.plugin.store);
+  if (!graph.concepts.length) return false;
+  const map = buildConceptMap(readDomainCatalog(host.plugin.store), host.plugin.store.of("note"), graph);
+  const context = { host, graph, map };
+  const conceptId = host.state.concept;
+  const glance = host.state.module && !conceptId && lens !== "bridges" ? moduleMap(host.plugin.store, host.state.module) : null;
+  const root = page(host.contentEl, "atlas", host.plugin.store);
+  if (glance) {
+    const barActions2 = commandBar(root, [
+      { label: "Atlas", go: () => leaveRevisionMap(host) },
+      { label: moduleName(host.plugin.store.get(glance.moduleId)) }
+    ], host);
+    renderAtlasVariants(barActions2, host.plugin.nav, "concepts", (target) => host.go(target));
+    renderAtlasModuleMap(root, host, glance);
+    return true;
+  }
+  const atlasCrumb = { label: "Atlas", go: () => host.showConceptOverview(null) };
+  if (conceptId && lens !== "bridges") {
+    const regionId = map.regionOf.get(conceptId);
+    const region2 = map.regions.find((r) => r.id === regionId);
+    const barActions2 = commandBar(root, [
+      atlasCrumb,
+      ...region2 ? [{ label: region2.title, go: () => chooseRegion2(host, region2.id) }] : [],
+      { label: conceptOf(graph, conceptId).label }
+    ], host);
+    renderAtlasVariants(barActions2, host.plugin.nav, "concepts", (target) => host.go(target));
+    renderConceptDetail(root, context, conceptId);
+    return true;
+  }
+  if (lens === "bridges") {
+    const barActions2 = commandBar(root, [atlasCrumb, { label: "Across modules" }], host);
+    renderAtlasVariants(barActions2, host.plugin.nav, "concepts", (target) => host.go(target));
+    renderOverlap2(root, context);
+    return true;
+  }
+  const region = map.regions.find((row3) => row3.id === host.concepts.domain);
+  if (region) {
+    const browse = browsingRegion(map, graph, region.id) ?? region;
+    const barActions2 = commandBar(root, [atlasCrumb, { label: browse.title }], host);
+    renderAtlasVariants(barActions2, host.plugin.nav, "concepts", (target) => host.go(target));
+    renderRegionOrder(root, context, browse);
+    return true;
+  }
+  const barActions = commandBar(root, [{ label: "Atlas" }], host);
+  renderAtlasVariants(barActions, host.plugin.nav, "concepts", (target) => host.go(target));
+  renderAtlasOverview(root, context);
+  return true;
 }
 
 // src/features/home/elsewhere.ts
@@ -43831,55 +44395,514 @@ function moduleNextAction(view, module2) {
   return "";
 }
 
-// src/designs/focus/parts.ts
-function page(root, name, store) {
+// src/designs/focus/collection.ts
+var AREAS2 = /* @__PURE__ */ new Set(["all", "program-bachelors", "program-skills", "program-job", "projects"]);
+function normalizeCollectionScope(scope) {
+  if (!scope || scope === "open") return "all";
+  return AREAS2.has(scope) ? scope : "all";
+}
+var collections = /* @__PURE__ */ new WeakMap();
+function focusCollection(root) {
+  let state = collections.get(root);
+  if (!state) {
+    state = { scope: "all", query: "", scroll: 0, selected: null };
+    collections.set(root, state);
+  }
+  return state;
+}
+async function openFocusCollection(nav, scope) {
+  const leaf = await nav.openModules();
+  const root = leaf?.view?.contentEl;
+  if (!root) return;
+  const state = focusCollection(root);
+  const normalized = scope ? normalizeCollectionScope(scope) : void 0;
+  if (normalized && normalized !== state.scope) {
+    Object.assign(state, { scope: normalized, query: "", scroll: 0, selected: null });
+  }
+  state.refresh?.();
+}
+var requestedModes = /* @__PURE__ */ new Map();
+function requestFocusSession(unitId) {
+  requestedModes.set(unitId, "session");
+}
+function requestFocusPlan(unitId) {
+  requestedModes.set(unitId, "plan");
+}
+function consumeFocusUnitHint(unitId) {
+  const mode = requestedModes.get(unitId) ?? null;
+  requestedModes.delete(unitId);
+  return mode;
+}
+
+// src/designs/focus/modules.ts
+var AREAS3 = [
+  ["all", "All"],
+  ["program-bachelors", "Bachelor\u2019s"],
+  ["program-skills", "Skills"],
+  ["program-job", "Job"],
+  ["projects", "Thesis & projects"]
+];
+function areaOf2(module2) {
+  return module2.kind === "project" ? "projects" : asString(module2.area_id) ?? "";
+}
+function renderFocusModules(view) {
+  if (view.groupId) return false;
+  const state = focusCollection(view.contentEl);
+  state.refresh = () => view.render();
+  renderModulesCatalog(view, state, view.query, (query) => {
+    state.query = query;
+    view.query = query;
+  });
+  return true;
+}
+function renderFocusModulesForLearn(view) {
+  const mapped = view.programId === "program-all" ? "all" : view.programId === "program-thesis-projects" ? "projects" : AREAS3.find(([key]) => key === view.programId)?.[0];
+  if (!mapped) return false;
+  const state = focusCollection(view.contentEl);
+  if (state.scope !== mapped) Object.assign(state, { scope: mapped, scroll: 0, selected: null });
+  state.refresh = () => renderFocusModulesForLearn(view);
+  renderModulesCatalog(view, state, state.query);
+  return true;
+}
+function renderModulesCatalog(view, state, initialQuery = "", onQuery) {
+  const { plugin: { store, nav } } = view;
+  const root = page(view.contentEl, "modules", store);
+  root.setAttr("data-focus-collection", state.scope);
+  const barActions = commandBar(root, [{ label: "Modules" }], view);
+  const tabsSlot = barActions.createDiv({ cls: "focus-area-tabs" });
+  const searchWrap = barActions.createEl("label", { cls: "focus-search-field" });
+  icon(searchWrap.createSpan({ attr: { "aria-hidden": "true" } }), "search");
+  const input = searchWrap.createEl("input", {
+    cls: "focus-search",
+    attr: { type: "search", placeholder: "Find a module or lecture", "aria-label": "Find a module or lecture" }
+  });
+  input.value = state.query || initialQuery;
+  const body = root.createDiv({ cls: "focus-page" });
+  const head = body.createDiv({ cls: "focus-page-head" });
+  const copy = head.createDiv({ cls: "focus-heading-copy" });
+  heading(copy, state.scope === "projects" ? "Your projects" : "Curriculum", "Modules", "Across semesters, skill tracks and projects.");
+  const status = head.createSpan({ cls: "focus-muted", attr: { role: "status", "aria-live": "polite" } });
+  const layout = body.createDiv({ cls: "focus-module-layout" });
+  const listCol = layout.createDiv({ cls: "focus-module-groups" });
+  const sideCol = layout.createDiv({ cls: "focus-home-dock" });
+  const upcomingCard = sideCard(sideCol, "Coming up");
+  const dates = todayItems(view).filter((item) => item.actionLabel !== "Open review");
+  if (!dates.length) upcomingCard.createEl("p", { cls: "focus-muted", text: "No dates ahead." });
+  for (const item of dates.slice(0, 5)) {
+    const slot = item.action ? upcomingCard.createEl("button", { cls: "focus-dock-item is-clickable", attr: { type: "button" } }) : upcomingCard.createDiv({ cls: "focus-dock-item" });
+    slot.createEl("strong", { text: item.title });
+    slot.createSpan({ cls: "focus-muted", text: item.detail });
+    if (item.action) slot.addEventListener("click", () => item.action?.());
+  }
+  const allModules = store.modules().filter((module2) => !module2.compatibility_only).sort((a, b) => compareStrings(asLabel(a), asLabel(b)));
+  const actionable = allModules.filter((module2) => module2.is_actionable === true);
+  const current = currentSemesterKey(store);
+  const areaCounts = AREAS3.map(([key, label]) => {
+    const count4 = key === "all" ? actionable.length : actionable.filter((module2) => areaOf2(module2) === key).length;
+    return [key, `${label} \xB7 ${count4}`];
+  });
+  const openModule = (module2) => {
+    const id = asString(module2.id);
+    if (!id) return;
+    if ("selectedElementId" in view) view.selectedElementId = id;
+    state.selected = id;
+    state.scroll = root.scrollTop;
+    return nav.openModule(id);
+  };
+  function drawTabs() {
+    tabsSlot.empty();
+    filterTabs(tabsSlot, "Module areas", areaCounts, state.scope, (next) => {
+      Object.assign(state, { scope: next, scroll: 0, selected: null });
+      root.setAttr("data-focus-collection", state.scope);
+      draw();
+      drawTabs();
+      tabsSlot.querySelector?.('[aria-pressed="true"]')?.focus();
+    });
+  }
+  function draw() {
+    listCol.empty();
+    const needle = foldCase(input.value.trim());
+    const scoped = allModules.filter((module2) => state.scope === "all" || areaOf2(module2) === state.scope);
+    const lectureHits = /* @__PURE__ */ new Map();
+    const shown = scoped.filter((module2) => {
+      const moduleId = asString(module2.id);
+      const matches3 = needle && moduleId ? store.unitsFor(moduleId).filter((unit) => foldCase(asLabel(unit)).includes(needle)) : [];
+      if (matches3.length) lectureHits.set(module2, matches3);
+      return !needle || matches3.length > 0 || foldCase(asLabel(module2)).includes(needle);
+    });
+    const openRows = shown.filter((module2) => module2.is_actionable === true);
+    const closedRows = shown.filter((module2) => module2.is_actionable !== true);
+    status.setText(`${openRows.length} open \xB7 ${closedRows.length} closed${needle ? ` matching \u201C${input.value.trim()}\u201D` : ""}`);
+    if (!shown.length) {
+      listCol.createEl("p", {
+        cls: "focus-muted",
+        text: needle ? `No module or lecture matches \u201C${input.value.trim()}\u201D.` : "No modules in this area."
+      });
+      return;
+    }
+    const academics = openRows.filter((module2) => module2.kind === "academic");
+    const currentCourses = current ? academics.filter((module2) => module2.semester === current) : [];
+    const past = academics.filter((module2) => !currentCourses.includes(module2));
+    const projects = openRows.filter((module2) => areaOf2(module2) === "projects");
+    const tracks = openRows.filter((module2) => !academics.includes(module2) && !projects.includes(module2));
+    const appendRows = (parent, rows2) => {
+      for (const module2 of rows2) {
+        const target = moduleRow2(parent, store, module2, () => openModule(module2));
+        target.toggleClass("is-current", state.selected === asString(module2.id));
+        for (const unit of lectureHits.get(module2) ?? []) {
+          const unitId = asString(unit.id);
+          if (!unitId) continue;
+          const hit = row(parent, `Open lecture: ${asLabel(unit)}`, () => nav.openUnit(unitId));
+          hit.addClass("focus-module-hit");
+          hit.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: asLabel(unit) });
+          chevron2(hit);
+        }
+      }
+    };
+    const semesterTitle = store.currentSemester() ? `This semester \xB7 ${asLabel(store.currentSemester())}` : "This semester";
+    const groups = [
+      [semesterTitle, currentCourses],
+      [currentCourses.length ? "Still open from earlier semesters" : "Open courses", past],
+      ["Skills and job", tracks],
+      ["Thesis and projects", projects]
+    ];
+    for (const [title2, rows2] of groups) {
+      if (!rows2.length) continue;
+      const section3 = listCol.createDiv({ cls: "focus-module-group" });
+      section3.createDiv({ cls: "focus-eyebrow", text: `${title2} \xB7 ${rows2.length}` });
+      appendRows(section3, rows2);
+    }
+    if (closedRows.length) {
+      const closed = listCol.createEl("details", { cls: "focus-closed-modules" });
+      closed.open = Boolean(needle);
+      closed.createEl("summary", { text: `${closedRows.length} closed module${closedRows.length === 1 ? "" : "s"}` });
+      appendRows(closed.createDiv({ cls: "focus-module-list" }), closedRows);
+    }
+  }
+  input.addEventListener("input", () => {
+    state.query = input.value;
+    onQuery?.(input.value);
+    draw();
+  });
+  drawTabs();
+  draw();
+  root.scrollTop = state.scroll;
+}
+function renderFocusModule(view) {
+  const record7 = view.moduleId ? view.plugin.store.get(view.moduleId) : null;
+  const module2 = readModuleRecord(record7, view.moduleId);
+  if (!module2 || !record7) return false;
+  const { plugin } = view;
+  const root = page(view.contentEl, "module", plugin.store);
+  const collection = focusCollection(root);
+  const actions = commandBar(root, [
+    { label: collection.scope === "projects" ? "Thesis & projects" : "Modules", go: () => openFocusCollection(plugin.nav) },
+    { label: moduleName(record7) }
+  ], view);
+  const pointer2 = readResumePointer(plugin.store.data?.resume_pointer);
+  if (pointer2.module_id === module2.id && pointer2.unit_id && pointer2.stage_id) {
+    const unitId = pointer2.unit_id;
+    const stageId = pointer2.stage_id;
+    button(actions, "Resume session", () => {
+      requestFocusSession(unitId);
+      return plugin.nav.openUnit(unitId, stageId);
+    }, "cta");
+  }
+  const body = root.createDiv({ cls: "focus-page" });
+  const header = body.createDiv({ cls: "focus-module-header", attr: { "data-cover": coverOf(record7) } });
+  const copy = header.createDiv({ cls: "focus-heading-copy" });
+  heading(copy, module2.kind === "academic" ? "Academic module" : "Module", moduleLongTitle(record7), view.headline(module2));
+  const tab = view.tab ?? view.defaultTab(module2);
+  const tabRow = body.createDiv({ cls: "focus-filters" });
+  filterTabs(
+    tabRow,
+    "Module sections",
+    [...MODULE_TABS].sort(([a], [b]) => a === "units" ? -1 : b === "units" ? 1 : 0),
+    tab,
+    (next) => view.selectTab(next)
+  );
+  const mMap = moduleMap(plugin.store, module2.id);
+  if (mMap) {
+    button(tabRow, `Revision map \xB7 ${moduleMapFacts(mMap)}`, () => plugin.router.navigate({ name: "atlas", concept: null, module: module2.id, lens: "prerequisites" }), "quiet");
+  }
+  if (tab === "overview") {
+    view.renderOverview(body, module2);
+  } else if (tab === "resources") {
+    view.renderSources(body, module2);
+  } else if (tab === "logistics") {
+    view.renderLogistics(body, module2);
+  } else {
+    const layout = body.createDiv({ cls: "focus-module-layout" });
+    const main = layout.createDiv({ cls: "focus-module-groups" });
+    if (module2.components.length) {
+      filterTabs(
+        main,
+        "Module components",
+        [["", "All components"], ...module2.components.map((item) => [item.id, item.title])],
+        view.componentId ?? "",
+        (id) => view.selectComponent(id || null)
+      );
+    }
+    const units = orderModuleUnits(module2, plugin.store.unitsFor(module2.id, view.componentId).map(normalizeUnitRecord).filter(nonNull));
+    const resumed = resolveResumeTarget(plugin.store);
+    const pointerUnitId = resumed.unit ? resumed.pointer.unit_id : null;
+    if (!units.length) {
+      main.createEl("p", { cls: "focus-muted", text: "No units in this component. Choose All components." });
+    } else {
+      renderModuleUnitGroups(main, units, (parent, unit) => {
+        const work = unitWork(plugin.store, unit.id);
+        const stages = work?.map.stages ?? [];
+        const done = work?.done ?? 0;
+        const label = unitLabel(plugin.store.get(unit.id), record7);
+        const target = row(parent, `Open unit: ${unit.title}`, () => {
+          view.selectedElementId = unit.id;
+          return plugin.nav.openUnit(unit.id);
+        });
+        if (pointerUnitId && pointerUnitId === unit.id) target.addClass("is-current");
+        if (label.number) target.createSpan({ cls: "focus-stage-number focus-mono", text: label.number.padStart(2, "0") });
+        const rowCopy = target.createDiv({ cls: "focus-row-copy" });
+        rowCopy.createEl("strong", { text: label.number ? label.title : unit.title });
+        rowCopy.createSpan({
+          cls: "focus-muted",
+          text: stages.length ? `${done} of ${stages.length} stages complete` : unit.record.needs_study_map === true ? "Needs a study map" : "No study map yet"
+        });
+        if (stages.length) stageBars2(target, stages.length, done);
+        const complete = Boolean(stages.length && done === stages.length);
+        const nextText = !work ? unit.record.needs_study_map === true ? "Needs a study map" : "No study plan yet" : complete ? "Done" : work.next ? `Stage ${stages.indexOf(work.next) + 1} \xB7 ${work.next.title}` : "No open stage";
+        target.createSpan({ cls: `focus-row-state${complete ? " is-complete" : ""}`, text: nextText });
+        chevron2(target);
+      });
+    }
+    const side = layout.createDiv({ cls: "focus-home-dock" });
+    const workspace = plugin.store.workspacesForModule(module2.id).find((entry) => entry.is_open === true && asText(entry.next_action));
+    if (workspace) {
+      const plan2 = sideCard(side, "Your plan");
+      plan2.createEl("strong", { text: asLabel(workspace) });
+      plan2.createEl("p", { cls: "focus-muted", text: asText(workspace.next_action) ?? "" });
+      textLink2(plan2, "Open plan", () => view.selectTab("overview"));
+    }
+    const deadlines = view.deadlinesFor(module2);
+    if (deadlines.length) {
+      const dates = sideCard(side, "Academic dates");
+      view.renderDeadlineRows(dates, module2, deadlines);
+    }
+  }
+  button(body, collection.scope === "projects" ? "Back to projects" : "Back to modules", () => openFocusCollection(plugin.nav), "quiet");
+  return true;
+}
+
+// src/designs/focus/learning.ts
+function renderResumeHero(parent, view) {
+  const { plugin } = view;
+  const { pointer: pointer2, unit, unitMap: projected, module: module2 } = resolveResumeTarget(plugin.store);
+  const map = projected ? readStudyMap(projected) : null;
+  const stage = map?.stages.find((item) => item.id === pointer2.stage_id);
+  if (!unit || !stage || !map || !pointer2.unit_id) return false;
+  const unitId = pointer2.unit_id;
+  const stageIndex = map.stages.indexOf(stage);
+  const { done, total } = stageProgress(map.stages);
+  const startsWith = currentWorkResource(stage.resources);
+  const card = parent.createDiv({ cls: "focus-resume" });
+  const top = card.createDiv({ cls: "focus-resume-head" });
+  top.createDiv({ cls: "focus-eyebrow", text: "Continue where you stopped" });
+  if (module2) top.createSpan({ cls: "focus-pill is-accent", text: moduleName(module2) });
+  card.createEl("h2", { text: asLabel(unit) });
+  card.createEl("p", {
+    cls: "focus-resume-meta",
+    text: `Next: Stage ${stageIndex + 1} \xB7 ${stage.title}`
+  });
+  if (startsWith) {
+    card.createEl("p", {
+      cls: "focus-muted",
+      text: `Starts with: ${startsWith.label}`
+    });
+  }
+  const foot = card.createDiv({ cls: "focus-resume-foot" });
+  stageBars2(foot, total, done, stageIndex >= 0 ? stageIndex : null);
+  progress(foot, done, total);
+  const actions = foot.createDiv({ cls: "focus-resume-actions" });
+  button(actions, "Study plan", () => {
+    requestFocusPlan(unitId);
+    return plugin.nav.openUnit(unitId, stage.id);
+  }, "quiet");
+  button(actions, "Resume session", () => {
+    requestFocusSession(unitId);
+    return plugin.nav.openUnit(unitId, stage.id);
+  }, "cta");
+  return true;
+}
+function renderFocusLearn(view) {
+  const { plugin } = view;
+  if (!view.programId || !plugin.store.get(view.programId) || ["inbox", "queue-needs-map"].includes(view.programId)) {
+    return false;
+  }
+  return renderFocusModulesForLearn(view);
+}
+function renderFocusHome(view) {
+  const { plugin } = view;
+  const { store, nav } = plugin;
+  const root = page(view.contentEl, "home", store);
+  const barActions = commandBar(root, [{ label: "Home" }], view);
+  button(barActions, "Search", () => nav.openGlobalSearch(), "quiet");
+  button(barActions, "Quick capture", () => nav.openCapture(), "quiet");
+  const body = root.createDiv({ cls: "focus-page" });
+  heading(body, "LearningOS", "Focus workspace");
+  const grid = body.createDiv({ cls: "focus-home-grid" });
+  const main = grid.createDiv({ cls: "focus-home-main" });
+  if (!renderResumeHero(main, view)) {
+    const card = main.createDiv({ cls: "focus-resume" });
+    empty(card, "Choose where to begin", "No previous study session has been recorded.");
+    button(card, "Open Modules", () => openFocusCollection(nav, "all"), "cta");
+  }
+  const elsewhereHead = main.createDiv({ cls: "focus-section-head" });
+  elsewhereHead.createEl("h2", { text: "Continue elsewhere" });
+  textLink2(elsewhereHead, "All modules", () => openFocusCollection(nav, "all"));
+  const elsewhereList = main.createDiv({ cls: "focus-module-list" });
+  const elsewhere = elsewhereRows(view).slice(0, 5);
+  for (const item of elsewhere) moduleRow2(elsewhereList, store, item.record, item.open);
+  if (!elsewhere.length) {
+    elsewhereList.createEl("p", { cls: "focus-muted", text: "No other open study modules right now." });
+  }
+  const dock = grid.createDiv({ cls: "focus-home-dock" });
+  const openPlans = [];
+  for (const module2 of candidateModules(store)) {
+    const moduleId = asString(module2.id);
+    if (!moduleId) continue;
+    const workspace = store.workspacesForModule(moduleId).find((entry) => entry.is_open === true && asText(entry.next_action));
+    if (workspace) openPlans.push({ module: module2, workspace });
+  }
+  if (openPlans.length) {
+    const plansCard = sideCard(dock, "Plans suggest", { text: `${openPlans.length}` });
+    const list3 = plansCard.createDiv({ cls: "focus-dock-list" });
+    for (const { module: module2, workspace } of openPlans.slice(0, 3)) {
+      const moduleId = asString(module2.id) ?? "";
+      const entry = list3.createEl("button", { cls: "focus-dock-item is-clickable", attr: { type: "button" } });
+      entry.createEl("strong", { text: `${moduleName(module2)} \xB7 ${asLabel(workspace)}` });
+      entry.createSpan({ cls: "focus-muted", text: asText(workspace.next_action) ?? "" });
+      entry.addEventListener("click", () => {
+        void nav.openModule(moduleId);
+      });
+    }
+  }
+  const todayCard = sideCard(dock, "Today & coming up");
+  const items = todayItems(view).slice(0, 5);
+  if (!items.length) {
+    todayCard.createEl("p", { cls: "focus-muted", text: "Nothing time-sensitive is recorded." });
+  } else {
+    const list3 = todayCard.createDiv({ cls: "focus-dock-list" });
+    for (const item of items) {
+      const rowEl = item.action ? list3.createEl("button", { cls: "focus-dock-item is-clickable", attr: { type: "button" } }) : list3.createDiv({ cls: "focus-dock-item" });
+      rowEl.createEl("strong", { text: item.title });
+      rowEl.createSpan({ cls: "focus-muted", text: item.detail });
+      if (item.actionLabel) rowEl.createSpan({ cls: "focus-eyebrow", text: item.actionLabel });
+      if (item.action) rowEl.addEventListener("click", () => item.action?.());
+    }
+  }
+  const unmappedUnits = [];
+  for (const module2 of candidateModules(store)) {
+    const moduleId = asString(module2.id);
+    if (!moduleId) continue;
+    for (const unit of orderedUnits(store, moduleId)) {
+      if (unit.needs_study_map === true) unmappedUnits.push({ module: module2, unit });
+    }
+  }
+  if (unmappedUnits.length) {
+    const needMapCard = sideCard(dock, "Needs a study map", { text: `${unmappedUnits.length}`, tone: "warning" });
+    const list3 = needMapCard.createDiv({ cls: "focus-dock-list" });
+    for (const { module: module2, unit } of unmappedUnits.slice(0, 4)) {
+      const unitId = asString(unit.id) ?? "";
+      const label = unitLabel(unit, module2);
+      const entry = list3.createEl("button", { cls: "focus-dock-item is-clickable", attr: { type: "button" } });
+      entry.createEl("strong", { text: `${moduleName(module2)} \xB7 ${label.title}` });
+      entry.createSpan({ cls: "focus-muted", text: "Ready for a study map" });
+      entry.addEventListener("click", () => {
+        void nav.openUnit(unitId);
+      });
+    }
+  }
+}
+
+// src/designs/focus/nav.ts
+function renderFocusNav(view) {
+  const { plugin, contentEl: root } = view;
   root.empty();
-  root.addClass("los-root", "focus-root");
-  root.setAttr("data-focus-screen", name);
-  manifestFreshness(root, store);
-  return root;
-}
-function toolbar(root, title2, detail = "", go) {
-  const bar = root.createDiv({ cls: "focus-toolbar" });
-  const copy = bar.createDiv({ cls: "focus-location" });
-  if (go) button(copy, title2, go, "quiet");
-  else copy.createEl("strong", { text: title2 });
-  if (detail) copy.createDiv({ cls: "focus-muted", text: detail });
-  return bar.createDiv({ cls: "focus-toolbar-actions" });
-}
-function heading(parent, eyebrow, title2, detail = "") {
-  if (eyebrow) parent.createDiv({ cls: "focus-eyebrow", text: eyebrow });
-  parent.createEl("h1", { cls: "focus-title", text: title2 });
-  if (detail) parent.createEl("p", { cls: "focus-lede", text: detail });
-}
-function row(parent, label, action) {
-  const target = parent.createEl("button", { cls: "focus-row is-clickable", attr: { type: "button", "aria-label": label } });
-  target.addEventListener("click", () => action());
-  return target;
-}
-function chevron2(parent) {
-  icon(parent.createSpan({ cls: "focus-chevron", attr: { "aria-hidden": "true" } }), "chevron-right");
-}
-function progress(parent, complete, total) {
-  const wrap = parent.createDiv({ cls: "focus-progress" });
-  const bar = wrap.createEl("progress", { attr: { max: String(Math.max(total, 1)), value: String(complete), "aria-label": "Recorded study stages" } });
-  bar.value = complete;
-  bar.max = Math.max(total, 1);
-  wrap.createSpan({ cls: "focus-muted", text: `${complete} of ${total} stages complete` });
-}
-function moduleRow2(parent, store, module2, open) {
-  const target = row(parent, `Open module: ${asLabel(module2)}`, open);
-  target.setAttr("data-record-id", asString(module2.id) ?? "");
-  icon(target.createSpan({ cls: "focus-record-icon", attr: { "aria-hidden": "true" } }), "library");
-  const copy = target.createDiv({ cls: "focus-row-copy" });
-  copy.createEl("strong", { text: asLabel(module2) });
-  const units = store.unitsFor(asString(module2.id) ?? "");
-  const stages = units.flatMap((unit) => asRecords(store.mapForUnit(asString(unit.id) ?? "")?.stages));
-  const { done, total } = stageProgress(stages);
-  copy.createSpan({ cls: "focus-muted", text: [semesterLabel(asString(module2.semester) ?? ""), `${units.length} unit${units.length === 1 ? "" : "s"}`].filter(Boolean).join(" \xB7 ") });
-  target.createSpan({ cls: "focus-row-state", text: done ? `${done} of ${total} stages complete` : asString(module2.status)?.replaceAll("-", " ") ?? "Open module" });
-  chevron2(target);
-  return target;
+  root.addClass("los-root", "los-app-nav", "focus-root", "focus-nav");
+  const brand = root.createDiv({ cls: "focus-brand" });
+  brand.createEl("strong", { text: "LearningOS" });
+  brand.createSpan({ cls: "focus-eyebrow", text: "Focus 2.0" });
+  const search = root.createEl("button", {
+    cls: "focus-nav-search is-clickable",
+    attr: { type: "button", "aria-label": "Search LearningOS" }
+  });
+  icon(search.createSpan({ attr: { "aria-hidden": "true" } }), "search");
+  search.createSpan({ text: "Search" });
+  search.createEl("kbd", { cls: "focus-kbd", text: "\u2318K" });
+  search.addEventListener("click", () => plugin.nav.openGlobalSearch());
+  const item = (parent, glyph, label, key, go, count4 = 0) => {
+    const current = plugin.activeNav === key || key === "modules" && plugin.activeNav === "learn";
+    const control = parent.createEl("button", {
+      cls: `focus-nav-item is-clickable${current ? " is-active" : ""}`,
+      attr: {
+        type: "button",
+        "aria-current": current ? "page" : "false",
+        "aria-label": count4 ? `${label}, ${count4} waiting` : label
+      }
+    });
+    icon(control.createSpan({ cls: "focus-nav-icon", attr: { "aria-hidden": "true" } }), glyph);
+    control.createSpan({ text: label });
+    if (count4) control.createSpan({ cls: "focus-nav-count", text: String(count4) });
+    control.addEventListener("click", () => go());
+  };
+  const primary = root.createDiv({ cls: "focus-nav-primary", attr: { role: "navigation", "aria-label": "Main destinations" } });
+  enableButtonGroupKeyboardNavigation(primary, "vertical");
+  renderNavItems(
+    primary,
+    primaryNavItems(plugin, {
+      includeLearn: false,
+      icons: { modules: "book-open", garden: "leaf", review: "circle-check" }
+    }),
+    item
+  );
+  const activeUnits = plugin.store?.ready ? inProgressUnits(plugin.store) : [];
+  if (activeUnits.length) {
+    const work = root.createDiv({ cls: "focus-nav-work", attr: { role: "navigation", "aria-label": "In progress units" } });
+    work.createDiv({ cls: "focus-eyebrow", text: "In progress" });
+    const list3 = work.createDiv({ cls: "focus-nav-primary" });
+    enableButtonGroupKeyboardNavigation(list3, "vertical");
+    for (const { module: module2, unit, unitId, done, total, next } of activeUnits.slice(0, 6)) {
+      const label = unitLabel(unit, module2);
+      const short = moduleName(module2);
+      const text4 = `${short} \xB7 ${label.number ? `L${label.number}` : label.place}`;
+      const button2 = list3.createEl("button", {
+        cls: "focus-nav-item is-clickable",
+        attr: {
+          type: "button",
+          "data-cover": coverOf(module2),
+          "aria-label": `${short} ${label.title}, ${done} of ${total} stages complete`
+        }
+      });
+      button2.createSpan({ cls: "focus-nav-dot", attr: { "aria-hidden": "true" } });
+      button2.createSpan({ text: text4 });
+      button2.createSpan({ cls: "focus-nav-count focus-mono", text: `${done}/${total}` });
+      button2.addEventListener("click", () => {
+        requestFocusSession(unitId);
+        void plugin.nav.openUnit(unitId, next.id);
+      });
+    }
+  }
+  const footer = root.createDiv({ cls: "focus-nav-footer" });
+  item(footer, "plus", "Quick capture", "capture", () => plugin.nav.openCapture());
+  mountNavMore(footer, plugin, {
+    detailsCls: "focus-nav-more",
+    secondaryCls: "focus-nav-secondary",
+    includeCapture: false,
+    buildSummary: (more) => more.createEl("summary", { text: "More", cls: "focus-nav-item" }),
+    draw: item
+  });
+  footer.createDiv({
+    cls: "focus-nav-status",
+    text: `Focus 2.0 \xB7 ${designPalette(plugin.settings) === "nightfall" ? "Nightfall" : "Daylight"}`
+  });
 }
 
 // src/features/unit/material-filters.ts
@@ -43948,9 +44971,246 @@ function renderMaterialFilters(parent, facets, filters, changed, actionHeading =
   } };
 }
 
+// src/designs/focus/materials.ts
+var import_obsidian11 = require("obsidian");
+var USE_GLYPH = {
+  required: "\u25CF",
+  helps: "\u25D0",
+  reference: "\u25CB",
+  deferred: "\xB7"
+};
+function renderStageMatrix(parent, uses) {
+  if (uses.length > 9) {
+    parent.createSpan({ cls: "focus-muted focus-mono", text: stageRuns(uses), attr: { title: usedInWords(uses) } });
+    return;
+  }
+  const matrix = parent.createSpan({
+    cls: "focus-stage-matrix",
+    attr: { role: "img", "aria-label": usedInWords(uses), title: usedInWords(uses) }
+  });
+  uses.forEach((use, idx) => {
+    const tone = use ?? "none";
+    const cell = matrix.createSpan({ cls: `focus-stage-cell is-${tone}` });
+    cell.createSpan({ cls: "focus-mono", text: `S${idx + 1}` });
+    cell.createSpan({ text: use ? USE_GLYPH[use] : "\xB7" });
+  });
+}
+function renderRowDetails(rowEl, material, ctx, availability, opener2, source, compact) {
+  const { view, unit, stage } = ctx;
+  const details = rowEl.createDiv({
+    cls: "focus-mrow-detail",
+    attr: { role: "region", "aria-label": `Details: ${material.title}` }
+  });
+  if (compact && material.why && !(material.detail ?? "").includes(material.why)) {
+    details.createEl("p", { cls: "focus-muted", text: material.why });
+  }
+  if (material.detail && !(compact && material.detail === material.why)) {
+    details.createEl("p", { cls: "focus-muted", text: material.detail });
+  }
+  renderMaterialCautions(details, material.route?.record ?? material.resource?.record ?? {});
+  const facts = details.createDiv({ cls: "focus-mrow-facts" });
+  if (material.locator) facts.createSpan({ text: `Pages: ${material.locator}` });
+  const url = safeWebUrl(material.resource?.record.url ?? material.route?.record.url);
+  facts.createSpan({ text: `Where: ${[whereLabel(availability), url?.hostname.replace(/^www\./, "")].filter(Boolean).join(" \xB7 ")}` });
+  if (source) facts.createSpan({ text: `Source: ${asLabel(source)}` });
+  facts.createSpan({ text: usedInWords(material.uses) });
+  if (availability.kind === "none" || availability.kind === "local-missing") {
+    details.createDiv({ cls: "focus-muted", text: availability.detail });
+  }
+  const placement = stage ? material.placements.find((entry) => entry.stageId === stage.id) ?? null : null;
+  const spanPlacement = placement && placement.resource.resourceIndex !== void 0 ? { stageId: placement.stageId, resourceIndex: placement.resource.resourceIndex } : void 0;
+  const deps = {
+    plugin: view.plugin,
+    unitId: unit.id,
+    ...stage ? { stageId: stage.id } : {},
+    renderer: {},
+    refresh: ctx.refresh
+  };
+  const routeId = material.route?.routeId ?? null;
+  if (routeId) renderRouteSpan(details, deps, routeId, spanPlacement);
+  const actions = details.createDiv({ cls: "focus-mrow-actions" });
+  let count4 = 0;
+  if (opener2) {
+    button(actions, opener2.label, () => opener2.go(), "cta");
+    count4 += 1;
+  }
+  if (routeId && availability.kind === "local") {
+    const spanState = routeSpanStatus(deps, routeId, spanPlacement);
+    const inspectBtn = button(
+      actions,
+      spanState === "ready" ? "Inspect again" : "Inspect the pages",
+      () => inspectRouteSpan(deps, routeId, spanPlacement),
+      "quiet"
+    );
+    inspectBtn.disabled = spanState === "loading";
+    count4 += 1;
+  }
+  if (material.sourceId && source) {
+    button(actions, "Show in Library", () => view.plugin.nav.openLibrary(material.sourceId ?? void 0), "quiet");
+    count4 += 1;
+  }
+  const route2 = material.route;
+  if (route2?.canChoose && route2.sourceId && route2.locator) {
+    const choice = button(actions, route2.selected ? "Remove choice" : "Choose for this lecture", () => {
+      void toggleRouteChoice(view.plugin, unit.id, route2, ctx.expected).then(() => {
+        new import_obsidian11.Notice(route2.selected ? "Material choice removed." : "Material chosen for this lecture.");
+      }).catch((error) => {
+        new import_obsidian11.Notice(errorMessage(error));
+      });
+    }, "quiet");
+    choice.setAttr("aria-pressed", String(route2.selected));
+    count4 += 1;
+  }
+  if (stage && placement?.resource.sourceId) {
+    const renderer = stageResourceRenderer(view, unit, stage, ctx.expected, material.route ? [material.route] : []);
+    const rated = placement.resource;
+    const rate = (verdict) => renderer.rateResource?.(rated.sourceId ?? "", rated.id, verdict);
+    overflowMenu(actions, [
+      ["Helpful", () => rate("helpful")],
+      ["Too advanced", () => rate("too-advanced")],
+      ["Useful for review", () => rate("useful-for-review")]
+    ], rated.id ? `Rate ${material.title}` : `Rate ${material.title} (whole source)`);
+    count4 += 1;
+  }
+  if (!count4) details.createSpan({ cls: "focus-muted", text: "Nothing to open here yet." });
+}
+function renderFocusMaterialRow(parent, material, ctx, options = {}) {
+  const compact = Boolean(options.compact);
+  const { store } = ctx.view.plugin;
+  const availability = materialAvailability(store, material);
+  const opener2 = materialOpener(ctx.view.plugin, material);
+  const source = material.sourceId ? store.get(material.sourceId) : null;
+  const isOpen = ctx.open.has(material.key);
+  const typeDef = materialTypeDef(material.type);
+  const rowEl = parent.createDiv({ cls: `focus-mrow${isOpen ? " is-open" : ""}` });
+  const bar = rowEl.createDiv({ cls: "focus-mrow-bar" });
+  const toggleOpen = () => {
+    if (isOpen) ctx.open.delete(material.key);
+    else ctx.open.add(material.key);
+    ctx.refresh();
+  };
+  const mainBtn = bar.createEl("button", {
+    cls: "focus-mrow-open is-clickable",
+    attr: { type: "button", "aria-label": `${opener2 ? opener2.label : "Inspect"}: ${material.title}` }
+  });
+  icon(mainBtn.createSpan({ cls: "focus-mrow-icon", attr: { "aria-hidden": "true" } }), typeDef.icon);
+  const copy = mainBtn.createDiv({ cls: "focus-mrow-copy" });
+  const titleLine = copy.createDiv({ cls: "focus-mrow-title-line" });
+  titleLine.createSpan({ cls: "focus-mrow-title", text: material.title });
+  if (options.bestFit && !material.picked) titleLine.createSpan({ cls: "focus-pill is-accent", text: "Best fit" });
+  if (material.picked) badge(titleLine, "Your pick", "accent");
+  if (material.course) titleLine.createSpan({ cls: "focus-pill is-info", text: "Course" });
+  if (availability.kind === "local-missing") titleLine.createSpan({ cls: "focus-pill is-warning", text: "Copy missing" });
+  if (!compact && material.why) copy.createDiv({ cls: "focus-mrow-why", text: material.why });
+  const origin = materialOrigin(store, ctx.unit.moduleId, material);
+  const metaParts = [
+    typeDef.singular,
+    origin,
+    shortLocator(material.locator),
+    whereLabel(availability)
+  ].filter(Boolean);
+  copy.createDiv({ cls: "focus-mrow-meta", text: metaParts.join(" \xB7 ") });
+  mainBtn.addEventListener("click", () => {
+    if (opener2) opener2.go();
+    else toggleOpen();
+  });
+  if (!compact) renderStageMatrix(bar, material.uses);
+  const detailsBtn = bar.createEl("button", {
+    cls: `focus-mrow-chevron${isOpen ? " is-open" : ""}`,
+    attr: {
+      type: "button",
+      "aria-expanded": String(isOpen),
+      "aria-label": `Details for ${material.title}`
+    }
+  });
+  icon(detailsBtn, "chevron-right");
+  detailsBtn.addEventListener("click", toggleOpen);
+  if (isOpen) renderRowDetails(rowEl, material, ctx, availability, opener2, source, compact);
+  return rowEl;
+}
+function renderStuckHelpers(parent, helps, stageIndex, state, ctx) {
+  if (!helps.length || !ctx.stage) return;
+  const stage = ctx.stage;
+  const groups = groupByPurpose(helps, stageIndex);
+  if (!groups.length) return;
+  const panel = parent.createDiv({ cls: "focus-stuck-panel" });
+  const head = panel.createDiv({ cls: "focus-section-head" });
+  head.createEl("h3", { text: "If you get stuck" });
+  head.createSpan({ cls: "focus-muted", text: `${plural(helps.length, "helper")} across ${groups.length} purposes` });
+  const remembered = state.stuck.get(stage.id);
+  const activeKey = groups.some((group2) => group2.purpose.key === remembered) ? remembered : groups[0].purpose.key;
+  const headerSlot = panel.createDiv();
+  const listSlot = panel.createDiv({ cls: "focus-mrows" });
+  const rowCtx = { ...ctx, open: openInStage(state, stage.id) };
+  const renderGroup3 = (key) => {
+    listSlot.empty();
+    const active = groups.find((group2) => group2.purpose.key === key) ?? groups[0];
+    for (const material of active.materials) {
+      renderFocusMaterialRow(listSlot, material, rowCtx, {
+        compact: true,
+        bestFit: active.bestFit === material
+      });
+    }
+  };
+  if (groups.length > 1) {
+    filterTabs(
+      headerSlot,
+      "Helpful material purpose",
+      groups.map((group2) => [group2.purpose.key, `${group2.purpose.label} \xB7 ${group2.materials.length}`]),
+      activeKey,
+      (next) => {
+        state.stuck.set(stage.id, next);
+        renderGroup3(next);
+      }
+    );
+  } else {
+    headerSlot.createDiv({ cls: "focus-eyebrow", text: groups[0].purpose.label });
+  }
+  renderGroup3(activeKey);
+}
+function renderKeptReference(parent, kept, state, ctx) {
+  if (!kept.length || !ctx.stage) return;
+  const rowOpen = openInStage(state, ctx.stage.id);
+  const fold = parent.createEl("details", { cls: "focus-kept" });
+  keepFold(fold, state, `kept:${ctx.stage.id}`, kept.some((material) => rowOpen.has(material.key)));
+  const summary = fold.createEl("summary", { cls: "focus-kept-summary" });
+  icon(summary.createSpan({ attr: { "aria-hidden": "true" } }), "archive");
+  summary.createSpan({ cls: "focus-kept-copy", text: `Kept for reference \xB7 ${kept.length} \u2014 ${namesOf(kept)}` });
+  icon(summary.createSpan({ cls: "focus-kept-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
+  const rows2 = fold.createDiv({ cls: "focus-mrows" });
+  const rowCtx = { ...ctx, open: rowOpen };
+  for (const material of kept) renderFocusMaterialRow(rows2, material, rowCtx, { compact: true });
+}
+function renderPurposeGroupedMaterials(parent, visible, durable, state, ctx) {
+  if (!visible.length) {
+    parent.createEl("p", { cls: "focus-muted", text: "No lecture material matches these filters." });
+    return;
+  }
+  const activeIdx = Math.max(0, durable.stages.findIndex((item) => item.id === durable.currentStageId));
+  const groups = groupByPurpose(visible, activeIdx);
+  const rowCtx = { ...ctx, stage: null, open: state.open };
+  const stack2 = parent.createDiv({ cls: "focus-module-groups" });
+  for (const group2 of groups) {
+    const def = purposeDef(group2.purpose.key);
+    const box = stack2.createDiv({ cls: "focus-mgroup" });
+    const head = box.createDiv({ cls: "focus-mgroup-head" });
+    head.createEl("strong", { text: `${group2.purpose.label} \xB7 ${group2.materials.length}` });
+    head.createSpan({ cls: "focus-muted", text: def.says });
+    const rows2 = box.createDiv({ cls: "focus-mrows" });
+    for (const material of group2.materials) {
+      renderFocusMaterialRow(rows2, material, rowCtx, {
+        compact: false,
+        bestFit: group2.bestFit === material
+      });
+    }
+  }
+}
+
 // src/designs/focus/unit.ts
 var ATTENTION_LIMIT = 8;
 var attention = /* @__PURE__ */ new WeakMap();
+var isComplete = (stage) => stage.status === "complete";
+var isSkipped = (stage) => stage.status === "skipped";
 function hostAttention(view) {
   let host = attention.get(view);
   if (!host) {
@@ -43974,7 +45234,11 @@ function copyAttention(state) {
   const copy = {
     ...state,
     scroll: new Map(state.scroll),
-    filters: { stage: { ...state.filters.stage }, unit: { ...state.filters.unit }, course: { ...state.filters.course } }
+    filters: {
+      stage: { ...state.filters.stage },
+      unit: { ...state.filters.unit },
+      course: { ...state.filters.course }
+    }
   };
   delete copy.lastKey;
   return copy;
@@ -43987,10 +45251,6 @@ function rememberAttention(host, unitId, state = host.units.get(unitId) ?? fresh
     host.units.delete(oldest);
   }
   return state;
-}
-var requestedSessions = /* @__PURE__ */ new Set();
-function requestFocusSession(unitId) {
-  requestedSessions.add(unitId);
 }
 function locationKey(mode, stageId, scope) {
   return `${mode}|${stageId}|${mode === "materials" ? scope : ""}`;
@@ -44021,15 +45281,19 @@ function openStage2(context, stageId) {
 function leaveForLecture(context, destinationId) {
   const { view, unit, stage, map, state, host } = context;
   if (state.lastKey) state.scroll.set(state.lastKey, view.contentEl.scrollTop);
-  if (host.detour?.destinationId === unit.id) host.detour.destinationId = destinationId;
-  else {
-    host.detour = { destinationId, origin: {
-      unitId: unit.id,
-      title: unit.title,
-      stageId: stage.id,
-      stageNumber: map.stages.findIndex((item) => item.id === stage.id) + 1,
-      attention: copyAttention(state)
-    } };
+  if (host.detour?.destinationId === unit.id) {
+    host.detour.destinationId = destinationId;
+  } else {
+    host.detour = {
+      destinationId,
+      origin: {
+        unitId: unit.id,
+        title: unit.title,
+        stageId: stage.id,
+        stageNumber: map.stages.findIndex((item) => item.id === stage.id) + 1,
+        attention: copyAttention(state)
+      }
+    };
   }
   void view.plugin.nav.openUnit(destinationId);
 }
@@ -44040,7 +45304,7 @@ function returnFromDetour(context, detour) {
   void view.plugin.nav.openUnit(detour.origin.unitId, detour.origin.stageId);
 }
 function stageState(stage, map) {
-  return stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : stage.id === map.currentStageId ? "Current" : "Not started";
+  return isComplete(stage) ? "Complete" : isSkipped(stage) ? "Skipped" : stage.id === map.currentStageId ? "Current" : "Not started";
 }
 function countDone(map) {
   return stageProgress(map.stages).done;
@@ -44052,12 +45316,48 @@ function adjust(parent, context) {
 function note(context) {
   context.view.plugin.openUnitNote(context.unit.record, context.durable.record);
 }
+function collectButtons(root) {
+  const out = [];
+  const walk = (node) => {
+    const tag2 = (node.tag ?? node.tagName ?? "").toLowerCase();
+    if (tag2 === "button") out.push(node);
+    for (const child of Array.from(node.children ?? [])) walk(child);
+  };
+  walk(root);
+  return out;
+}
+function buttonText(node) {
+  const stub = node;
+  return (stub.allText?.() ?? node.textContent ?? stub.text ?? "").trim();
+}
 function renderFocusUnit(view) {
   let rendered = false;
   withRenderFocus(view.contentEl, () => {
     rendered = renderFocusUnitContent(view);
   });
   return rendered;
+}
+function renderMaplessUnit(view, unit) {
+  const { plugin } = view;
+  const module2 = plugin.store.get(unit.moduleId);
+  const here = unitLabel(unit.record, module2);
+  const root = page(view.contentEl, "mapless", plugin.store);
+  commandBar(root, [
+    { label: "Modules", go: () => plugin.nav.openModules() },
+    { label: module2 ? moduleName(module2) : "Module", go: () => plugin.nav.openModule(unit.moduleId) },
+    { label: here.place }
+  ], view);
+  const body = root.createDiv({ cls: "focus-page" });
+  heading(body, module2 ? asLabel(module2) : "Unit", unit.title, unit.knowledgeSummary ?? "");
+  const callout = body.createDiv({ cls: "focus-callout" });
+  callout.createEl("strong", { text: "Needs a study map" });
+  callout.createEl("p", {
+    cls: "focus-muted",
+    text: unit.record.needs_study_map === true ? "This unit has not yet been broken down into stages. Open your module overview or author a study map to start studying." : "No study map is published for this unit yet."
+  });
+  button(callout, "Back to module", () => plugin.nav.openModule(unit.moduleId), "quiet");
+  view.renderArtifacts(body, unit);
+  return true;
 }
 function renderFocusUnitContent(view) {
   const host = hostAttention(view);
@@ -44070,14 +45370,16 @@ function renderFocusUnitContent(view) {
     host.shownUnitId = view.unitId;
   }
   const unit = readUnitRecord(view.unitId ? view.plugin.store.get(view.unitId) : null, view.unitId);
-  const projected = unit ? view.plugin.store.mapForUnit(unit.id) : null;
-  if (!unit || !projected) return false;
+  if (!unit) return false;
+  const projected = view.plugin.store.mapForUnit(unit.id);
+  if (!projected) return renderMaplessUnit(view, unit);
   const durable = readStudyMap(projected);
   const { studyMap: map, temporary } = sittingStudyMap(view, unit.id, durable);
-  if (!map.stages[0]) return false;
+  if (!map.stages[0]) return renderMaplessUnit(view, unit);
   if (host.detour?.origin.unitId === unit.id) host.detour = null;
   const state = rememberAttention(host, unit.id);
-  if (requestedSessions.delete(unit.id)) state.mode = "session";
+  const hint = consumeFocusUnitHint(unit.id);
+  if (hint) state.mode = hint;
   const stage = selectedStage(view, unit.id, map, map.stages[0], Boolean(temporary));
   const context = {
     view,
@@ -44096,27 +45398,58 @@ function renderFocusUnitContent(view) {
   state.lastKey = scrollKey;
   const root = page(view.contentEl, state.mode, view.plugin.store);
   const module2 = view.plugin.store.get(unit.moduleId);
-  const actions = toolbar(
-    root,
-    state.mode === "wrapup" ? "End session" : unit.title,
-    module2 ? asLabel(module2) : "",
-    () => view.plugin.nav.openModule(unit.moduleId)
-  );
+  const here = unitLabel(unit.record, module2);
+  const position = map.stages.findIndex((item) => item.id === stage.id) + 1;
+  const modeLabel = state.mode === "materials" ? "Materials" : state.mode === "overview" ? "Overview" : state.mode === "wrapup" ? "End session" : `Stage ${position}`;
+  const crumbs = [
+    { label: "Modules", go: () => view.plugin.nav.openModules() },
+    { label: module2 ? moduleName(module2) : "Module", go: () => view.plugin.nav.openModule(unit.moduleId) },
+    { label: here.place, go: () => show(context, "plan") },
+    ...state.mode === "plan" ? [] : [{ label: modeLabel }]
+  ];
+  const barActions = commandBar(root, crumbs, view);
   const detour = host.detour;
   if (detour?.destinationId === unit.id) {
-    button(
-      actions,
-      `Back to ${detour.origin.title} \xB7 Stage ${detour.origin.stageNumber}`,
-      () => returnFromDetour(context, detour),
-      "quiet"
-    );
+    button(barActions, `Back to ${detour.origin.title} \xB7 Stage ${detour.origin.stageNumber}`, () => returnFromDetour(context, detour), "quiet");
   }
-  if (state.mode !== "wrapup") button(actions, "End session", () => show(context, "wrapup"), "quiet");
   if (state.mode !== "wrapup") {
-    const peers = root.createDiv({ cls: "focus-peer-nav" });
-    filterTabs(peers, "Unit sections", [["plan", "Study plan"], ["session", "Session"], ["materials", "Materials"], ["overview", "Overview"]], state.mode, (next) => show(context, next));
+    const peers = barActions.createDiv({ cls: "focus-peer-nav" });
+    filterTabs(
+      peers,
+      "Unit sections",
+      [["plan", "Study plan"], ["session", "Session"], ["materials", "Materials"], ["overview", "Overview"]],
+      state.mode,
+      (next) => show(context, next)
+    );
+    button(barActions, "End session", () => show(context, "wrapup"), "quiet");
+    const strip = root.createDiv({
+      cls: "focus-stage-strip",
+      attr: { role: "navigation", "aria-label": "Stages in sequence" }
+    });
+    for (const [index, item] of map.stages.entries()) {
+      const done = isComplete(item);
+      const current = item.id === stage.id;
+      const glyph = done ? "\u2713" : current ? "\u25CF" : "\u25CB";
+      const pill = strip.createEl("button", {
+        cls: `focus-stage-pill${done ? " is-done" : ""}${current ? " is-current" : ""}`,
+        attr: {
+          type: "button",
+          "aria-current": current ? "step" : "false",
+          "aria-label": `Stage ${index + 1}: ${item.title}`
+        }
+      });
+      pill.createSpan({ cls: "focus-stage-pill-num focus-mono", text: `${String(index + 1).padStart(2, "0")} ${glyph}` });
+      pill.createSpan({ text: item.title });
+      pill.addEventListener("click", () => openStage2(context, item.id));
+    }
+    button(strip, `Study plan \xB7 Stage ${position} of ${map.stages.length}`, () => show(context, "plan"), "quiet").addClass("focus-compact-plan");
   }
-  if (context.temporary) root.createDiv({ cls: "focus-callout", text: `For this sitting: ${map.stages.length} of ${durable.stages.length} stages. Recording work or a new snapshot ends this order.` });
+  if (context.temporary) {
+    root.createDiv({
+      cls: "focus-callout",
+      text: `For this sitting: ${map.stages.length} of ${durable.stages.length} stages. Recording work or a new snapshot ends this order.`
+    });
+  }
   if (state.mode === "session") session(root, context);
   else if (state.mode === "materials") materials(root, context);
   else if (state.mode === "wrapup") wrapup(root, context);
@@ -44127,9 +45460,17 @@ function renderFocusUnitContent(view) {
 function plan(root, context) {
   const { view, unit, map, state } = context;
   const body = root.createDiv({ cls: "focus-page" });
-  heading(body, state.mode === "overview" ? "Overview" : "Study plan", unit.title, state.mode === "overview" ? "The lecture\u2019s knowledge, material comparison and existing artifacts." : "An ordered path through the lecture, with materials and completion criteria at each stage.");
-  const controls = body.createDiv({ cls: "focus-filters" });
-  if (state.mode === "plan") button(controls, "Resume stage", () => openStage2(context, map.currentStageId ?? context.stage.id), "cta");
+  const head = body.createDiv({ cls: "focus-page-head" });
+  const copy = head.createDiv({ cls: "focus-heading-copy" });
+  heading(
+    copy,
+    state.mode === "overview" ? "Overview" : "Study plan",
+    unit.title,
+    state.mode === "overview" ? "The lecture\u2019s knowledge, material comparison and existing artifacts." : "An ordered path through the lecture, with materials and completion criteria at each stage."
+  );
+  if (state.mode === "plan") {
+    button(head, "Resume stage", () => openStage2(context, map.currentStageId ?? context.stage.id), "cta");
+  }
   const meta = body.createDiv({ cls: "focus-plan-meta" });
   progress(meta, countDone(map), map.stages.length);
   adjust(meta, context);
@@ -44139,15 +45480,18 @@ function plan(root, context) {
     return;
   }
   const list3 = body.createDiv({ cls: "focus-plan-list", attr: { role: "list", "aria-label": "Stages in order" } });
-  for (const [index, stage] of map.stages.entries()) {
-    const item = list3.createDiv({ attr: { role: "listitem" } });
-    const target = row(item, `Open stage: ${stage.title}`, () => openStage2(context, stage.id));
-    if (stage.id === map.currentStageId) target.addClass("is-current");
-    target.createSpan({ cls: "focus-stage-number", text: String(index + 1).padStart(2, "0") });
-    const copy = target.createDiv({ cls: "focus-row-copy" });
-    copy.createEl("strong", { text: stage.title });
-    copy.createSpan({ cls: "focus-muted", text: stage.objective ?? `${stage.resources.length} materials \xB7 ${stage.doneWhen.length} completion criteria` });
-    target.createSpan({ cls: `focus-row-state${stage.status === "complete" ? " is-complete" : ""}`, text: stageState(stage, map) });
+  for (const [index, item] of map.stages.entries()) {
+    const entry = list3.createDiv({ attr: { role: "listitem" } });
+    const target = row(entry, `Open stage: ${item.title}`, () => openStage2(context, item.id));
+    if (item.id === map.currentStageId) target.addClass("is-current");
+    target.createSpan({ cls: "focus-stage-number focus-mono", text: String(index + 1).padStart(2, "0") });
+    const rowCopy = target.createDiv({ cls: "focus-row-copy" });
+    rowCopy.createEl("strong", { text: item.title });
+    rowCopy.createSpan({
+      cls: "focus-muted",
+      text: item.objective ?? `${item.resources.length} materials \xB7 ${item.doneWhen.length} completion criteria`
+    });
+    target.createSpan({ cls: `focus-row-state${isComplete(item) ? " is-complete" : ""}`, text: stageState(item, map) });
     chevron2(target);
   }
   const nearby = body.createDiv({ cls: "focus-nearby" });
@@ -44160,7 +45504,7 @@ function materialCard(parent, context, resource, prominent = false) {
   const route2 = routeForResource(resource, options);
   const source = resource.sourceId ? view.plugin.store.get(resource.sourceId) : null;
   const availability = placementAvailability(resource, route2, source);
-  renderPlacementCard(parent, resource, route2, source, {
+  return renderPlacementCard(parent, resource, route2, source, {
     plugin: view.plugin,
     unitId: unit.id,
     stageId: stage.id,
@@ -44174,47 +45518,63 @@ function materialCard(parent, context, resource, prominent = false) {
   });
 }
 function session(root, context) {
-  const { view, unit, stage, map } = context;
-  const workspace = root.createDiv({ cls: "focus-workspace" });
-  const rail = workspace.createDiv({ cls: "focus-stage-rail" });
-  rail.createDiv({ cls: "focus-eyebrow", text: "Study plan" });
-  progress(rail, countDone(map), map.stages.length);
-  for (const [index, item] of map.stages.entries()) {
-    const target = row(rail, `Stage ${index + 1}: ${item.title}`, () => openStage2(context, item.id));
-    target.setAttr("aria-current", item.id === stage.id ? "step" : "false");
-    if (item.id === stage.id) target.addClass("is-current");
-    target.createSpan({ cls: "focus-stage-number", text: item.status === "complete" ? "\u2713" : String(index + 1).padStart(2, "0") });
-    const copy2 = target.createDiv({ cls: "focus-row-copy" });
-    copy2.createEl("strong", { text: item.title });
-    copy2.createSpan({ cls: "focus-muted", text: stageState(item, map) });
-  }
-  button(rail, "View full plan", () => show(context, "plan"), "quiet");
-  button(rail, "Add session note", () => note(context), "quiet");
-  const center = workspace.createDiv({ cls: "focus-stage" });
+  const { view, unit, stage, map, durable } = context;
   const position = map.stages.findIndex((item) => item.id === stage.id) + 1;
-  const badges = center.createDiv({ cls: "focus-stage-badges" });
-  button(badges, `Study plan \xB7 Stage ${position} of ${map.stages.length}`, () => show(context, "plan"), "quiet").addClass("focus-compact-plan");
+  const allMaterials = lectureMaterialsFor(view.plugin.store, unit, durable, context.options);
+  const split = splitStage(allMaterials, durable, stage);
+  const mState = materialsState(view.leaf, unit.id);
+  const doneWhenCount = stage.doneWhen.length;
+  const marks = doneWhenCount ? view.plugin.getDoneWhen(unit.id, stage.id, stage.doneWhen) : [];
+  const cockpit = root.createDiv({ cls: "focus-cockpit" });
+  const main = cockpit.createDiv({ cls: "focus-cockpit-main focus-stage" });
+  const dock = cockpit.createDiv({ cls: "focus-cockpit-dock" });
+  const head = main.createDiv({ cls: "focus-stage-head" });
+  const badges = head.createDiv({ cls: "focus-stage-badges" });
   badge(badges, `Stage ${String(position).padStart(2, "0")} / ${String(map.stages.length).padStart(2, "0")}`, "role").addClass("focus-stage-position");
   badge(badges, stageState(stage, map), "role");
   if (stage.examCritical) badge(badges, "Exam-critical", "status");
-  heading(center, "", stage.title, stage.objective ?? "");
-  center.createEl("hr");
-  const current = center.createDiv({ cls: "focus-current-work" });
-  const head = current.createDiv({ cls: "focus-section-head" });
-  head.createEl("h2", { text: "Current work" });
-  head.createSpan({ cls: "focus-muted", text: `${stage.resources.filter((item) => !item.scopeTriage || item.scopeTriage === "required-now").length} required` });
+  const verifiedPill = doneWhenCount ? badges.createSpan({ cls: "focus-pill" }) : null;
+  heading(head, "", stage.title, stage.objective ?? "");
+  const current = main.createDiv({ cls: "focus-current-work" });
+  const workHead = current.createDiv({ cls: "focus-section-head" });
+  workHead.createEl("h2", { text: "Start here" });
+  workHead.createSpan({
+    cls: "focus-muted",
+    text: `${stage.resources.filter((item) => !item.scopeTriage || item.scopeTriage === "required-now").length} required`
+  });
   const resource = currentWorkResource(stage.resources);
-  if (resource) materialCard(current, context, resource, true);
-  else current.createEl("p", { cls: "focus-muted", text: "No required material is named for this stage. The complete catalogue remains available below." });
+  let openCardBtn = null;
   if (resource) {
+    const card = materialCard(current, context, resource, true);
+    openCardBtn = collectButtons(card).find((btn) => buttonText(btn) === "Open" || buttonText(btn) === "Open source") ?? null;
     const nextRequired = stage.resources.slice(stage.resources.indexOf(resource) + 1).find((item) => triageGroup(item) === "required");
     if (nextRequired) {
       const next = disclosure(current, `Next required task in the authored order \xB7 ${nextRequired.label}`, "focus-next-required");
       next.createEl("p", { cls: "focus-muted", text: "This is also required. Opening it does not resolve the current task; follow any prerequisites in the authored instructions." });
       materialCard(next, context, nextRequired, true);
     }
+  } else {
+    current.createEl("p", { cls: "focus-muted", text: "No required material is named for this stage. The complete catalogue remains available below." });
   }
-  const all = center.createDiv({ cls: "focus-material-total" });
+  if (split.helps.length && split.index >= 0) {
+    renderStuckHelpers(main, split.helps, split.index, mState, {
+      view,
+      unit,
+      stages: durable.stages,
+      expected: context.guards,
+      stage,
+      refresh: () => view.render()
+    });
+  }
+  renderKeptReference(main, split.kept, mState, {
+    view,
+    unit,
+    stages: durable.stages,
+    expected: context.guards,
+    stage,
+    refresh: () => view.render()
+  });
+  const all = main.createDiv({ cls: "focus-material-total" });
   const copy = all.createDiv({ cls: "focus-row-copy" });
   copy.createEl("strong", { text: `All ${stage.resources.length} stage materials` });
   copy.createSpan({ cls: "focus-muted", text: triageSummary(stage.resources) || "No material placements on this stage." });
@@ -44222,41 +45582,129 @@ function session(root, context) {
     context.state.materialScope = "stage";
     show(context, "materials");
   }, "quiet");
-  if (stage.doneWhen.length) {
-    const marks = view.plugin.getDoneWhen(unit.id, stage.id, stage.doneWhen);
-    const section3 = center.createDiv({ cls: "focus-criteria" });
-    const head2 = section3.createDiv({ cls: "focus-section-head" });
-    head2.createEl("h2", { text: "Done when" });
-    const count4 = head2.createSpan({ cls: "focus-muted", attr: { "aria-live": "polite" } });
-    const recount = () => count4.setText(`${stage.doneWhen.filter((_, index) => marks[index]).length} of ${stage.doneWhen.length} criteria checked`);
-    recount();
-    section3.createEl("p", { cls: "focus-muted focus-criteria-meaning", text: "Checks are your local working marks. Complete stage records progress; learner evidence is recorded separately." });
-    stage.doneWhen.forEach((criterion, index) => {
-      const label = section3.createEl("label", { cls: "focus-criterion" });
-      const box = label.createEl("input", { attr: { type: "checkbox", "aria-label": criterion } });
-      box.checked = Boolean(marks[index]);
-      label.createSpan({ text: criterion });
-      box.addEventListener("change", () => {
-        marks[index] = box.checked;
-        view.plugin.setDoneWhen(unit.id, stage.id, index, box.checked, stage.doneWhen);
-        recount();
-      });
-    });
+  const proofCard = dock.createDiv({ cls: "focus-proof-card" });
+  const criteriaSection = proofCard.createDiv({ cls: "focus-criteria" });
+  const criteriaHead = criteriaSection.createDiv({ cls: "focus-section-head" });
+  criteriaHead.createEl("h2", { text: doneWhenCount ? "Done when" : "Stage completion" });
+  const countEl = doneWhenCount ? criteriaHead.createSpan({ cls: "focus-muted", attr: { "aria-live": "polite" } }) : null;
+  const foot = proofCard.createDiv({ cls: "focus-stage-footer" });
+  const prevStage = position > 1 ? map.stages[position - 2] : null;
+  if (prevStage) {
+    button(foot, `\u2039 Stage ${String(position - 1).padStart(2, "0")}`, () => openStage2(context, prevStage.id), "quiet");
   }
-  const details = disclosure(center, "Stage notes, history and connections", "focus-stage-context");
-  view.renderStageContext(details, unit, map, stage);
-  for (const id of stage.concepts) {
-    const record7 = view.plugin.store.get(id);
-    if (record7) chip(details, record7, (target) => view.plugin.nav.openRecord(target));
-  }
-  const foot = center.createDiv({ cls: "focus-stage-footer" });
-  if (stage.status === "complete") {
+  let completeBtn = null;
+  if (isComplete(stage)) {
     const bar = foot.createDiv({ cls: "los-unit-actionbar" });
-    bar.createSpan({ cls: "los-micro los-unit-actionbar-rule", text: "This stage is recorded complete. Completion is study progress, not learner evidence." });
+    bar.createSpan({ cls: "los-micro los-unit-actionbar-rule", text: "Recorded complete. Completion is study progress, not learner evidence." });
     const next = nextOpenStage(map.stages, stage.id);
     button(bar, next ? "Next stage" : "Review session", () => next ? openStage2(context, next.id) : show(context, "wrapup"), "cta");
     overflowMenu(bar, stageMenuItems(view, unit, stage, context.guards), "More unit actions");
-  } else view.renderActionBar(foot, unit, stage, context.guards);
+  } else {
+    view.renderActionBar(foot, unit, stage, context.guards);
+    completeBtn = collectButtons(foot).find((btn) => buttonText(btn) === "Complete stage") ?? null;
+  }
+  const proofStateSpans = [];
+  const syncProofState = () => {
+    const checked = marks.filter(Boolean).length;
+    const allVerified = !doneWhenCount || checked === doneWhenCount;
+    if (countEl) countEl.setText(`${checked} of ${doneWhenCount} criteria checked`);
+    if (verifiedPill) {
+      verifiedPill.setText(`${checked}/${doneWhenCount} Proofs Verified`);
+      verifiedPill.toggleClass("is-success", allVerified);
+    }
+    proofStateSpans.forEach((span, idx) => {
+      span.setText(marks[idx] ? "Verified in session" : `Required proof ${String(idx + 1).padStart(2, "0")}`);
+    });
+    proofCard.toggleClass("is-verified", Boolean(doneWhenCount && allVerified));
+    if (!isComplete(stage) && completeBtn) {
+      const promoteComplete = allVerified || !openCardBtn;
+      completeBtn.toggleClass("los-btn--cta", promoteComplete);
+      completeBtn.toggleClass("los-btn--quiet", !promoteComplete);
+      if (openCardBtn) {
+        openCardBtn.toggleClass("los-btn--cta", !promoteComplete);
+        openCardBtn.toggleClass("los-btn--quiet", promoteComplete);
+      }
+    }
+  };
+  if (doneWhenCount) {
+    criteriaSection.createEl("p", {
+      cls: "focus-muted focus-criteria-meaning",
+      text: "Checks are your local working marks. Complete stage records progress; learner evidence is recorded separately."
+    });
+    stage.doneWhen.forEach((criterion, index) => {
+      const label = criteriaSection.createEl("label", { cls: "focus-criterion" });
+      const box = label.createEl("input", { attr: { type: "checkbox", "aria-label": criterion } });
+      box.checked = Boolean(marks[index]);
+      const copyBox = label.createDiv({ cls: "focus-criterion-body" });
+      copyBox.createSpan({ text: criterion });
+      const sub = copyBox.createSpan({ cls: "focus-eyebrow focus-criterion-state" });
+      proofStateSpans.push(sub);
+      box.addEventListener("change", () => {
+        marks[index] = box.checked;
+        view.plugin.setDoneWhen(unit.id, stage.id, index, box.checked, stage.doneWhen);
+        syncProofState();
+      });
+    });
+  } else {
+    criteriaSection.createEl("p", {
+      cls: "focus-muted focus-criteria-meaning",
+      text: "No explicit completion checklist is recorded for this stage."
+    });
+  }
+  syncProofState();
+  const scratch = dock.createDiv({ cls: "focus-scratch" });
+  const scratchHead = scratch.createDiv({ cls: "focus-section-head" });
+  scratchHead.createDiv({ cls: "focus-eyebrow", text: "Working scratch \xB7 Session note draft" });
+  textLink2(scratchHead, "Review and save \u2192", () => note(context));
+  const draft = view.plugin.getUnitNoteDraft(unit.id, map.stages.map((item) => item.record));
+  const scratchEditor = scratch.createEl("textarea", {
+    cls: "focus-note-scratch",
+    attr: {
+      "aria-label": "Working session scratch",
+      placeholder: "Jot derivations, rough intuitions or questions as you work\u2026"
+    }
+  });
+  scratchEditor.value = draft.text;
+  const scratchFoot = scratch.createDiv({ cls: "focus-section-head" });
+  const scratchHint = scratchFoot.createSpan({ cls: "focus-muted", attr: { "aria-live": "polite" } });
+  const syncScratchHint = () => {
+    scratchHint.setText(scratchEditor.value.trim() ? "Local draft kept across tabs until saved." : "Optional scratchpad.");
+  };
+  syncScratchHint();
+  scratchEditor.addEventListener("input", () => {
+    view.plugin.setUnitNoteDraft(
+      unit.id,
+      draft.title,
+      scratchEditor.value,
+      Object.keys(draft.expectedRevisions).length ? draft.expectedRevisions : context.guards
+    );
+    syncScratchHint();
+  });
+  button(scratchFoot, "Review and save note", () => note(context), "quiet");
+  const conceptsCard = sideCard(dock, "Builds on & stage concepts");
+  if (prevStage) {
+    conceptsCard.createDiv({
+      cls: "focus-muted",
+      text: `Builds on: Stage ${String(position - 1).padStart(2, "0")} \xB7 ${prevStage.title}`
+    });
+  }
+  if (stage.concepts.length) {
+    const chips = conceptsCard.createDiv({ cls: "focus-concept-chips" });
+    for (const id of stage.concepts) {
+      const record7 = view.plugin.store.get(id);
+      if (record7) chip(chips, record7, (target) => view.plugin.nav.openRecord(target));
+    }
+  } else {
+    conceptsCard.createEl("p", { cls: "focus-muted", text: "No concepts linked on this stage." });
+  }
+  textLink2(conceptsCard, "Open in Atlas", () => view.plugin.nav.openAtlas({
+    concept: stage.concepts[0] ?? null,
+    module: stage.concepts[0] ? null : unit.moduleId,
+    lens: "prerequisites"
+  }));
+  const contextBox = sideCard(dock, "Session context");
+  const details = disclosure(contextBox, "Stage notes, history and connections", "focus-stage-context");
+  view.renderStageContext(details, unit, map, stage);
 }
 function placementFacet(context, resource) {
   const route2 = routeForResource(resource, context.options);
@@ -44277,6 +45725,26 @@ function placementFacet(context, resource) {
       resource.record.angle,
       resource.record.angle_detail,
       source?.title
+    ].filter(Boolean).join(" ")
+  };
+}
+function lectureMaterialFacet(context, material) {
+  const source = material.sourceId ? context.view.plugin.store.get(material.sourceId) : null;
+  const typeDef = materialTypeDef(material.type);
+  const pDef = purposeDef(material.purpose);
+  return {
+    medium: material.type,
+    mediumLabel: typeDef.singular,
+    action: material.purpose,
+    actionLabel: pDef.label,
+    access: materialAvailability(context.view.plugin.store, material).kind,
+    search: [
+      material.title,
+      asString(source?.title),
+      material.locator,
+      material.why,
+      typeDef.plural,
+      pDef.label
     ].filter(Boolean).join(" ")
   };
 }
@@ -44311,7 +45779,7 @@ function filteredMaterials(body, entries2, state, facet, render2, actionHeading 
   draw();
 }
 function materials(root, context) {
-  const { view, unit, stage, state } = context;
+  const { view, unit, stage, state, durable } = context;
   const owners = view.plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record7) => readUnitRecord(record7, asString(record7.id))).filter((other) => Boolean(other && other.id !== unit.id));
   const courseEntries = owners.flatMap((owner) => stageMaterialOptions(view, owner).map((option) => ({ owner, option })));
   const module2 = view.plugin.store.get(unit.moduleId);
@@ -44319,21 +45787,22 @@ function materials(root, context) {
   const body = root.createDiv({ cls: "focus-page" });
   const actions = body.createDiv({ cls: "focus-section-head" });
   const stageNumber = context.map.stages.findIndex((item) => item.id === stage.id) + 1;
+  const unitMaterials = lectureMaterialsFor(view.plugin.store, unit, durable, context.options);
   const scopes = {
     stage: {
       title: "Stage materials",
       location: `${unit.title} \xB7 Stage ${stageNumber} of ${context.map.stages.length}`,
-      description: `${stage.resources.length} material${stage.resources.length === 1 ? "" : "s"} for ${stage.title}. Required now, If stuck and Reference keep the authored task order. Filters change only what is shown.`
+      description: `${plural(stage.resources.length, "material")} for ${stage.title}. Required now, If stuck and Reference keep the authored task order. Filters change only what is shown.`
     },
     unit: {
       title: "Unit materials",
       location: unit.title,
-      description: `${context.options.length} material route${context.options.length === 1 ? "" : "s"} for this lecture. This complete menu is a set of options, not additional required tasks.`
+      description: lectureMaterialsFacts(unitMaterials, durable.stages.length)
     },
     course: {
       title: "Course sources",
       location: courseTitle,
-      description: `${courseEntries.length} material route${courseEntries.length === 1 ? "" : "s"} from other lectures in ${courseTitle}. Each stays with its own lecture.`
+      description: `${plural(courseEntries.length, "material route")} from other lectures in ${courseTitle}. Each stays with its own lecture.`
     }
   };
   const scope = scopes[state.materialScope];
@@ -44341,17 +45810,56 @@ function materials(root, context) {
   const returnLabel = state.materialsReturn === "plan" ? "Back to study plan" : state.materialsReturn === "overview" ? "Back to overview" : "Back to session";
   button(actions, returnLabel, () => show(context, state.materialsReturn), "quiet");
   body.createEl("p", { cls: "focus-lede", text: scope.description });
-  filterTabs(body, "Material scope", [["stage", `This stage \xB7 ${stage.resources.length}`], ["unit", `Unit materials \xB7 ${context.options.length}`], ["course", `Course sources \xB7 ${courseEntries.length}`]], state.materialScope, (next) => {
-    prepareLocation(context, "materials", stage.id, next);
-    view.render();
-  });
+  filterTabs(
+    body,
+    "Material scope",
+    [
+      ["stage", `This stage \xB7 ${stage.resources.length}`],
+      ["unit", `Unit materials \xB7 ${unitMaterials.length}`],
+      ["course", `Course sources \xB7 ${courseEntries.length}`]
+    ],
+    state.materialScope,
+    (next) => {
+      prepareLocation(context, "materials", stage.id, next);
+      view.render();
+    }
+  );
   if (state.materialScope === "unit") {
+    const mState = materialsState(view.leaf, unit.id);
     filteredMaterials(
       body,
-      context.options,
+      unitMaterials,
       state.filters.unit,
-      (option) => routeFacet(option),
-      (results, visible) => renderMaterialMenu(view, results, unit, visible, true),
+      (material) => lectureMaterialFacet(context, material),
+      (results, visible) => {
+        const split = results.createDiv({ cls: "focus-materials-split" });
+        const mainCol = split.createDiv({ cls: "focus-module-groups" });
+        if (durable.stages.length && durable.stages.length <= 9) {
+          const matrixBar = mainCol.createDiv({ cls: "focus-matrix-header" });
+          matrixBar.createSpan({ cls: "focus-eyebrow", text: "Stage matrix" });
+          const headerCells = matrixBar.createDiv({ cls: "focus-stage-matrix" });
+          durable.stages.forEach((_, idx) => {
+            headerCells.createSpan({ cls: "focus-stage-cell focus-mono", text: `S${idx + 1}` });
+          });
+        }
+        renderPurposeGroupedMaterials(mainCol, visible, durable, mState, {
+          view,
+          unit,
+          stages: durable.stages,
+          expected: context.guards,
+          refresh: () => view.render()
+        });
+        const sideCol = split.createDiv({ cls: "focus-home-dock" });
+        const legend = sideCard(sideCol, "Stage matrix legend");
+        for (const [glyph, desc] of [
+          ["\u25CF", "Required in that stage"],
+          ["\u25D0", "Helps if you get stuck"],
+          ["\u25CB", "Kept for reference"],
+          ["\xB7", "Not used in that stage"]
+        ]) {
+          legend.createDiv({ cls: "focus-muted", text: `${glyph}  ${desc}` });
+        }
+      },
       "Purpose"
     );
   } else if (state.materialScope === "course") {
@@ -44361,24 +45869,31 @@ function materials(root, context) {
       state.filters.course,
       ({ option, owner }) => routeFacet(option, owner.title),
       (results, visible) => {
-        if (!visible.length) results.createEl("p", { cls: "focus-muted", text: courseEntries.length ? "No course material matches. Clear the filters to restore the complete list." : "No additional material routes are registered for the other lectures." });
+        if (!visible.length) {
+          results.createEl("p", {
+            cls: "focus-muted",
+            text: courseEntries.length ? "No course material matches. Clear the filters to restore the complete list." : "No additional material routes are registered for the other lectures."
+          });
+        }
         for (const owner of owners) {
           const routes = visible.filter((entry) => entry.owner.id === owner.id);
           if (!routes.length) continue;
           const section3 = results.createDiv({ cls: "focus-course-unit" });
           section3.createEl("h2", { text: owner.title });
-          for (const { option } of routes) renderRouteCard(
-            section3,
-            option,
-            option.sourceId ? view.plugin.store.get(option.sourceId) : null,
-            {
-              plugin: view.plugin,
-              unitId: owner.id,
-              renderer: stageResourceRenderer(view, unit, stage, context.guards, context.options),
-              refresh: () => view.render()
-            },
-            { missingLocationLabel: "Location needed" }
-          );
+          for (const { option } of routes) {
+            renderRouteCard(
+              section3,
+              option,
+              option.sourceId ? view.plugin.store.get(option.sourceId) : null,
+              {
+                plugin: view.plugin,
+                unitId: owner.id,
+                renderer: stageResourceRenderer(view, unit, stage, context.guards, context.options),
+                refresh: () => view.render()
+              },
+              { missingLocationLabel: "Location needed" }
+            );
+          }
           button(section3, "Go to lecture", () => leaveForLecture(context, owner.id), "quiet");
         }
       },
@@ -44398,13 +45913,24 @@ function materials(root, context) {
           const all = stage.resources.filter((resource) => triageGroup(resource) === key);
           const resources = visible.filter((resource) => triageGroup(resource) === key);
           const section3 = parent.createDiv({ cls: `focus-material-group is-${key}` });
-          section3.createEl("h2", { cls: "focus-eyebrow", text: `${label} \xB7 ${resources.length}${resources.length === all.length ? "" : ` of ${all.length}`}` });
+          section3.createEl("h2", {
+            cls: "focus-eyebrow",
+            text: `${label} \xB7 ${resources.length}${resources.length === all.length ? "" : ` of ${all.length}`}`
+          });
           for (const resource of resources) materialCard(section3, context, resource, key === "required");
-          if (!resources.length) section3.createEl("p", { cls: "focus-muted", text: all.length ? "No matches here. Clear the filters to restore this group." : "No materials in this group." });
+          if (!resources.length) {
+            section3.createEl("p", {
+              cls: "focus-muted",
+              text: all.length ? "No matches here. Clear the filters to restore this group." : "No materials in this group."
+            });
+          }
         }
       }
     );
-    body.createEl("p", { cls: "focus-muted", text: "A material\u2019s learning action, medium and access are separate. Filtering never completes, removes or reorders required work." });
+    body.createEl("p", {
+      cls: "focus-muted",
+      text: "A material\u2019s learning action, medium and access are separate. Filtering never completes, removes or reorders required work."
+    });
   }
 }
 function wrapup(root, context) {
@@ -44422,181 +45948,33 @@ function wrapup(root, context) {
   next.createEl("p", { cls: "focus-muted", text: `${unit.title} \xB7 Stage ${map.stages.findIndex((item) => item.id === current.id) + 1}` });
   body.createEl("h2", { text: "Session note \xB7 optional" });
   const draft = view.plugin.getUnitNoteDraft(unit.id, map.stages.map((item) => item.record));
-  const editor = body.createEl("textarea", { cls: "los-note-editor focus-note-editor", attr: { "aria-label": "Optional session note", placeholder: "What did you work out? Where did you get stuck? What should you try next?" } });
+  const editor = body.createEl("textarea", {
+    cls: "los-note-editor focus-note-editor",
+    attr: {
+      "aria-label": "Optional session note",
+      placeholder: "What did you work out? Where did you get stuck? What should you try next?"
+    }
+  });
   editor.value = draft.text;
   const local = body.createDiv({ cls: "focus-section-head" });
   const hint = local.createSpan({ cls: "focus-muted", attr: { "aria-live": "polite" } });
-  const updateHint = () => hint.setText(editor.value.trim() ? "Draft kept locally. Review and save it to attach it to this lecture." : "Optional. Nothing entered yet.");
+  const updateHint = () => {
+    hint.setText(editor.value.trim() ? "Draft kept locally. Review and save it to attach it to this lecture." : "Optional. Nothing entered yet.");
+  };
   updateHint();
   editor.addEventListener("input", () => {
-    view.plugin.setUnitNoteDraft(unit.id, draft.title, editor.value, Object.keys(draft.expectedRevisions).length ? draft.expectedRevisions : context.guards);
+    view.plugin.setUnitNoteDraft(
+      unit.id,
+      draft.title,
+      editor.value,
+      Object.keys(draft.expectedRevisions).length ? draft.expectedRevisions : context.guards
+    );
     updateHint();
   });
   button(local, "Review and save note", () => note(context), "quiet");
   const actions = body.createDiv({ cls: "focus-wrapup-actions" });
   button(actions, "Keep studying", () => show(context, "session"), "quiet");
   body.createEl("p", { cls: "focus-muted", text: "Review the exact changes before choosing whether to commit or push them. Unsaved note text remains a local draft." });
-}
-
-// src/designs/focus/learning.ts
-function resume(parent, plugin) {
-  const { pointer: pointer2, unit, unitMap: projected, module: module2 } = resolveResumeTarget(plugin.store);
-  const map = projected ? readStudyMap(projected) : null;
-  const stage = map?.stages.find((item) => item.id === pointer2.stage_id);
-  if (!unit || !stage || !map || !pointer2.unit_id) return false;
-  const unitId = pointer2.unit_id;
-  const card = parent.createDiv({ cls: "focus-resume" });
-  card.createDiv({ cls: "focus-eyebrow", text: "Continue" });
-  card.createSpan({ cls: "focus-muted", text: module2 ? asLabel(module2) : "" });
-  card.createEl("h2", { text: asLabel(unit) });
-  card.createEl("p", { text: `Next: ${stage.title}` });
-  const foot = card.createDiv({ cls: "focus-resume-foot" });
-  const { done, total } = stageProgress(map.stages);
-  progress(foot, done, total);
-  button(foot, "Resume session", () => {
-    requestFocusSession(unitId);
-    return plugin.nav.openUnit(unitId, stage.id);
-  }, "cta");
-  return true;
-}
-function renderFocusLearn(view) {
-  const { plugin } = view;
-  if (!view.programId || !plugin.store.get(view.programId) || ["inbox", "queue-needs-map"].includes(view.programId)) return false;
-  const root = page(view.contentEl, "learn", plugin.store);
-  toolbar(root, "Learn", "Your study workspace");
-  const body = root.createDiv({ cls: "focus-page" });
-  heading(body, "Your learning", "Pick up where you left off.", "Resume a session, or choose another module.");
-  const areas = body.createDiv({ cls: "focus-area-tabs" });
-  filterTabs(areas, "Study areas", LEARN_AREAS, view.programId, (id) => plugin.nav.openLearn(id));
-  button(areas, "Thesis & projects", () => openFocusCollection(plugin.nav, "projects"), "quiet");
-  if (!resume(body, plugin)) empty(body.createDiv({ cls: "focus-resume is-empty" }), "Choose where to begin", "No previous study session has been recorded. Open a module below.");
-  const head = body.createDiv({ cls: "focus-section-head" });
-  head.createEl("h2", { text: "Continue elsewhere" });
-  button(head, "All modules", () => openFocusCollection(plugin.nav, "all"), "quiet");
-  const list3 = body.createDiv({ cls: "focus-module-list" });
-  const modules = candidateModules(plugin.store).filter((module2) => module2.area_id === view.programId);
-  for (const module2 of modules) moduleRow2(list3, plugin.store, module2, () => plugin.nav.openModule(asString(module2.id) ?? ""));
-  if (!modules.length) empty(list3, "No open modules in this area", "All modules keeps the complete curriculum available.");
-  return true;
-}
-function renderFocusHome(view) {
-  const { plugin } = view;
-  const root = page(view.contentEl, "home", plugin.store);
-  const actions = toolbar(root, "Home", "Your study workspace");
-  button(actions, "Capture", () => plugin.nav.openCapture(), "quiet");
-  const body = root.createDiv({ cls: "focus-page" });
-  heading(body, "LearningOS", "A clear place to begin.");
-  if (!resume(body, plugin)) {
-    const card = body.createDiv({ cls: "focus-resume" });
-    empty(card, "Choose where to begin", "No previous study session has been recorded.");
-    button(card, "Open Learn", () => plugin.nav.openLearn(), "cta");
-  }
-  body.createEl("h2", { text: "Today" });
-  const items = todayItems(view);
-  if (!items.length) body.createEl("p", { cls: "focus-muted", text: "Nothing time-sensitive is recorded." });
-  for (const item of items.slice(0, 4)) {
-    const target = row(body, item.title, () => item.action?.());
-    const copy = target.createDiv({ cls: "focus-row-copy" });
-    copy.createEl("strong", { text: item.title });
-    copy.createSpan({ cls: "focus-muted", text: item.detail });
-    target.createSpan({ cls: "focus-row-state", text: item.actionLabel });
-    target.disabled = !item.action;
-  }
-  body.createEl("h2", { text: "Continue elsewhere" });
-  for (const item of elsewhereRows(view).slice(0, 5)) moduleRow2(body, plugin.store, item.record, item.open);
-}
-
-// src/designs/focus/modules.ts
-function renderFocusModules(view) {
-  if (view.groupId) return false;
-  const { plugin } = view;
-  const state = focusCollection(view.contentEl);
-  state.refresh = () => view.render();
-  const root = page(view.contentEl, "modules", plugin.store);
-  root.setAttr("data-focus-collection", state.scope);
-  toolbar(root, "Modules", state.scope === "projects" ? "Thesis & projects" : "Across semesters");
-  const body = root.createDiv({ cls: "focus-page" });
-  heading(body, state.scope === "projects" ? "Your projects" : "Your curriculum", state.scope === "projects" ? "Thesis & projects" : "Modules", state.scope === "projects" ? "Every project, with its units, materials and study plan." : "Keep every open module within reach.");
-  const filters = body.createDiv({ cls: "focus-filters" });
-  filterTabs(filters, "Module collection", [["open", "Open"], ["all", "All"], ["projects", "Thesis & projects"]], state.scope, (key) => {
-    Object.assign(state, { scope: key, query: "", scroll: 0, selected: null });
-    view.render();
-  });
-  const input = filters.createEl("input", { cls: "los-search focus-search", attr: { type: "search", placeholder: "Find a module", "aria-label": "Find a module" } });
-  input.value = state.query;
-  const result = body.createDiv({ cls: "focus-muted", attr: { role: "status", "aria-live": "polite" } });
-  const list3 = body.createDiv({ cls: "focus-module-list" });
-  const draw = () => {
-    list3.empty();
-    const academicIds = new Set(plugin.store.openAcademicModules().map((module2) => module2.id));
-    const collection = state.scope === "projects" ? plugin.store.modules().filter((module2) => module2.kind === "project") : state.scope === "all" ? plugin.store.modules() : plugin.store.modules().filter((module2) => academicIds.has(module2.id) || module2.is_actionable === true);
-    const modules = collection.filter((module2) => foldCase(asLabel(module2)).includes(foldCase(state.query.trim()))).sort((a, b) => compareStrings(asLabel(a), asLabel(b)));
-    result.setText(`${modules.length} of ${collection.length} ${state.scope === "projects" ? "projects" : "modules"}${state.query ? " match your search" : ""}`);
-    for (const module2 of modules) {
-      const target = moduleRow2(list3, plugin.store, module2, () => {
-        view.selectedElementId = asString(module2.id);
-        state.selected = view.selectedElementId;
-        state.scroll = root.scrollTop;
-        return plugin.nav.openModuleDetail(asString(module2.id) ?? "");
-      });
-      target.toggleClass("is-current", state.selected === asString(module2.id));
-    }
-    if (!modules.length) list3.createEl("p", { cls: "focus-muted", text: collection.length ? "No matches. Clear the search to see the complete collection." : state.scope === "projects" ? "No projects are recorded yet. All modules remains available above." : "No modules in this collection. Choose All to browse the curriculum." });
-  };
-  input.addEventListener("input", () => {
-    state.query = view.query = input.value;
-    draw();
-  });
-  draw();
-  body.createEl("p", { cls: "focus-muted", text: "Click anywhere on a row to open the module." });
-  root.scrollTop = state.scroll;
-  return true;
-}
-function renderFocusModule(view) {
-  const record7 = view.moduleId ? view.plugin.store.get(view.moduleId) : null;
-  const module2 = readModuleRecord(record7, view.moduleId);
-  if (!module2) return false;
-  const { plugin } = view;
-  const root = page(view.contentEl, "module", plugin.store);
-  const collection = focusCollection(root);
-  toolbar(root, collection.scope === "projects" ? "Thesis & projects" : "Modules", module2.title, () => openFocusCollection(plugin.nav));
-  const body = root.createDiv({ cls: "focus-page" });
-  heading(body, module2.kind === "academic" ? "Academic module" : "Module", module2.title, view.headline(module2));
-  const controls = body.createDiv({ cls: "focus-filters" });
-  const tab = view.tab ?? view.defaultTab(module2);
-  filterTabs(controls, "Module sections", MODULE_TABS, tab, (next) => view.selectTab(next));
-  const pointer2 = readResumePointer(plugin.store.data?.resume_pointer);
-  if (pointer2.module_id === module2.id && pointer2.unit_id && pointer2.stage_id) {
-    const unitId = pointer2.unit_id, stageId = pointer2.stage_id;
-    button(controls, "Resume session", () => {
-      requestFocusSession(unitId);
-      return plugin.nav.openUnit(unitId, stageId);
-    }, "cta");
-  }
-  if (tab === "overview") view.renderOverview(body, module2);
-  else if (tab === "resources") view.renderSources(body, module2);
-  else if (tab === "logistics") view.renderLogistics(body, module2);
-  else {
-    if (module2.components.length) filterTabs(body, "Module components", [["", "All components"], ...module2.components.map((item) => [item.id, item.title])], view.componentId ?? "", (id) => view.selectComponent(id || null));
-    body.createEl("h2", { text: "Units" });
-    const units = orderModuleUnits(module2, plugin.store.unitsFor(module2.id, view.componentId).map(normalizeUnitRecord).filter(nonNull));
-    renderModuleUnitGroups(body, units, (parent, unit) => {
-      const stages = asRecords(plugin.store.mapForUnit(unit.id)?.stages);
-      const { done, total } = stageProgress(stages);
-      const target = row(parent, `Open unit: ${unit.title}`, () => {
-        view.selectedElementId = unit.id;
-        return plugin.nav.openUnit(unit.id);
-      });
-      const copy = target.createDiv({ cls: "focus-row-copy" });
-      copy.createEl("strong", { text: unit.title });
-      copy.createSpan({ cls: "focus-muted", text: total ? `${total} stages \xB7 ${done} complete` : "No study map yet" });
-      target.createSpan({ cls: "focus-row-state", text: unit.status.replaceAll("-", " ") });
-      chevron2(target);
-    });
-    if (!units.length) body.createEl("p", { cls: "focus-muted", text: "No units in this component. Choose All components." });
-  }
-  button(body, collection.scope === "projects" ? "Back to projects" : "Back to modules", () => openFocusCollection(plugin.nav), "quiet");
-  return true;
 }
 
 // src/designs/focus/index.ts
@@ -44606,7 +45984,8 @@ var focusScreens = {
   learn: renderFocusLearn,
   moduleList: renderFocusModules,
   moduleDetail: renderFocusModule,
-  unit: renderFocusUnit
+  unit: renderFocusUnit,
+  atlas: renderFocusAtlas
 };
 
 // src/designs/registry.ts
@@ -44615,14 +45994,14 @@ var SCREENS = {
   focus: focusScreens
 };
 function drawDesignScreen(plugin, key, host) {
-  if (!plugin.store.ready) return false;
+  if (!plugin.store.ready || plugin.settings.uiDesign === BASE_VIEWS_DESIGN_ID) return false;
   const screen = SCREENS[normalizeInterfaceDesign(plugin.settings.uiDesign)]?.[key];
   return screen ? screen(host) !== false : false;
 }
 
 // src/views/atlas-view.ts
 var RELATION_REGISTRY = "registry-concept-relations";
-var AtlasView = class extends import_obsidian11.ItemView {
+var AtlasView = class extends import_obsidian12.ItemView {
   plugin;
   concept = null;
   module = null;
@@ -44884,11 +46263,11 @@ var AtlasView = class extends import_obsidian11.ItemView {
    */
   async write(action, onRefusal) {
     if (this.mutationPending) {
-      new import_obsidian11.Notice("A LearningOS write is already running.");
+      new import_obsidian12.Notice("A LearningOS write is already running.");
       return false;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian11.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian12.Notice("Queued behind the running LearningOS write.");
     }
     this.mutationPending = true;
     try {
@@ -44898,7 +46277,7 @@ var AtlasView = class extends import_obsidian11.ItemView {
     } catch (error) {
       const message2 = errorMessage(error);
       onRefusal?.(message2);
-      new import_obsidian11.Notice(message2);
+      new import_obsidian12.Notice(message2);
       this.render();
       return false;
     } finally {
@@ -44926,7 +46305,7 @@ var AtlasView = class extends import_obsidian11.ItemView {
 };
 
 // src/views/boundary-view.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/contracts/masters-planning.ts
 var import_responses_validator2 = __toESM(require_responses_validator());
@@ -44971,7 +46350,7 @@ function sourceLists(source) {
     return key ? [MASTER_LIST_LABELS[key] ?? key] : [];
   }))];
 }
-var BoundaryView = class extends import_obsidian12.ItemView {
+var BoundaryView = class extends import_obsidian13.ItemView {
   plugin;
   boundaryId = null;
   mastersDashboard = null;
@@ -45249,10 +46628,10 @@ var BoundaryView = class extends import_obsidian12.ItemView {
 };
 
 // src/views/garden-view.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/features/ai-actions/action-button.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const wrap = parent.createDiv({ cls: "los-ai-action-row" });
   const providers = plugin.aiActions.providers();
@@ -45269,7 +46648,7 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const targetId = target.id;
   const launch = button(wrap, "Refine with AI", async () => {
     if (!targetId) {
-      new import_obsidian13.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
+      new import_obsidian14.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
       return;
     }
     launch.setAttr("disabled", "disabled");
@@ -45280,10 +46659,10 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
         provider
       );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
-      new import_obsidian13.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
+      new import_obsidian14.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
       onChanged?.(result);
     } catch (error) {
-      new import_obsidian13.Notice(errorMessage(error));
+      new import_obsidian14.Notice(errorMessage(error));
       launch.removeAttribute?.("disabled");
       launch.setText("Refine with AI");
     }
@@ -45300,7 +46679,7 @@ var GARDEN_FILTERS = [
   ["review-due", "Review due"],
   ["harvest-candidate", "Candidates"]
 ];
-var GardenView = class extends import_obsidian14.ItemView {
+var GardenView = class extends import_obsidian15.ItemView {
   plugin;
   planting = false;
   filter = "all";
@@ -45503,7 +46882,7 @@ var GardenView = class extends import_obsidian14.ItemView {
     const text4 = this.seedText;
     const title2 = this.seedTitle.trim();
     if (!text4.trim()) {
-      new import_obsidian14.Notice(
+      new import_obsidian15.Notice(
         "Write something before adding the seed."
       );
       return;
@@ -45518,9 +46897,9 @@ var GardenView = class extends import_obsidian14.ItemView {
         )
       );
       this.plugin.clearGardenDraft({ title: title2, text: text4 });
-      new import_obsidian14.Notice("Garden seed added.");
+      new import_obsidian15.Notice("Garden seed added.");
     } catch (error) {
-      new import_obsidian14.Notice(errorMessage(error));
+      new import_obsidian15.Notice(errorMessage(error));
     } finally {
       this.planting = false;
       this.render();
@@ -45602,12 +46981,12 @@ var GardenView = class extends import_obsidian14.ItemView {
               await this.plugin.aiActions.applyApprovedDelivery(
                 deliveryId
               );
-              new import_obsidian14.Notice(
+              new import_obsidian15.Notice(
                 "Approved AI delivery applied and projection refreshed."
               );
               this.render();
             } catch (error) {
-              new import_obsidian14.Notice(
+              new import_obsidian15.Notice(
                 errorMessage(error)
               );
             }
@@ -45648,8 +47027,8 @@ var GardenView = class extends import_obsidian14.ItemView {
 };
 
 // src/views/home-view.ts
-var import_obsidian15 = require("obsidian");
-var HomeView = class extends import_obsidian15.ItemView {
+var import_obsidian16 = require("obsidian");
+var HomeView = class extends import_obsidian16.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -46964,10 +48343,10 @@ function renderGroup2(view, root) {
     group2.title,
     "Purpose-built collections in this thematic group."
   );
-  const toolbar2 = root.createDiv({
+  const toolbar = root.createDiv({
     cls: "los-library-toolbar"
   });
-  const input = toolbar2.createEl(
+  const input = toolbar.createEl(
     "input",
     {
       cls: "los-search los-route-search",
@@ -48059,9 +49438,9 @@ function renderPathBar(view, parent, trail) {
   });
 }
 function renderToolbar2(view, parent, folder2, shown, onQuery) {
-  const toolbar2 = parent.createDiv({ cls: "los-finder-toolbar" });
+  const toolbar = parent.createDiv({ cls: "los-finder-toolbar" });
   const up = button(
-    toolbar2,
+    toolbar,
     "Enclosing folder",
     () => void view.openEnclosingFolder(),
     "quiet"
@@ -48069,7 +49448,7 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
   up.addClass("los-finder-up");
   up.setAttribute("aria-label", "Go to the enclosing folder");
   if (!view.folderPath.length) up.disabled = true;
-  const search = toolbar2.createEl("input", {
+  const search = toolbar.createEl("input", {
     cls: "los-search los-finder-filter",
     attr: {
       type: "search",
@@ -48081,7 +49460,7 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
   search.addEventListener("input", () => {
     onQuery(search.value);
   });
-  const layouts = toolbar2.createDiv({
+  const layouts = toolbar.createDiv({
     cls: "los-finder-layouts",
     attr: { role: "group", "aria-label": "Folder layout" }
   });
@@ -48097,7 +49476,7 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
     control.setAttribute("aria-pressed", String(active));
   }
   const total = folder2.entries.length;
-  const count4 = toolbar2.createSpan({
+  const count4 = toolbar.createSpan({
     cls: "los-finder-count",
     text: shown === total ? itemCount(total) : `${shown} of ${total} items`
   });
@@ -48451,9 +49830,9 @@ function renderFinder(view, root) {
   };
   const words2 = filterWords(view.query);
   const entries2 = folder2.entries.filter((entry) => matches2(entry, words2));
-  const toolbar2 = renderToolbar2(view, main, folder2, entries2.length, onQuery);
-  input = toolbar2.input;
-  count4 = toolbar2.count;
+  const toolbar = renderToolbar2(view, main, folder2, entries2.length, onQuery);
+  input = toolbar.input;
+  count4 = toolbar.count;
   main.createEl("p", {
     cls: "los-micro los-finder-interaction-hint",
     text: view.folderLayout === "columns" ? "Choose a folder to open it. Select a file to preview; press Enter or use its Open action to open it." : "Click to preview. Click the selected row again, double-click, or press Enter to open. Arrow keys move the selection."
@@ -48462,7 +49841,7 @@ function renderFinder(view, root) {
   body = main.createDiv({ cls: "los-finder-body" });
   updateResults(view.takeFolderFocus());
   if (!view.folderPath.length) renderCoverage(view, main);
-  return toolbar2.input;
+  return toolbar.input;
 }
 
 // src/features/library/filters.ts
@@ -48562,10 +49941,10 @@ function renderSourceBrowser(view, root) {
   const browser = root.createDiv({
     cls: "los-library-browser"
   });
-  const toolbar2 = browser.createDiv({
+  const toolbar = browser.createDiv({
     cls: "los-library-browser-toolbar"
   });
-  const input = toolbar2.createEl(
+  const input = toolbar.createEl(
     "input",
     {
       cls: "los-search los-route-search los-library-global-search",
@@ -48588,7 +49967,7 @@ function renderSourceBrowser(view, root) {
     }
   );
   const fullTextSearch = button(
-    toolbar2,
+    toolbar,
     "Full text / OCR",
     () => view.plugin.nav.openFullTextSearch(),
     "quiet"
@@ -48810,8 +50189,8 @@ function renderSourceBrowser(view, root) {
 }
 
 // src/views/library-view.ts
-var import_obsidian16 = require("obsidian");
-var LibraryView = class extends import_obsidian16.ItemView {
+var import_obsidian17 = require("obsidian");
+var LibraryView = class extends import_obsidian17.ItemView {
   plugin;
   screen = "home";
   collection = "sources";
@@ -49578,8 +50957,8 @@ function renderGroupList(view, root) {
 }
 
 // src/views/module-view.ts
-var import_obsidian17 = require("obsidian");
-var ModuleView = class extends import_obsidian17.ItemView {
+var import_obsidian18 = require("obsidian");
+var ModuleView = class extends import_obsidian18.ItemView {
   plugin;
   screen;
   groupId;
@@ -49708,8 +51087,8 @@ var ModuleView = class extends import_obsidian17.ItemView {
 };
 
 // src/views/nav-view.ts
-var import_obsidian18 = require("obsidian");
-var NavView = class extends import_obsidian18.ItemView {
+var import_obsidian19 = require("obsidian");
+var NavView = class extends import_obsidian19.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -49772,7 +51151,7 @@ var NavView = class extends import_obsidian18.ItemView {
 };
 
 // src/views/program-view.ts
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 var COORDINATION_HEADINGS = [
   "Priorities",
   "Commitments",
@@ -49795,7 +51174,7 @@ function readProgramSemesters(value) {
   }
   return semesters;
 }
-var ProgramView = class extends import_obsidian19.ItemView {
+var ProgramView = class extends import_obsidian20.ItemView {
   plugin;
   programId = null;
   captureFeedback = "";
@@ -50120,7 +51499,7 @@ var ProgramView = class extends import_obsidian19.ItemView {
       () => {
         const text4 = editor.value.trim();
         if (!text4) {
-          new import_obsidian19.Notice(
+          new import_obsidian20.Notice(
             "Enter some text before capturing."
           );
           editor.focus();
@@ -50202,7 +51581,7 @@ var ProgramView = class extends import_obsidian19.ItemView {
       () => {
         const localPath = localFilePath(picker.files?.[0]);
         if (!localPath) {
-          new import_obsidian19.Notice(
+          new import_obsidian20.Notice(
             "Choose a local file first."
           );
           return;
@@ -50234,7 +51613,7 @@ var ProgramView = class extends import_obsidian19.ItemView {
   }
   async capture(action, clear = null, feedback = "Captured to Inbox. It is awaiting routing.") {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian19.Notice(
+      new import_obsidian20.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -50252,23 +51631,23 @@ var ProgramView = class extends import_obsidian19.ItemView {
       );
       clear?.();
       this.captureFeedback = feedback;
-      new import_obsidian19.Notice(
+      new import_obsidian20.Notice(
         "Captured to the LearningOS inbox."
       );
       this.render();
     } catch (error) {
-      new import_obsidian19.Notice(errorMessage(error));
+      new import_obsidian20.Notice(errorMessage(error));
     }
   }
 };
 
 // src/views/review-view.ts
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 var fs3 = __toESM(require("node:fs"));
 var nodePath3 = __toESM(require("node:path"));
 
 // src/features/review/detail.ts
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 
 // src/gateway-client.ts
 var import_responses_validator4 = __toESM(require_responses_validator());
@@ -51127,7 +52506,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:68393718cec0b0d1079a9763bac72fc8fba1e2aa6b496dbd4adf8ea20b8b7b10" : "unavailable";
+  return true ? "sha256:a288f242e33b689759aa82561354698942a62927b2a2e058750737755a4c3331" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;
@@ -52181,10 +53560,10 @@ async function send(host, action, done) {
   host.render();
   try {
     await host.plugin.mutate(action);
-    new import_obsidian20.Notice(done);
+    new import_obsidian21.Notice(done);
     return true;
   } catch (error) {
-    new import_obsidian20.Notice(errorMessage(error));
+    new import_obsidian21.Notice(errorMessage(error));
     return false;
   } finally {
     host.sending = false;
@@ -52221,7 +53600,7 @@ function editConnection(host, draft) {
   const brief = host.plugin.abilityHorizon.current();
   const from = brief?.abilities.find((row3) => row3.id === draft.fromAbility);
   if (!brief || !from) {
-    new import_obsidian20.Notice("The ability map is not loaded, so this connection cannot be edited yet.");
+    new import_obsidian21.Notice("The ability map is not loaded, so this connection cannot be edited yet.");
     return;
   }
   new AbilityConnectionDraftModal(host.app, {
@@ -52235,7 +53614,7 @@ function editConnection(host, draft) {
 function drop(host, id) {
   host.plugin.discardAbilityDraft(id);
   host.select(null);
-  new import_obsidian20.Notice("Draft dropped. Nothing was recorded.");
+  new import_obsidian21.Notice("Draft dropped. Nothing was recorded.");
 }
 function renderClaimDraft(parent, host, draft) {
   ensureAbility(host, draft.abilityId);
@@ -52319,7 +53698,7 @@ function renderClaimDraft(parent, host, draft) {
   const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
     const current = host.plugin.listAbilityDrafts().find((row22) => row22.id === draft.id);
     if (!current || current.kind !== "claim" || current.updatedAt !== draft.updatedAt) {
-      new import_obsidian20.Notice("The draft changed; review it again before confirming.");
+      new import_obsidian21.Notice("The draft changed; review it again before confirming.");
       host.render();
       return;
     }
@@ -52376,7 +53755,7 @@ function renderConnectionDraft(parent, host, draft) {
   const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
     const current = host.plugin.listAbilityDrafts().find((row3) => row3.id === draft.id);
     if (!current || current.kind !== "connection" || current.updatedAt !== draft.updatedAt) {
-      new import_obsidian20.Notice("The draft changed; review it again before confirming.");
+      new import_obsidian21.Notice("The draft changed; review it again before confirming.");
       host.render();
       return;
     }
@@ -52502,7 +53881,7 @@ function asOperationDetail(value) {
 }
 
 // src/views/review-view.ts
-var ReviewView = class extends import_obsidian21.ItemView {
+var ReviewView = class extends import_obsidian22.ItemView {
   plugin;
   selectedKey = null;
   sending = false;
@@ -52640,7 +54019,7 @@ var OPERATIONS_FILTERS = [
   ["attention", "Needs attention"],
   ["recoveries", "Recoveries"]
 ];
-var DiagnosticsView = class extends import_obsidian21.ItemView {
+var DiagnosticsView = class extends import_obsidian22.ItemView {
   plugin;
   report = "";
   screen = "health";
@@ -53222,7 +54601,7 @@ Tried: ${resolved.attempted.join(", ")}`;
 };
 
 // src/views/shelving-view.ts
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 
 // src/features/shelving/proposal.ts
 var SHELVING_ITEM_FIELDS = [
@@ -53371,7 +54750,7 @@ function reconciliationSummary({ kept, changed, added }) {
 // src/views/shelving-view.ts
 var CONTENT_PREVIEW_LINES = 12;
 var PROPOSAL_MOVED = "The proposal changed before your approval was sent. Nothing was written; review the current proposal and approve again.";
-var ShelvingView = class extends import_obsidian22.ItemView {
+var ShelvingView = class extends import_obsidian23.ItemView {
   plugin;
   unitId = null;
   constructor(leaf, plugin) {
@@ -53559,7 +54938,7 @@ var ShelvingView = class extends import_obsidian22.ItemView {
       );
       this.render();
     } catch (error) {
-      new import_obsidian22.Notice(errorMessage(error));
+      new import_obsidian23.Notice(errorMessage(error));
     }
   }
   /**
@@ -53576,7 +54955,7 @@ var ShelvingView = class extends import_obsidian22.ItemView {
     if (control.disabled) return;
     const selected = this.currentSelection(shown);
     if (!selected.length) {
-      new import_obsidian22.Notice("Select at least one proposal.");
+      new import_obsidian23.Notice("Select at least one proposal.");
       return;
     }
     control.disabled = true;
@@ -53589,7 +54968,7 @@ var ShelvingView = class extends import_obsidian22.ItemView {
       this.render();
     } catch (error) {
       control.disabled = false;
-      new import_obsidian22.Notice(errorMessage(error));
+      new import_obsidian23.Notice(errorMessage(error));
     }
   }
 };
@@ -53719,8 +55098,8 @@ function renderArtifacts(view, root, unit) {
 }
 
 // src/views/unit-view.ts
-var import_obsidian23 = require("obsidian");
-var UnitView = class extends import_obsidian23.ItemView {
+var import_obsidian24 = require("obsidian");
+var UnitView = class extends import_obsidian24.ItemView {
   plugin;
   unitId;
   stageId;
@@ -53806,13 +55185,13 @@ var UnitView = class extends import_obsidian23.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.mutationPending) {
-      new import_obsidian23.Notice(
+      new import_obsidian24.Notice(
         "A LearningOS write is already running."
       );
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian23.Notice(
+      new import_obsidian24.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -53824,7 +55203,7 @@ var UnitView = class extends import_obsidian23.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian23.Notice(
+      new import_obsidian24.Notice(
         errorMessage3(error)
       );
     } finally {
@@ -53834,7 +55213,7 @@ var UnitView = class extends import_obsidian23.ItemView {
   async selectStage(stageId) {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian23.Notice(
+      new import_obsidian24.Notice(
         "This unit is no longer available."
       );
       return;
@@ -53962,11 +55341,11 @@ function detachApplication(plugin) {
 }
 
 // src/app/navigator.ts
-var import_obsidian25 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 
 // src/app/global-search.ts
-var import_obsidian24 = require("obsidian");
-var GlobalSearchModal = class extends import_obsidian24.Modal {
+var import_obsidian25 = require("obsidian");
+var GlobalSearchModal = class extends import_obsidian25.Modal {
   plugin;
   query;
   filter;
@@ -54207,7 +55586,7 @@ var AppNavigator = class {
   /** Learn is one destination; the areas are sub-areas inside it. */
   openLearn(programId = null) {
     const requested = programId || this.settings.learnArea || LEARN_AREAS[0][0];
-    const area = requested === "program-thesis-projects" && this.settings.uiDesign !== "study-desk" ? "program-bachelors" : requested;
+    const area = requested === "program-thesis-projects" && this.settings.uiDesign === BASE_VIEWS_DESIGN_ID ? "program-bachelors" : requested;
     this.settings.learnArea = area;
     this.drafts.scheduleSave();
     return this.router.navigate({ name: "learn", programId: area });
@@ -54417,7 +55796,7 @@ var AppNavigator = class {
    */
   openFullTextSearch() {
     const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian25.Notice("Omnisearch is unavailable; structural Library search still works.");
+    if (!ok) new import_obsidian26.Notice("Omnisearch is unavailable; structural Library search still works.");
   }
 };
 
@@ -54455,7 +55834,7 @@ var ApplicationRouter = class {
   }
   normalizeRoute(route2) {
     if (!route2 || typeof route2 !== "object") return { name: "home" };
-    if ((route2.name === "learn" || route2.name === "program") && route2.programId === "program-thesis-projects" && this.plugin.settings.uiDesign !== "study-desk") {
+    if ((route2.name === "learn" || route2.name === "program") && route2.programId === "program-thesis-projects" && !this.usesPaneDesign) {
       return { ...route2, programId: "program-bachelors" };
     }
     if (route2.name === "module-detail") {
@@ -54750,8 +56129,11 @@ var ApplicationRouter = class {
   sameRoute(left, right) {
     return JSON.stringify(left) === JSON.stringify(right);
   }
+  get usesPaneDesign() {
+    return this.plugin.settings.uiDesign !== BASE_VIEWS_DESIGN_ID;
+  }
   get curriculumNav() {
-    return this.plugin.settings.uiDesign === "study-desk" ? "modules" : "learn";
+    return this.usesPaneDesign ? "modules" : "learn";
   }
   paneEntry(leaf) {
     const state = leaf?.getViewState?.();
@@ -54778,7 +56160,7 @@ var ApplicationRouter = class {
     return this.paneEntry(leaf ?? this.studyDeskPane())?.route ?? null;
   }
   currentRoute(leaf) {
-    return (this.plugin.settings.uiDesign === "study-desk" ? this.attendedRoute(leaf) : null) ?? this.navigation.current;
+    return (this.usesPaneDesign ? this.attendedRoute(leaf) : null) ?? this.navigation.current;
   }
   paneHistoryAvailable(leaf, direction) {
     return Boolean(this.paneHistories.get(leaf)?.[direction].length);
@@ -54842,7 +56224,7 @@ var ApplicationRouter = class {
     const remember = options.remember !== false;
     const pushHistory = options.pushHistory !== false;
     const prior = this.navigation.current;
-    const studyDesk = this.plugin.settings.uiDesign === "study-desk";
+    const studyDesk = this.usesPaneDesign;
     const workspace = this.plugin.app.workspace;
     let pane = options.preferredLeaf ?? (studyDesk ? this.studyDeskPane() : null);
     const panePrior = studyDesk ? this.paneEntry(pane) : null;
@@ -54904,7 +56286,7 @@ var ApplicationRouter = class {
     return this.navigate(route2, { remember: true, pushHistory: false });
   }
   async back() {
-    const pane = this.plugin.settings.uiDesign === "study-desk" ? this.studyDeskPane() : null;
+    const pane = this.usesPaneDesign ? this.studyDeskPane() : null;
     if (pane) {
       if (this.paneHistoryAvailable(pane, "back")) return this.movePaneHistory(pane, "back");
       return this.navigate({ name: "home" }, { pushHistory: false });
@@ -54927,8 +56309,8 @@ var ApplicationRouter = class {
 };
 
 // src/app/unit-note-modal.ts
-var import_obsidian26 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian26.Modal {
+var import_obsidian27 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian27.Modal {
   plugin;
   unit;
   studyMap;
@@ -55066,25 +56448,25 @@ var UnitNoteModal = class extends import_obsidian26.Modal {
   async save() {
     const text4 = String(this.editor?.value || "");
     if (!text4.trim()) {
-      new import_obsidian26.Notice("Write a note before saving.");
+      new import_obsidian27.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
     }
     if (this.saving) {
-      new import_obsidian26.Notice("This note is already being saved.");
+      new import_obsidian27.Notice("This note is already being saved.");
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian26.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian27.Notice("Queued behind the running LearningOS write.");
     }
     const unitId = this.unit.id;
     if (!unitId) {
-      new import_obsidian26.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      new import_obsidian27.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
       return;
     }
     const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
-      new import_obsidian26.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      new import_obsidian27.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
     this.saving = true;
@@ -55096,10 +56478,10 @@ var UnitNoteModal = class extends import_obsidian26.Modal {
         filePaths
       }, this.expectedRevisions));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStages, sent);
-      new import_obsidian26.Notice("Learning-session note saved.");
+      new import_obsidian27.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian26.Notice(errorMessage(error));
+      new import_obsidian27.Notice(errorMessage(error));
     } finally {
       this.saving = false;
     }
@@ -55480,7 +56862,7 @@ var AIActionClient = class {
 var import_electron2 = require("electron");
 var fs4 = __toESM(require("node:fs"));
 var nodePath4 = __toESM(require("node:path"));
-var import_obsidian27 = require("obsidian");
+var import_obsidian28 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
   ".cc",
@@ -55561,7 +56943,7 @@ var ResourceOpener = class {
   async openVaultPath(path, destination = null) {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
-      new import_obsidian27.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
     const candidate2 = nodePath4.resolve(this.app.vault.adapter.getBasePath(), target);
@@ -55569,7 +56951,7 @@ var ResourceOpener = class {
       try {
         fs4.realpathSync(candidate2);
       } catch (_) {
-        new import_obsidian27.Notice(`File unavailable: ${target}`);
+        new import_obsidian28.Notice(`File unavailable: ${target}`);
         return void 0;
       }
       const realPath = resolvedWithin(
@@ -55577,13 +56959,13 @@ var ResourceOpener = class {
         candidate2
       );
       if (!realPath) {
-        new import_obsidian27.Notice(`Unsafe vault symlink refused: ${target}`);
+        new import_obsidian28.Notice(`Unsafe vault symlink refused: ${target}`);
         return void 0;
       }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian27.Notice(`File unavailable: ${target}`);
+      new import_obsidian28.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
@@ -55618,16 +57000,16 @@ var ResourceOpener = class {
       try {
         view.setEphemeralState({ page: destination.page });
       } catch (_) {
-        new import_obsidian27.Notice(`Go to ${destination.label}.`);
+        new import_obsidian28.Notice(`Go to ${destination.label}.`);
         return;
       }
-      new import_obsidian27.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
+      new import_obsidian28.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
       return;
     }
     try {
       await leaf.openFile(file, { eState: { page: destination.page } });
     } catch (_) {
-      new import_obsidian27.Notice(`Go to ${destination.label}.`);
+      new import_obsidian28.Notice(`Go to ${destination.label}.`);
       return;
     }
     this.announceDestination(leaf, destination);
@@ -55635,7 +57017,7 @@ var ResourceOpener = class {
   /** Only a viewer that can be positioned is told it landed there. */
   announceDestination(leaf, destination) {
     void leaf;
-    new import_obsidian27.Notice(`Opened \u2014 go to ${destination.label}.`);
+    new import_obsidian28.Notice(`Opened \u2014 go to ${destination.label}.`);
   }
   isCodePath(path) {
     if (!fs4.existsSync(path)) return false;
@@ -55645,19 +57027,19 @@ var ResourceOpener = class {
   async openSystemPath(path, successMessage) {
     const error = await import_electron2.shell.openPath(path);
     if (error) {
-      new import_obsidian27.Notice(`Could not open file: ${error}`);
+      new import_obsidian28.Notice(`Could not open file: ${error}`);
       return false;
     }
-    new import_obsidian27.Notice(successMessage);
+    new import_obsidian28.Notice(successMessage);
     return true;
   }
   async openCodePath(path) {
     try {
       await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
-      new import_obsidian27.Notice("Opened in Visual Studio Code.");
+      new import_obsidian28.Notice("Opened in Visual Studio Code.");
       return true;
     } catch (_) {
-      new import_obsidian27.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      new import_obsidian28.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
@@ -55666,21 +57048,21 @@ var ResourceOpener = class {
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian27.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
     }
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (!path || !fs4.existsSync(path)) {
-      new import_obsidian27.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian27.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openSystemPath(realPath, successMessage);
@@ -55692,12 +57074,12 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(learningRoot, path || "");
     const relative3 = nodePath4.relative(materialsRoot, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian27.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(materialsRoot, fullPath);
     if (!realPath) {
-      new import_obsidian27.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(
@@ -55712,16 +57094,16 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(base, path || "");
     const relative3 = nodePath4.relative(base, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian27.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
     if (!fs4.existsSync(fullPath)) {
-      new import_obsidian27.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(base, fullPath);
     if (!realPath) {
-      new import_obsidian27.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
+      new import_obsidian28.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -55745,29 +57127,29 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian27.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian28.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
       return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
-        new import_obsidian27.Notice("Could not open the link in your browser.");
+        new import_obsidian28.Notice("Could not open the link in your browser.");
         return false;
       });
     }
     if (materialPath.trim()) {
-      new import_obsidian27.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
+      new import_obsidian28.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
     } else if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-      new import_obsidian27.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+      new import_obsidian28.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
     } else if (vaultPath.trim()) {
-      new import_obsidian27.Notice("Choose an exact file from this vault collection.");
+      new import_obsidian28.Notice("Choose an exact file from this vault collection.");
     }
     return false;
   }
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian27.Notice(`Copied ${value}`);
+      new import_obsidian28.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian27.Notice(value);
+      new import_obsidian28.Notice(value);
     }
   }
 };
@@ -55791,7 +57173,7 @@ function emptyStoreIndexes() {
   };
 }
 function isArchivedRecord(record7, archivedModuleIds) {
-  if (record7.type === "module" && record7.is_retired === true) {
+  if (record7.type === "module" && record7.status === "archived") {
     return true;
   }
   return typeof record7.module_id === "string" && archivedModuleIds.has(record7.module_id);
@@ -55803,7 +57185,7 @@ function projectedRows(value) {
 }
 function buildStoreIndexes(manifest, records) {
   const archivedModuleIds = new Set(
-    manifest.modules.flatMap((module2) => module2.is_retired === true && typeof module2.id === "string" ? [module2.id] : [])
+    manifest.modules.flatMap((module2) => module2.status === "archived" && typeof module2.id === "string" ? [module2.id] : [])
   );
   const rowsByGroup = /* @__PURE__ */ new Map();
   for (const [group2, value] of Object.entries(manifest)) {
@@ -56250,7 +57632,7 @@ function settingsCoordinator(vaultRoot) {
 function cloneSettings(settings) {
   return JSON.parse(JSON.stringify(settings));
 }
-var LearningOSUI = class extends import_obsidian28.Plugin {
+var LearningOSUI = class extends import_obsidian29.Plugin {
   lastAiPrompt = "";
   /** Set when startup found an unusable record; the app registers read-only. */
   recoveryBlocked = false;
@@ -56314,9 +57696,11 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
     const loadedSettings = await this.loadData();
     if (!this.isLifecycleActive()) return;
     const savedSettings = loadedSettings ?? {};
+    const savedUiDesign = savedSettings.uiDesign;
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...savedSettings,
+      uiDesign: savedUiDesign === BASE_VIEWS_DESIGN_ID ? BASE_VIEWS_DESIGN_ID : normalizeInterfaceDesign(savedUiDesign),
       uiDrafts: normalizeUiDrafts(savedSettings.uiDrafts)
     };
     this.drafts = new DraftStore(this.settings, () => this.persistSettings());
@@ -56355,7 +57739,7 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
   /** Every Notice the gateway and recovery paths raise goes through here. */
   notify(message2) {
     if (!this.isLifecycleActive()) return;
-    new import_obsidian28.Notice(message2);
+    new import_obsidian29.Notice(message2);
   }
   /**
    * Finish, or refuse to finish, whatever the last session left in flight.
@@ -56501,11 +57885,11 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
    */
   async retryRecoveredWrite() {
     if (!this.recovery.unresolved) {
-      new import_obsidian28.Notice("There is no unresolved Gateway write.");
+      new import_obsidian29.Notice("There is no unresolved Gateway write.");
       return;
     }
     if (this.recovery.state.kind === "malformed") {
-      new import_obsidian28.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
+      new import_obsidian29.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
       return;
     }
     try {
@@ -56516,10 +57900,10 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
         await this.finishConfirmedWrite(confirmation);
       });
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian28.Notice("The recovered Gateway write is settled.");
+      new import_obsidian29.Notice("The recovered Gateway write is settled.");
     } catch (error) {
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian28.Notice(errorMessage4(error));
+      new import_obsidian29.Notice(errorMessage4(error));
     }
   }
   /**
@@ -56633,7 +58017,7 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
     this.gateway.assertLifecycleActive();
     let rebuildError = null;
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian28.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
+      new import_obsidian29.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
       try {
         await this.gateway.call(["generate"], { expectJson: false });
       } catch (error) {
@@ -56677,7 +58061,7 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
       );
     }
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian28.Notice("Recovered the prior write; newer canonical changes are also present.");
+      new import_obsidian29.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed(owner);
     this.gateway.noteSettlementObserved(confirmation);
@@ -56764,7 +58148,7 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
    * draft stays intact for one deliberate reconciliation and retry.
    */
   async refreshAfterConflict() {
-    new import_obsidian28.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
+    new import_obsidian29.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
   }
@@ -56776,9 +58160,9 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
         await this.gateway.call(["generate"], { expectJson: false });
         await this.reloadStore();
       });
-      new import_obsidian28.Notice("LearningOS projection rebuilt.");
+      new import_obsidian29.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian28.Notice(errorMessage4(error));
+      new import_obsidian29.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
@@ -56792,7 +58176,7 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
       new SessionEndModal(this.app, this, review2).open();
       return review2;
     } catch (error) {
-      new import_obsidian28.Notice(errorMessage4(error));
+      new import_obsidian29.Notice(errorMessage4(error));
       return null;
     }
   }
@@ -56859,7 +58243,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian28.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian29.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }
