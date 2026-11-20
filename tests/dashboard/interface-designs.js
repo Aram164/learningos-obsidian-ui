@@ -1,6 +1,6 @@
 'use strict';
 
-const { path, fs, ROOT, VIEW, waitFor, check, heading, boot } = require('./support');
+const { path, fs, ROOT, VIEW, waitFor, check, heading, boot, makeApp, FIXTURE, LearningOSUI, tick } = require('./support');
 const { createSourceModuleLoader } = require('../source-module-loader');
 
 /** The body the plugin writes to in this harness, however a test reached it. */
@@ -31,7 +31,18 @@ module.exports = async function run() {
       nav().find('los-design-switch').length >= 1
       && nav().findText('los-design-switch-option', 'Study Desk') !== null);
 
+    /* Obsidian 1.15 paints a saved snapshot of the workspace while it starts,
+     * and the snapshot keeps only the body's `class` and `style`. The design
+     * and the scheme must therefore be classes, or every launch shows the base
+     * palette and the wrong layout until the real views replace the picture. */
+    const bodyClasses = () => [...body().classes].filter((name) => name.startsWith('los-')).sort();
+    check('the design and its scheme ride in body classes the startup snapshot keeps',
+      JSON.stringify(bodyClasses()) === JSON.stringify(['los-palette-daylight', 'los-ui-focus']),
+      bodyClasses().join(' '));
     await plugin.setDesignPalette('nightfall');
+    check('switching the scheme swaps its class rather than adding another',
+      JSON.stringify(bodyClasses()) === JSON.stringify(['los-palette-nightfall', 'los-ui-focus']),
+      bodyClasses().join(' '));
     check('Focus keeps its own scheme', body().getAttribute('data-los-palette') === 'nightfall'
       && plugin.settings.uiDesignPalettes.focus === 'nightfall'
       && plugin.settings.uiDesignPalettes['study-desk'] === 'lamplight');
@@ -56,7 +67,61 @@ module.exports = async function run() {
         .every((id) => plugin.commands.some((command) => command.id === id))
       && !plugin.commands.some((command) => command.id === 'use-interface-design-classic'));
     plugin.onunload();
-    check('unloading leaves the body clean', !body().hasAttribute('data-los-ui'));
+    check('unloading leaves the body clean', !body().hasAttribute('data-los-ui')
+      && !body().hasAttribute('data-los-palette')
+      && ![...body().classes].some((name) => name.startsWith('los-ui-') || name.startsWith('los-palette-')));
+  }
+
+  heading('interface designs: a restart reuses the restored tab');
+  {
+    /* Obsidian restores every tab before the plugin asks for its last route.
+     * `restore` used to open that route in a new tab anyway, so each launch
+     * added one identical tab (15 → 16 → 17 in a real vault over three
+     * restarts). It must bring the restored tab forward instead, and fold the
+     * identical copies earlier launches left behind. */
+    const app = makeApp(FIXTURE);
+    const home = app.workspace.getLeaf(true);
+    home.viewType = VIEW.home; home.state = {}; home.pinned = true;
+    const restored = app.workspace.getLeaf(true);
+    restored.viewType = VIEW.module; restored.state = { screen: 'groups' };
+    const leftover = app.workspace.getLeaf(true);
+    leftover.viewType = VIEW.module; leftover.state = { screen: 'groups' };
+    const other = app.workspace.getLeaf(true);
+    other.viewType = VIEW.module; other.state = { screen: 'list', groupId: 'fixture-group', query: '' };
+    const plugin = new LearningOSUI(app, { id: 'learningos-ui', version: 'test' });
+    app._plugin = plugin;
+    plugin._data = {
+      uiDesign: 'study-desk', pinHome: true, openHomeOnStartup: true,
+      navigation: { version: 1, current: { name: 'module-groups' }, history: [] },
+    };
+    await plugin.onload(); await app.workspace._ready(); await tick(); await tick();
+    const modules = app.workspace.getLeavesOfType(VIEW.module);
+    check('the restored tab shows the last route and no new tab opens for it',
+      !restored.detached && modules.includes(restored)
+      && modules.filter((leaf) => leaf.getViewState().state.screen === 'groups').length === 1,
+      modules.map((leaf) => JSON.stringify(leaf.getViewState().state)).join(' | '));
+    check('an identical copy left by an earlier launch is folded', leftover.detached);
+    check('a tab showing a different route is the learner’s and stays', !other.detached && modules.includes(other));
+    check('the pinned Home tab stays', !home.detached && app.workspace.getLeavesOfType(VIEW.home).length === 1);
+    /* Quit and relaunch: Obsidian writes the tabs to workspace.json and
+     * restores them before the plugin loads again. */
+    const saved = [VIEW.home, VIEW.module].flatMap((type) => app.workspace.getLeavesOfType(type))
+      .map((leaf) => ({ type: leaf.viewType, state: leaf.getViewState().state, pinned: leaf.pinned }));
+    plugin.onunload();
+    const relaunched = makeApp(FIXTURE);
+    for (const tab of saved) {
+      const leaf = relaunched.workspace.getLeaf(true);
+      leaf.viewType = tab.type; leaf.state = tab.state; leaf.pinned = tab.pinned;
+    }
+    const again = new LearningOSUI(relaunched, { id: 'learningos-ui', version: 'test' });
+    relaunched._plugin = again;
+    again._data = plugin._data;
+    await again.onload(); await relaunched.workspace._ready(); await tick(); await tick();
+    check('a second launch adds no tab either',
+      relaunched.workspace.getLeavesOfType(VIEW.module).length === saved.filter((tab) => tab.type === VIEW.module).length
+      && relaunched.workspace.getLeavesOfType(VIEW.home).length === 1,
+      `${relaunched.workspace.getLeavesOfType(VIEW.module).length} module tab(s) for ${saved.length - 1} saved`);
+    again.onunload();
   }
 
   heading('interface designs: Study Desk keeps every write path');
@@ -250,7 +315,7 @@ module.exports = async function run() {
         if (char === '{') { if (depth === 0) selectors.push(top.trim()); depth += 1; } else if (char === '}') { depth -= 1; top = ''; } else if (depth === 0) top += char;
       }
       check(`${name}: every rule sits inside its design's one block`,
-        selectors.length === 1 && /^body\[data-los-ui="[a-z-]+"\]$/.test(selectors[0]), selectors.join(' | '));
+        selectors.length === 1 && /^body\.los-ui-[a-z-]+$/.test(selectors[0]), selectors.join(' | '));
     }
   }
 

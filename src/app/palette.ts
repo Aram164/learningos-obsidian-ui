@@ -2,15 +2,22 @@
  * Colour-scheme application.
  *
  * A scheme is a palette swap and nothing more: `25-palettes.css` redefines the
- * root `--los-*` tokens under `body[data-los-palette="…"]`, so every screen,
- * modal and chip follows without a component knowing a scheme exists. That is
- * DESIGN.md principle 2 paying for itself — the reason no component may name a
- * colour is precisely so this can be one attribute.
+ * root `--los-*` tokens under `body.los-palette-…`, so every screen, modal and
+ * chip follows without a component knowing a scheme exists. That is DESIGN.md
+ * principle 2 paying for itself — the reason no component may name a colour is
+ * precisely so this can be one marker.
  *
- * The attribute goes on `document.body` rather than on each `.los-root`,
- * because `los-root` is applied in ten places including modals mounted outside
- * the view tree. One element that is always an ancestor of all of them is the
- * only place a scheme can be set once and be true everywhere.
+ * The marker goes on `document.body` rather than on each `.los-root`, because
+ * `los-root` is applied in ten places including modals mounted outside the view
+ * tree. One element that is always an ancestor of all of them is the only place
+ * a scheme can be set once and be true everywhere.
+ *
+ * The stylesheet selects the class, not the `data-los-palette` attribute.
+ * Obsidian 1.15 paints a saved HTML snapshot of the workspace while it starts,
+ * and that snapshot keeps only `class` and `style` from `<body>`: a scheme held
+ * in an attribute vanished from it, so every launch showed the base palette
+ * and the wrong layout for two or three seconds before the real views took
+ * over. The attribute is still written, for snippet authors and Diagnostics.
  */
 
 /** The schemes a learner may choose, in the order the settings tab lists them. */
@@ -38,9 +45,10 @@ const KNOWN = new Set<string>(PALETTES.map(([id]) => id));
  *  unstyled app.
  *
  *  'custom' is the opposite case: it is a real value that the plugin ships no
- *  rules for. Selecting it sets the attribute and nothing else, so the base
+ *  rules for. Selecting it sets the marker and nothing else, so the base
  *  palette still renders and a reader's own snippet is the only thing defining
- *  `body[data-los-palette="custom"] .los-root`. That is deliberate — with no
+ *  `body[data-los-palette="custom"] .los-root` (or `body.los-palette-custom
+ *  .los-root`, which survives the startup snapshot). That is deliberate — with no
  *  plugin rule at that specificity there is no cascade tie to lose, and the
  *  tokens stay overridable without `!important`. It is also outside the
  *  contrast gate, which is why the label says so. */
@@ -50,10 +58,24 @@ export function normalizePalette(value: unknown): PaletteId {
     : 'wine';
 }
 
+/** The body class the stylesheet selects for a scheme. */
+export function paletteClass(palette: PaletteId): string {
+  return `los-palette-${palette}`;
+}
+
+function clearPaletteClasses(body: HTMLElement): void {
+  for (const [id] of PALETTES) body.classList.remove(paletteClass(id));
+}
+
 export function applyPalette(body: HTMLElement, value: unknown): PaletteId {
   const palette = normalizePalette(value);
-  if (palette === 'wine') body.removeAttribute('data-los-palette');
-  else body.setAttribute('data-los-palette', palette);
+  clearPaletteClasses(body);
+  if (palette === 'wine') {
+    body.removeAttribute('data-los-palette');
+  } else {
+    body.setAttribute('data-los-palette', palette);
+    body.classList.add(paletteClass(palette));
+  }
   return palette;
 }
 
@@ -85,4 +107,5 @@ export function applyPaletteEverywhere(
 /** Leave no trace in the host DOM when the plugin unloads. */
 export function clearPalette(body: HTMLElement): void {
   body.removeAttribute('data-los-palette');
+  clearPaletteClasses(body);
 }

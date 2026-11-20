@@ -30,9 +30,13 @@ interface ManifestStoreHost {
     adapter: {
       exists(path: string): Promise<boolean>;
       read(path: string): Promise<string>;
+      /** Obsidian's adapter stat; a host without it never skips a reload. */
+      stat?(path: string): Promise<{ mtime: number; size: number } | null>;
     };
   };
 }
+
+const MANIFEST_PATH = 'generated/manifest.json';
 
 interface SearchDocument {
   readonly record: ProjectionRecord;
@@ -205,6 +209,8 @@ export class ManifestStore {
   contractVersion: number | null = null;
   snapshotId: string | null = null;
   private loadVersion = 0;
+  /** `mtime:size` of the manifest file behind the published snapshot. */
+  private loadedFile: string | null = null;
   constructor(app: ManifestStoreHost, private readonly canPublish: () => boolean = () => true) {
     this.app = app;
     this.ready = false;
@@ -218,16 +224,40 @@ export class ManifestStore {
     this.indexes = emptyStoreIndexes();
   }
 
+  /** The manifest file's `mtime:size`, or null when the host cannot say. */
+  private async manifestFile(): Promise<string | null> {
+    try {
+      const stat = await this.app.vault.adapter.stat?.(MANIFEST_PATH);
+      return stat ? `${stat.mtime}:${stat.size}` : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Whether the manifest on disk is still the file behind the published
+   * snapshot, so a speculative refresh can be skipped.
+   *
+   * Core replaces the manifest atomically, so a new projection is a new file
+   * with a new mtime. Anything doubtful answers false and the caller reloads:
+   * no published snapshot, a stale or failed one, or a host without `stat`.
+   */
+  async unchangedSinceLoad(): Promise<boolean> {
+    if (!this.ready || this.stale || this.error || this.loadedFile === null) return false;
+    return (await this.manifestFile()) === this.loadedFile;
+  }
+
   async load() {
     const request = ++this.loadVersion;
     try {
-      if (!(await this.app.vault.adapter.exists('generated/manifest.json'))) {
+      if (!(await this.app.vault.adapter.exists(MANIFEST_PATH))) {
         throw new Error('Projection unavailable — rebuild it to continue.');
       }
+      // Stat before reading: a replacement that lands mid-read then shows up
+      // as a different file on the next check and is loaded, never skipped.
+      const file = await this.manifestFile();
       const parsed: unknown = JSON.parse(
-        await this.app.vault.adapter.read(
-          'generated/manifest.json',
-        ),
+        await this.app.vault.adapter.read(MANIFEST_PATH),
       );
       const generated = isRecord(parsed)
         && isRecord(parsed._generated)
@@ -281,6 +311,7 @@ export class ManifestStore {
       this.records = records;
       this.byId = byId;
       this.indexes = indexes;
+      this.loadedFile = file;
       this.ready = true;
       this.stale = false;
       this.error = '';
@@ -288,6 +319,7 @@ export class ManifestStore {
     } catch (error: unknown) {
       if (request !== this.loadVersion || !this.canPublish()) return false;
       this.error = error instanceof Error ? error.message : String(error);
+      this.loadedFile = null;
       if (this.data !== null) {
         // Retain the last valid snapshot and every matching index. The
         // explicit stale state lets reads continue while guaranteeing

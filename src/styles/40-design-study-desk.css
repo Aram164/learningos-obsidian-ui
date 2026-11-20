@@ -5,7 +5,7 @@
  *
  * Literata is the design's reading face. It does not ship with the plugin yet,
  * so the stack falls through to the closest serif macOS already has. */
-body[data-los-ui="study-desk"] {
+body.los-ui-study-desk {
   --sd-serif: Literata, "Iowan Old Style", Palatino, Georgia, serif;
   --sd-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
 

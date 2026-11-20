@@ -46,7 +46,8 @@ export const DEFAULT_SETTINGS = {
   atlasRecentConcepts: [] as string[],
   /**
    * Selected colour scheme. 'wine' is the base palette in 00-tokens.css and
-   * sets no attribute; every other value is applied as `data-los-palette` on
+   * sets no marker; every other value is applied as the class
+   * `los-palette-<id>` (and the attribute `data-los-palette`) on
    * `document.body` and swaps the root tokens in 25-palettes.css. An unknown
    * value falls back to 'wine' rather than leaving the app unstyled.
    */

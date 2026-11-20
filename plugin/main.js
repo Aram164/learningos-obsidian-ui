@@ -30310,7 +30310,8 @@ var DEFAULT_SETTINGS = {
   atlasRecentConcepts: [],
   /**
    * Selected colour scheme. 'wine' is the base palette in 00-tokens.css and
-   * sets no attribute; every other value is applied as `data-los-palette` on
+   * sets no marker; every other value is applied as the class
+   * `los-palette-<id>` (and the attribute `data-los-palette`) on
    * `document.body` and swaps the root tokens in 25-palettes.css. An unknown
    * value falls back to 'wine' rather than leaving the app unstyled.
    */
@@ -30369,10 +30370,21 @@ var KNOWN = new Set(PALETTES.map(([id]) => id));
 function normalizePalette(value) {
   return typeof value === "string" && KNOWN.has(value) ? value : "wine";
 }
+function paletteClass(palette) {
+  return `los-palette-${palette}`;
+}
+function clearPaletteClasses(body) {
+  for (const [id] of PALETTES) body.classList.remove(paletteClass(id));
+}
 function applyPalette(body, value) {
   const palette = normalizePalette(value);
-  if (palette === "wine") body.removeAttribute("data-los-palette");
-  else body.setAttribute("data-los-palette", palette);
+  clearPaletteClasses(body);
+  if (palette === "wine") {
+    body.removeAttribute("data-los-palette");
+  } else {
+    body.setAttribute("data-los-palette", palette);
+    body.classList.add(paletteClass(palette));
+  }
   return palette;
 }
 function applyPaletteEverywhere(bodies, value) {
@@ -30387,6 +30399,7 @@ function applyPaletteEverywhere(bodies, value) {
 }
 function clearPalette(body) {
   body.removeAttribute("data-los-palette");
+  clearPaletteClasses(body);
 }
 
 // src/app/interface-design.ts
@@ -30437,20 +30450,32 @@ function rememberDesignPalette(settings, value) {
   settings.uiDesignPalettes = { ...settings.uiDesignPalettes, [design.id]: applied };
   return designPalette(settings);
 }
+function designClass(id) {
+  return `los-ui-${id}`;
+}
+function clearDesignClasses(body) {
+  for (const design of INTERFACE_DESIGNS) body.classList.remove(designClass(design.id));
+}
 function applyInterfaceDesign(bodies, settings) {
   const isBaseViews = settings.uiDesign === BASE_VIEWS_DESIGN_ID;
   const id = isBaseViews ? BASE_VIEWS_DESIGN_ID : normalizeInterfaceDesign(settings.uiDesign);
   const targets = [...new Set(bodies)];
   for (const body of targets) {
     if (!body) continue;
-    if (isBaseViews) body.removeAttribute("data-los-ui");
-    else body.setAttribute("data-los-ui", id);
+    clearDesignClasses(body);
+    if (isBaseViews) {
+      body.removeAttribute("data-los-ui");
+    } else {
+      body.setAttribute("data-los-ui", id);
+      body.classList.add(designClass(id));
+    }
   }
   applyPaletteEverywhere(targets, designPalette(settings));
   return id;
 }
 function clearInterfaceDesign(body) {
   body.removeAttribute("data-los-ui");
+  clearDesignClasses(body);
 }
 
 // src/settings.ts
@@ -30539,8 +30564,10 @@ function enableButtonGroupKeyboardNavigation(group2, orientation = "horizontal")
 
 // src/security/safe-url.ts
 function safeWebUrl(value) {
+  const text4 = String(value || "");
+  if (!text4.includes(":")) return null;
   try {
-    const url = new URL(String(value || ""));
+    const url = new URL(text4);
     return SAFE_URL_PROTOCOLS.includes(url.protocol) ? url : null;
   } catch (_) {
     return null;
@@ -52506,7 +52533,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:a288f242e33b689759aa82561354698942a62927b2a2e058750737755a4c3331" : "unavailable";
+  return true ? "sha256:bad109195b92c345f8316a4ea990159972c6cc4f23fd4024d13eff8d3a31ea2c" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;
@@ -55295,7 +55322,7 @@ function registerApplication(plugin) {
     }
   }));
   if (typeof window !== "undefined") {
-    plugin.registerDomEvent(window, "focus", () => plugin.requestManifestRefresh());
+    plugin.registerDomEvent(window, "focus", () => plugin.requestManifestRefresh({ ifChanged: true }));
   }
   plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
   plugin.addRibbonIcon("route", "Open LearningOS", () => plugin.nav.openHome());
@@ -56276,14 +56303,57 @@ var ApplicationRouter = class {
     this.noteAttention(leaf);
     return leaf;
   }
+  /** The route a LearningOS leaf shows, or null for any other leaf. */
+  leafRoute(leaf) {
+    const state = leaf.getViewState?.();
+    if (typeof state?.type !== "string" || !state.type.startsWith("learningos-") || state.type === VIEW_NAV) {
+      return null;
+    }
+    return JSON.stringify(this.normalizeRoute(normalizeFolderRoute(this.fromLegacy(state))));
+  }
+  /** A leaf already showing `route`, so a restore can bring it forward. */
+  leafShowing(route2) {
+    const wanted = JSON.stringify(this.normalizeRoute(normalizeFolderRoute(route2)));
+    const type = this.descriptor(route2).type;
+    return this.plugin.app.workspace.getLeavesOfType(type).find((leaf) => this.leafRoute(leaf) === wanted) ?? null;
+  }
+  /**
+   * Fold exact duplicates of one LearningOS route within one tab group.
+   *
+   * Until 2026-11-20 `restore` opened the last route in a fresh tab although
+   * Obsidian had already restored a tab showing it, so every launch added one
+   * identical tab (measured 15 → 16 → 17 over three restarts). Only those can
+   * be folded: the same route, in the same tab group, never pinned. Two tabs
+   * that differ in any part of their route are the learner's and stay.
+   */
+  foldDuplicateTabs() {
+    const seen = /* @__PURE__ */ new Map();
+    const duplicates = [];
+    this.plugin.app.workspace.iterateAllLeaves?.((leaf) => {
+      const route2 = this.leafRoute(leaf);
+      if (route2 === null || leaf.pinned) return;
+      const group2 = leaf.parent ?? null;
+      const routes = seen.get(group2) ?? /* @__PURE__ */ new Set();
+      seen.set(group2, routes);
+      if (routes.has(route2)) duplicates.push(leaf);
+      else routes.add(route2);
+    });
+    for (const leaf of duplicates) leaf.detach?.();
+  }
   async restore() {
     this.clearOverlay();
+    this.foldDuplicateTabs();
     const route2 = this.navigation.current || { name: "home" };
     if (route2.name !== "home" && this.plugin.settings.pinHome) {
       const home = await this.navigate({ name: "home" }, { remember: false, pushHistory: false });
       home.setPinned?.(true);
     }
-    return this.navigate(route2, { remember: true, pushHistory: false });
+    const shown = route2.name === "home" ? null : this.leafShowing(route2);
+    return this.navigate(route2, {
+      remember: true,
+      pushHistory: false,
+      ...shown ? { preferredLeaf: shown } : {}
+    });
   }
   async back() {
     const pane = this.usesPaneDesign ? this.studyDeskPane() : null;
@@ -57161,6 +57231,7 @@ function isRecord2(value) {
 function projectedText(value) {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
+var MANIFEST_PATH = "generated/manifest.json";
 function emptyStoreIndexes() {
   return {
     archivedModuleIds: /* @__PURE__ */ new Set(),
@@ -57283,16 +57354,38 @@ var ManifestStore = class {
   contractVersion = null;
   snapshotId = null;
   loadVersion = 0;
+  /** `mtime:size` of the manifest file behind the published snapshot. */
+  loadedFile = null;
+  /** The manifest file's `mtime:size`, or null when the host cannot say. */
+  async manifestFile() {
+    try {
+      const stat = await this.app.vault.adapter.stat?.(MANIFEST_PATH);
+      return stat ? `${stat.mtime}:${stat.size}` : null;
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * Whether the manifest on disk is still the file behind the published
+   * snapshot, so a speculative refresh can be skipped.
+   *
+   * Core replaces the manifest atomically, so a new projection is a new file
+   * with a new mtime. Anything doubtful answers false and the caller reloads:
+   * no published snapshot, a stale or failed one, or a host without `stat`.
+   */
+  async unchangedSinceLoad() {
+    if (!this.ready || this.stale || this.error || this.loadedFile === null) return false;
+    return await this.manifestFile() === this.loadedFile;
+  }
   async load() {
     const request = ++this.loadVersion;
     try {
-      if (!await this.app.vault.adapter.exists("generated/manifest.json")) {
+      if (!await this.app.vault.adapter.exists(MANIFEST_PATH)) {
         throw new Error("Projection unavailable \u2014 rebuild it to continue.");
       }
+      const file = await this.manifestFile();
       const parsed = JSON.parse(
-        await this.app.vault.adapter.read(
-          "generated/manifest.json"
-        )
+        await this.app.vault.adapter.read(MANIFEST_PATH)
       );
       const generated = isRecord2(parsed) && isRecord2(parsed._generated) ? parsed._generated : null;
       const version = generated?.contract_version;
@@ -57334,6 +57427,7 @@ var ManifestStore = class {
       this.records = records;
       this.byId = byId;
       this.indexes = indexes;
+      this.loadedFile = file;
       this.ready = true;
       this.stale = false;
       this.error = "";
@@ -57341,6 +57435,7 @@ var ManifestStore = class {
     } catch (error) {
       if (request !== this.loadVersion || !this.canPublish()) return false;
       this.error = error instanceof Error ? error.message : String(error);
+      this.loadedFile = null;
       if (this.data !== null) {
         this.stale = true;
         this.ready = true;
@@ -57654,6 +57749,8 @@ var LearningOSUI = class extends import_obsidian29.Plugin {
   lifecycleGeneration = 0;
   lifecycleLive = false;
   refreshRequested = false;
+  /** A queued refresh some caller needs even if the file looks unchanged. */
+  refreshForced = false;
   refreshTask = null;
   isLifecycleActive() {
     return this.lifecycleLive && this.settingsCoordinator?.generation === this.lifecycleGeneration;
@@ -57967,15 +58064,28 @@ var LearningOSUI = class extends import_obsidian29.Plugin {
     );
     if (!ok) throw new Error(this.store.error);
   }
-  /** Event-driven refreshes share the mutation queue and coalesce bursts. */
-  requestManifestRefresh() {
+  /**
+   * Event-driven refreshes share the mutation queue and coalesce bursts.
+   *
+   * `ifChanged` is for speculative triggers such as window focus. Re-reading
+   * and re-validating the whole manifest and redrawing every view on each
+   * focus froze Obsidian for 0.5–1.4 s every time it came back to the front
+   * (measured 2026-11-20 with an 18 MB manifest), although the projection had
+   * not moved. A vault event for the manifest file is not speculative and
+   * always reloads.
+   */
+  requestManifestRefresh({ ifChanged = false } = {}) {
     if (!this.isLifecycleActive()) return;
     this.refreshRequested = true;
+    if (!ifChanged) this.refreshForced = true;
     if (this.refreshTask) return;
     this.refreshTask = Promise.resolve().then(() => this.gateway.enqueue(async () => {
       while (this.refreshRequested && this.isLifecycleActive()) {
         this.refreshRequested = false;
+        const forced = this.refreshForced;
+        this.refreshForced = false;
         try {
+          if (!forced && await this.store.unchangedSinceLoad()) continue;
           await this.reloadStore();
         } catch (error) {
           this.notify(errorMessage4(error));
@@ -57983,7 +58093,9 @@ var LearningOSUI = class extends import_obsidian29.Plugin {
       }
     })).catch((error) => this.notify(errorMessage4(error))).finally(() => {
       this.refreshTask = null;
-      if (this.refreshRequested && this.isLifecycleActive()) this.requestManifestRefresh();
+      if (this.refreshRequested && this.isLifecycleActive()) {
+        this.requestManifestRefresh({ ifChanged: !this.refreshForced });
+      }
     });
   }
   /** Reload without throwing: the snapshot now visible, or null. */

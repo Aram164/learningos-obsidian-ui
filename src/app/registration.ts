@@ -53,7 +53,7 @@ type ApplicationPlugin = Plugin & AppSurface & {
   readonly activeNav: string;
   setActiveNav(key: string): void;
   isLifecycleActive(): boolean;
-  requestManifestRefresh(): void;
+  requestManifestRefresh(options?: { ifChanged?: boolean }): void;
 };
 
 export function detachLegacyViews(plugin: ApplicationPlugin): void {
@@ -105,7 +105,9 @@ export function registerApplication(plugin: ApplicationPlugin): void {
     }
   }));
   if (typeof window !== 'undefined') {
-    plugin.registerDomEvent(window, 'focus', () => plugin.requestManifestRefresh());
+    // Focus is a fallback for a missed file event, so it reloads only a
+    // manifest that actually changed.
+    plugin.registerDomEvent(window, 'focus', () => plugin.requestManifestRefresh({ ifChanged: true }));
   }
 
   plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));

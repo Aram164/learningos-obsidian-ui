@@ -31,7 +31,7 @@
  * Colour reserved entirely for meaning: the only hues on screen are sage,
  * slate and amber, each of which says something. Decisive action is carried
  * by weight and fill rather than by a fourth hue competing with them. */
-body[data-los-palette="graphite"] .los-root {
+body.los-palette-graphite .los-root {
   --los-paper:          #f2eee6;
   --los-paper-2:        #fffdf8;
   --los-paper-3:        #ece6da;
@@ -60,7 +60,7 @@ body[data-los-palette="graphite"] .los-root {
  * The cool counterpart to Wine, for anyone who reads longer on a neutral
  * ground. Brand is far more saturated than the slate used for information,
  * so the two never read as the same signal. */
-body[data-los-palette="indigo"] .los-root {
+body.los-palette-indigo .los-root {
   --los-paper:          #eff0fc;
   --los-paper-2:        #fcfcff;
   --los-paper-3:        #e9ebfa;
@@ -95,7 +95,7 @@ body[data-los-palette="indigo"] .los-root {
  * light to be visible at all, so the text that sits on it is ink, not white.
  * The washes invert with it — a wash is a tinted panel, and on this ground a
  * tinted panel remains distinct from the near-black canvas. */
-body[data-los-palette="ink"] .los-root {
+body.los-palette-ink .los-root {
   --los-paper:          #0b080c;
   --los-paper-2:        #171016;
   --los-paper-3:        #221822;
@@ -138,7 +138,7 @@ body[data-los-palette="ink"] .los-root {
  * The first of the cool darks. Brand is violet rather than blue so it stays
  * clear of the blue-grey that means "information": on a cool ground those
  * two are the pair most at risk of reading as one signal. */
-body[data-los-palette="midnight"] .los-root {
+body.los-palette-midnight .los-root {
   --los-paper:          #07091b;
   --los-paper-2:        #10142d;
   --los-paper-3:        #191e3d;
@@ -181,7 +181,7 @@ body[data-los-palette="midnight"] .los-root {
  * moves off blue-grey onto periwinkle: the rule is that the brand must stay
  * distinguishable from all three semantic hues, and here it is the semantic
  * that yields, not the brand. */
-body[data-los-palette="slate"] .los-root {
+body.los-palette-slate .los-root {
   --los-paper:          #061318;
   --los-paper-2:        #0d2229;
   --los-paper-3:        #12313a;
@@ -224,7 +224,7 @@ body[data-los-palette="slate"] .los-root {
  * mean something. Decisive action is carried by a near-white fill, so it is
  * the brightest thing on the page without being a fourth colour competing
  * with sage, periwinkle-blue and amber. */
-body[data-los-palette="carbon"] .los-root {
+body.los-palette-carbon .los-root {
   --los-paper:          #050607;
   --los-paper-2:        #101216;
   --los-paper-3:        #1b1e24;
@@ -263,13 +263,14 @@ body[data-los-palette="carbon"] .los-root {
 }
 
 /* ── Custom — the reader's own, defined outside this file ─────────────────
- * Selecting "Custom" sets `data-los-palette="custom"` and the plugin ships no
- * rules for it, so the base palette renders until a CSS snippet says otherwise
- * (Settings → Appearance → CSS snippets). Because nothing here declares those
- * tokens, a snippet is the only rule at that specificity and needs no
- * `!important` to win:
+ * Selecting "Custom" sets `los-palette-custom` (and `data-los-palette="custom"`)
+ * on the body and the plugin ships no rules for it, so the base palette renders
+ * until a CSS snippet says otherwise (Settings → Appearance → CSS snippets).
+ * Because nothing here declares those tokens, a snippet is the only rule at that
+ * specificity and needs no `!important` to win. Select the class: Obsidian's
+ * startup snapshot keeps body classes but drops other attributes.
  *
- *   body[data-los-palette="custom"] .los-root {
+ *   body.los-palette-custom .los-root {
  *     --los-paper:     <canvas>;
  *     --los-paper-2:   <surface>;
  *     --los-ink:       <body text>;
@@ -292,7 +293,7 @@ body[data-los-palette="carbon"] .los-root {
  * down: warm brown canvas, the wine brand lifted to rose so it holds its
  * contrast. The semantic hues are restated for a dark canvas like every other
  * dark scheme here. */
-body[data-los-palette="lamplight"] .los-root {
+body.los-palette-lamplight .los-root {
   --los-paper:          #1a1411;
   --los-paper-2:        #241c18;
   --los-paper-3:        #2e2520;
@@ -344,7 +345,7 @@ body[data-los-palette="lamplight"] .los-root {
  * Tabs, ribbon, title bar and status bar read Obsidian's variables, not ours, so
  * these state the two schemes again in its vocabulary. Only the frame: a note
  * opened in a pane keeps the host theme, and Classic never matches this. */
-body[data-los-ui="study-desk"] :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
+body.los-ui-study-desk :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
   --titlebar-background: #ecdfd8;
   --titlebar-background-focused: #ecdfd8;
   --titlebar-text-color: #625a4f;
@@ -382,7 +383,7 @@ body[data-los-ui="study-desk"] :is(.titlebar, .workspace-ribbon, .workspace-tab-
   color-scheme: light;
 }
 
-body[data-los-ui="study-desk"][data-los-palette="lamplight"] :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
+body.los-ui-study-desk.los-palette-lamplight :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
   --titlebar-background: #14100d;
   --titlebar-background-focused: #14100d;
   --titlebar-text-color: #cdbfb0;
@@ -421,7 +422,7 @@ body[data-los-ui="study-desk"][data-los-palette="lamplight"] :is(.titlebar, .wor
 }
 
 /* Focus 2.0 — cool alabaster Daylight & carbon-pine Nightfall with emerald accents. */
-body[data-los-palette="daylight"] .los-root {
+body.los-palette-daylight .los-root {
   --los-paper: #f6f8f7;
   --los-paper-2: #ffffff;
   --los-paper-3: #eef2f0;
@@ -465,7 +466,7 @@ body[data-los-palette="daylight"] .los-root {
   --los-st-shelve: var(--los-info);
 }
 
-body[data-los-palette="nightfall"] .los-root {
+body.los-palette-nightfall .los-root {
   --los-paper: #111715;
   --los-paper-2: #161e1b;
   --los-paper-3: #1d2723;
@@ -509,7 +510,7 @@ body[data-los-palette="nightfall"] .los-root {
   --los-st-shelve: var(--los-info);
 }
 
-body[data-los-ui="focus"][data-los-palette="daylight"] :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
+body.los-ui-focus.los-palette-daylight :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
   --titlebar-background: #eef2f0;
   --titlebar-background-focused: #eef2f0;
   --titlebar-text-color: #3e4c47;
@@ -547,7 +548,7 @@ body[data-los-ui="focus"][data-los-palette="daylight"] :is(.titlebar, .workspace
   color-scheme: light;
 }
 
-body[data-los-ui="focus"][data-los-palette="nightfall"] :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
+body.los-ui-focus.los-palette-nightfall :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
   --titlebar-background: #0c110f;
   --titlebar-background-focused: #0c110f;
   --titlebar-text-color: #9ba9a3;

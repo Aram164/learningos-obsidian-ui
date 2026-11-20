@@ -10,12 +10,16 @@
  * supplies are in `src/designs/registry.ts`, and docs/interface-designs.md says
  * how to add one.
  *
- * Like the palette, the choice is an attribute on `document.body`, and for the
+ * Like the palette, the choice is a marker on `document.body`, and for the
  * same reason: `los-root` is applied in ten places including modals mounted
  * outside the view tree. Study Desk (`study-desk`) and Focus (`focus`) both
- * set `data-los-ui` on `document.body`. An internal test-only sentinel
- * (`BASE_VIEWS_DESIGN_ID`) removes the attribute and lets base feature-view
- * regression suites exercise `src/views/*` + `src/features/*` directly.
+ * set the class `los-ui-<id>` (which the stylesheet selects) and the attribute
+ * `data-los-ui` on `document.body`. The class is the one that matters: Obsidian
+ * 1.15's startup snapshot keeps only the body's `class` and `style`, so a design
+ * held in an attribute was missing from the picture painted at every launch.
+ * An internal test-only sentinel (`BASE_VIEWS_DESIGN_ID`) removes both and lets
+ * base feature-view regression suites exercise `src/views/*` +
+ * `src/features/*` directly.
  */
 import { applyPaletteEverywhere, normalizePalette, type PaletteId } from './palette';
 
@@ -102,6 +106,15 @@ export function rememberDesignPalette(settings: InterfaceDesignSettings, value: 
   return designPalette(settings);
 }
 
+/** The body class the stylesheet selects for a design. */
+export function designClass(id: string): string {
+  return `los-ui-${id}`;
+}
+
+function clearDesignClasses(body: HTMLElement): void {
+  for (const design of INTERFACE_DESIGNS) body.classList.remove(designClass(design.id));
+}
+
 /** Apply the design and its scheme to every document that can host a `.los-root`. */
 export function applyInterfaceDesign(
   bodies: Iterable<HTMLElement | null | undefined>,
@@ -112,8 +125,13 @@ export function applyInterfaceDesign(
   const targets = [...new Set(bodies)];
   for (const body of targets) {
     if (!body) continue;
-    if (isBaseViews) body.removeAttribute('data-los-ui');
-    else body.setAttribute('data-los-ui', id);
+    clearDesignClasses(body);
+    if (isBaseViews) {
+      body.removeAttribute('data-los-ui');
+    } else {
+      body.setAttribute('data-los-ui', id);
+      body.classList.add(designClass(id));
+    }
   }
   applyPaletteEverywhere(targets, designPalette(settings));
   return id;
@@ -121,4 +139,5 @@ export function applyInterfaceDesign(
 
 export function clearInterfaceDesign(body: HTMLElement): void {
   body.removeAttribute('data-los-ui');
+  clearDesignClasses(body);
 }

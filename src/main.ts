@@ -144,6 +144,8 @@ export class LearningOSUI extends Plugin implements AppSurface {
   private lifecycleGeneration = 0;
   private lifecycleLive = false;
   private refreshRequested = false;
+  /** A queued refresh some caller needs even if the file looks unchanged. */
+  private refreshForced = false;
   private refreshTask: Promise<void> | null = null;
 
   isLifecycleActive(): boolean {
@@ -522,21 +524,38 @@ export class LearningOSUI extends Plugin implements AppSurface {
     if (!ok) throw new Error(this.store.error);
   }
 
-  /** Event-driven refreshes share the mutation queue and coalesce bursts. */
-  requestManifestRefresh(): void {
+  /**
+   * Event-driven refreshes share the mutation queue and coalesce bursts.
+   *
+   * `ifChanged` is for speculative triggers such as window focus. Re-reading
+   * and re-validating the whole manifest and redrawing every view on each
+   * focus froze Obsidian for 0.5–1.4 s every time it came back to the front
+   * (measured 2026-11-20 with an 18 MB manifest), although the projection had
+   * not moved. A vault event for the manifest file is not speculative and
+   * always reloads.
+   */
+  requestManifestRefresh({ ifChanged = false }: { ifChanged?: boolean } = {}): void {
     if (!this.isLifecycleActive()) return;
     this.refreshRequested = true;
+    if (!ifChanged) this.refreshForced = true;
     if (this.refreshTask) return;
     this.refreshTask = Promise.resolve().then(() => this.gateway.enqueue(async () => {
       while (this.refreshRequested && this.isLifecycleActive()) {
         this.refreshRequested = false;
-        try { await this.reloadStore(); }
+        const forced = this.refreshForced;
+        this.refreshForced = false;
+        try {
+          if (!forced && await this.store.unchangedSinceLoad()) continue;
+          await this.reloadStore();
+        }
         catch (error: unknown) { this.notify(errorMessage(error)); }
       }
     })).catch((error: unknown) => this.notify(errorMessage(error)))
       .finally(() => {
         this.refreshTask = null;
-        if (this.refreshRequested && this.isLifecycleActive()) this.requestManifestRefresh();
+        if (this.refreshRequested && this.isLifecycleActive()) {
+          this.requestManifestRefresh({ ifChanged: !this.refreshForced });
+        }
       });
   }
 

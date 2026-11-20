@@ -21,7 +21,7 @@ const {
 
 function paletteBlocks(css) {
   return [...css.matchAll(
-    /(?:^|\n)((?:body\[data-los-palette="[a-z]+"\] )?(?:\.theme-dark )?\.los-root)\s*\{([\s\S]*?)\n\}/g,
+    /(?:^|\n)((?:body\.los-palette-[a-z]+ )?(?:\.theme-dark )?\.los-root)\s*\{([\s\S]*?)\n\}/g,
   )].map((match) => ({
     selector: match[1],
     tokens: new Map([...match[2].matchAll(
@@ -76,6 +76,40 @@ module.exports = async function run() {
     app.vault.trigger('delete', { path: 'generated/manifest.json' });
     await tick();
     check('unloaded vault callbacks cannot reload or publish the projection', loads === 1);
+  }
+  {
+    /* Window focus is speculative: it fired a full manifest reload, schema
+     * validation and redraw of every view on each return to Obsidian, which
+     * froze the window for 0.5–1.4 s with the real 18 MB manifest. */
+    const { app, plugin } = await boot();
+    await tick();
+    await plugin.gateway.enqueue(() => undefined);
+    let file = { mtime: 1, size: 10 };
+    app.vault.adapter.stat = async () => ({ ...file });
+    await plugin.reloadStore();
+    let loads = 0;
+    const load = plugin.store.load.bind(plugin.store);
+    plugin.store.load = async () => { loads += 1; return load(); };
+    const settle = async () => { await tick(); await plugin.gateway.enqueue(() => undefined); };
+    plugin.requestManifestRefresh({ ifChanged: true });
+    await settle();
+    check('a focus refresh skips a manifest file that has not changed', loads === 0);
+    file = { mtime: 2, size: 10 };
+    plugin.requestManifestRefresh({ ifChanged: true });
+    await settle();
+    check('a focus refresh reloads a manifest file that was replaced', loads === 1);
+    app.vault.trigger('modify', { path: 'generated/manifest.json' });
+    await settle();
+    check('a manifest file event reloads even when the file looks the same', loads === 2);
+    plugin.requestManifestRefresh({ ifChanged: true });
+    plugin.requestManifestRefresh();
+    await settle();
+    check('a forced request coalesced with a speculative one still reloads', loads === 3);
+    delete app.vault.adapter.stat;
+    plugin.requestManifestRefresh({ ifChanged: true });
+    await settle();
+    check('a host that cannot stat the manifest always reloads', loads === 4);
+    plugin.onunload();
   }
   {
     const { app, plugin, home } = await boot();
@@ -609,11 +643,11 @@ module.exports = async function run() {
      * the same token names, so a scheme cannot ship with a token the others
      * have and it lacks. */
     const tokenBlocks = css.match(
-      /(?:^|\n)(?:body\[data-los-palette="[a-z]+"\] )?(?:\.theme-dark )?\.los-root \{[\s\S]*?\n\}/g) || [];
+      /(?:^|\n)(?:body\.los-palette-[a-z]+ )?(?:\.theme-dark )?\.los-root \{[\s\S]*?\n\}/g) || [];
     /* A design may restate its schemes for Obsidian's own frame, in Obsidian's
      * variable names. Those blocks are palette blocks too, and nothing else is. */
     const frameBlocks = css.match(
-      /(?:^|\n)body\[data-los-ui="[a-z-]+"\](?:\[data-los-palette="[a-z]+"\])? :is\([^)]*\) \{[\s\S]*?\n\}/g) || [];
+      /(?:^|\n)body\.los-ui-[a-z-]+(?:\.los-palette-[a-z]+)? :is\([^)]*\) \{[\s\S]*?\n\}/g) || [];
     const cssOutsideTokens = [...tokenBlocks, ...frameBlocks].reduce(
       (rest, block) => rest.replace(block, ''), css);
     const tokenNames = tokenBlocks.map((block) =>

@@ -1,6 +1,6 @@
 /* Focus 2.0 — Apple macOS 26/27 UI Kit styling (Figma p4Mpw78mLv8FxJAa6SPAEQ).
- * All rules live inside one body[data-los-ui="focus"] block and use --los-* tokens only. */
-body[data-los-ui="focus"] {
+ * All rules live inside one body.los-ui-focus block and use --los-* tokens only. */
+body.los-ui-focus {
   .focus-root, .focus-root * { box-sizing: border-box; }
   .workspace-leaf-content:has(> .focus-root) > .view-header { display: none; }
   .los-root {

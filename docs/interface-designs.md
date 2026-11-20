@@ -19,9 +19,13 @@ writes and drafts. It may not add a write path, a route, or a fact of its own.
    design ships part-built or leaves utility surfaces shared without losing a capability.
 3. **Add its stylesheet** as `src/styles/4x-design-<id>.css` and list it in
    `STYLESHEET_MODULES` in `build-styles.mjs`. Put every rule inside one block,
-   `body[data-los-ui="<id>"] { … }`, using native nesting. A test enforces this: it
+   `body.los-ui-<id> { … }`, using native nesting. A test enforces this: it
    is what guarantees that switching away removes the whole design and leaves
-   other designs untouched. Colours come from `--los-*` tokens only.
+   other designs untouched. Colours come from `--los-*` tokens only. Select the
+   body class, never the `data-los-ui` attribute: Obsidian 1.15 paints a saved
+   HTML snapshot of the workspace while it starts, and that snapshot keeps only
+   the body's `class` and `style`, so an attribute-scoped design is missing from
+   it and every launch flashes the wrong layout.
 4. **Draw the toggle** in your `nav` screen with `renderDesignSwitch` from
    `src/app/design-switch.ts`, if you replace the sidebar. No design may strand the
    learner inside it.
