@@ -77,8 +77,9 @@ module.exports = async function run() {
     /* Obsidian restores every tab before the plugin asks for its last route.
      * `restore` used to open that route in a new tab anyway, so each launch
      * added one identical tab (15 → 16 → 17 in a real vault over three
-     * restarts). It must bring the restored tab forward instead, and fold the
-     * identical copies earlier launches left behind. */
+     * restarts). It must bring the restored tab forward instead, while
+     * preserving existing identical-route tabs: a learner may intentionally
+     * keep two tabs with independent transient view state. */
     const app = makeApp(FIXTURE);
     const home = app.workspace.getLeaf(true);
     home.viewType = VIEW.home; home.state = {}; home.pinned = true;
@@ -98,9 +99,9 @@ module.exports = async function run() {
     const modules = app.workspace.getLeavesOfType(VIEW.module);
     check('the restored tab shows the last route and no new tab opens for it',
       !restored.detached && modules.includes(restored)
-      && modules.filter((leaf) => leaf.getViewState().state.screen === 'groups').length === 1,
+      && modules.filter((leaf) => leaf.getViewState().state.screen === 'groups').length === 2,
       modules.map((leaf) => JSON.stringify(leaf.getViewState().state)).join(' | '));
-    check('an identical copy left by an earlier launch is folded', leftover.detached);
+    check('an existing identical-route tab is preserved on startup', !leftover.detached);
     check('a tab showing a different route is the learner’s and stays', !other.detached && modules.includes(other));
     check('the pinned Home tab stays', !home.detached && app.workspace.getLeavesOfType(VIEW.home).length === 1);
     /* Quit and relaunch: Obsidian writes the tabs to workspace.json and

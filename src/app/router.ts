@@ -106,7 +106,6 @@ interface RouterHost {
   app: {
     workspace: {
       getLeavesOfType(type: string): RouterLeaf[];
-      iterateAllLeaves?(callback: (leaf: RouterLeaf) => unknown): void;
       getLeaf(newLeaf?: boolean | string): RouterLeaf;
       getLeftLeaf?(split?: boolean): RouterLeaf | null;
       revealLeaf(leaf: RouterLeaf): void | Promise<void>;
@@ -623,33 +622,8 @@ export class ApplicationRouter {
       .find((leaf) => this.leafRoute(leaf) === wanted) ?? null;
   }
 
-  /**
-   * Fold exact duplicates of one LearningOS route within one tab group.
-   *
-   * Until 2026-11-20 `restore` opened the last route in a fresh tab although
-   * Obsidian had already restored a tab showing it, so every launch added one
-   * identical tab (measured 15 → 16 → 17 over three restarts). Only those can
-   * be folded: the same route, in the same tab group, never pinned. Two tabs
-   * that differ in any part of their route are the learner's and stay.
-   */
-  private foldDuplicateTabs(): void {
-    const seen = new Map<unknown, Set<string>>();
-    const duplicates: RouterLeaf[] = [];
-    this.plugin.app.workspace.iterateAllLeaves?.((leaf) => {
-      const route = this.leafRoute(leaf);
-      if (route === null || leaf.pinned) return;
-      const group = leaf.parent ?? null;
-      const routes = seen.get(group) ?? new Set<string>();
-      seen.set(group, routes);
-      if (routes.has(route)) duplicates.push(leaf);
-      else routes.add(route);
-    });
-    for (const leaf of duplicates) leaf.detach?.();
-  }
-
   async restore() {
     this.clearOverlay();
-    this.foldDuplicateTabs();
     const route = this.navigation.current || { name: 'home' };
     if (route.name !== 'home' && this.plugin.settings.pinHome) {
       const home = await this.navigate({ name: 'home' }, { remember: false, pushHistory: false });

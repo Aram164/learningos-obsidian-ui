@@ -52533,7 +52533,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:bad109195b92c345f8316a4ea990159972c6cc4f23fd4024d13eff8d3a31ea2c" : "unavailable";
+  return true ? "sha256:3f4910e90a04bb8174f5e875416ba26af3d45ded930ec22e42cfdb0016f10c17" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;
@@ -56317,32 +56317,8 @@ var ApplicationRouter = class {
     const type = this.descriptor(route2).type;
     return this.plugin.app.workspace.getLeavesOfType(type).find((leaf) => this.leafRoute(leaf) === wanted) ?? null;
   }
-  /**
-   * Fold exact duplicates of one LearningOS route within one tab group.
-   *
-   * Until 2026-11-20 `restore` opened the last route in a fresh tab although
-   * Obsidian had already restored a tab showing it, so every launch added one
-   * identical tab (measured 15 → 16 → 17 over three restarts). Only those can
-   * be folded: the same route, in the same tab group, never pinned. Two tabs
-   * that differ in any part of their route are the learner's and stay.
-   */
-  foldDuplicateTabs() {
-    const seen = /* @__PURE__ */ new Map();
-    const duplicates = [];
-    this.plugin.app.workspace.iterateAllLeaves?.((leaf) => {
-      const route2 = this.leafRoute(leaf);
-      if (route2 === null || leaf.pinned) return;
-      const group2 = leaf.parent ?? null;
-      const routes = seen.get(group2) ?? /* @__PURE__ */ new Set();
-      seen.set(group2, routes);
-      if (routes.has(route2)) duplicates.push(leaf);
-      else routes.add(route2);
-    });
-    for (const leaf of duplicates) leaf.detach?.();
-  }
   async restore() {
     this.clearOverlay();
-    this.foldDuplicateTabs();
     const route2 = this.navigation.current || { name: "home" };
     if (route2.name !== "home" && this.plugin.settings.pinHome) {
       const home = await this.navigate({ name: "home" }, { remember: false, pushHistory: false });
@@ -58055,13 +58031,18 @@ var LearningOSUI = class extends import_obsidian29.Plugin {
     } catch (_) {
     }
   }
+  /** Redraw open LearningOS views only, never unrelated Obsidian tabs. */
+  redrawApplicationViews() {
+    if (!this.isLifecycleActive()) return;
+    for (const type of APPLICATION_VIEW_TYPES) {
+      for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
+    }
+  }
   async reloadStore() {
     this.gateway.assertLifecycleActive();
     const ok = await this.store.load();
     this.gateway.assertLifecycleActive();
-    this.app.workspace.iterateAllLeaves(
-      (leaf) => leaf.view?.render?.()
-    );
+    this.redrawApplicationViews();
     if (!ok) throw new Error(this.store.error);
   }
   /**
@@ -58102,9 +58083,7 @@ var LearningOSUI = class extends import_obsidian29.Plugin {
   async observedSnapshot() {
     const ok = await this.store.load();
     this.gateway.assertLifecycleActive();
-    this.app.workspace.iterateAllLeaves(
-      (leaf) => leaf.view?.render?.()
-    );
+    this.redrawApplicationViews();
     return ok ? this.store.snapshotId : null;
   }
   /**
@@ -58199,9 +58178,7 @@ var LearningOSUI = class extends import_obsidian29.Plugin {
     if (!this.isLifecycleActive()) return;
     const active = this.router.attendedRoute();
     if (active) this.activeNav = this.router.descriptor(active).nav;
-    for (const type of APPLICATION_VIEW_TYPES) {
-      for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
-    }
+    this.redrawApplicationViews();
   }
   /** The active destination is a display fact, so the Navigator is the only
    *  thing it redraws — never the working view the learner is reading. */

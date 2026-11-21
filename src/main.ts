@@ -1,7 +1,6 @@
 import {
   Plugin,
   Notice,
-  type WorkspaceLeaf,
 } from 'obsidian';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
@@ -514,13 +513,19 @@ export class LearningOSUI extends Plugin implements AppSurface {
     } catch (_) { /* diagnostics must never break the app */ }
   }
 
+  /** Redraw open LearningOS views only, never unrelated Obsidian tabs. */
+  private redrawApplicationViews(): void {
+    if (!this.isLifecycleActive()) return;
+    for (const type of APPLICATION_VIEW_TYPES) {
+      for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
+    }
+  }
+
   async reloadStore() {
     this.gateway.assertLifecycleActive();
     const ok = await this.store.load();
     this.gateway.assertLifecycleActive();
-    this.app.workspace.iterateAllLeaves(
-      (leaf: WorkspaceLeaf) => leaf.view?.render?.(),
-    );
+    this.redrawApplicationViews();
     if (!ok) throw new Error(this.store.error);
   }
 
@@ -563,9 +568,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
   private async observedSnapshot(): Promise<string | null> {
     const ok = await this.store.load();
     this.gateway.assertLifecycleActive();
-    this.app.workspace.iterateAllLeaves(
-      (leaf: WorkspaceLeaf) => leaf.view?.render?.(),
-    );
+    this.redrawApplicationViews();
     return ok ? this.store.snapshotId : null;
   }
 
@@ -675,9 +678,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
     if (!this.isLifecycleActive()) return;
     const active = this.router.attendedRoute();
     if (active) this.activeNav = this.router.descriptor(active).nav;
-    for (const type of APPLICATION_VIEW_TYPES) {
-      for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
-    }
+    this.redrawApplicationViews();
   }
 
   /** The active destination is a display fact, so the Navigator is the only

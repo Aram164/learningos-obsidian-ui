@@ -78,6 +78,20 @@ module.exports = async function run() {
     check('unloaded vault callbacks cannot reload or publish the projection', loads === 1);
   }
   {
+    /* Manifest reloads and design switches own only LearningOS views; native or
+     * third-party Obsidian leaves (such as Markdown) may expose render() too and
+     * must not be redrawn by LearningOS. */
+    const { app, plugin } = await boot();
+    const unrelated = app.workspace.getLeaf(true);
+    unrelated.viewType = 'markdown';
+    let foreignRenders = 0;
+    unrelated.view = { render() { foreignRenders += 1; } };
+    await plugin.reloadStore();
+    await plugin.setInterfaceDesign('focus');
+    check('projection refresh and design switches do not render unrelated Obsidian tabs', foreignRenders === 0);
+    plugin.onunload();
+  }
+  {
     /* Window focus is speculative: it fired a full manifest reload, schema
      * validation and redraw of every view on each return to Obsidian, which
      * froze the window for 0.5–1.4 s with the real 18 MB manifest. */
@@ -548,8 +562,8 @@ module.exports = async function run() {
       source.includes('SAFE_URL_PROTOCOLS') && source.includes('safeWebUrl'));
     check('the repeated ownership footer no longer exists as a component',
       !source.includes('function viewFooter'));
-    check('view refresh uses Obsidian public leaf iteration', source.includes('iterateAllLeaves')
-      && !source.includes('workspace._leaves'));
+    check('view refresh uses LearningOS-only leaf selection', source.includes('redrawApplicationViews')
+      && source.includes('getLeavesOfType') && !source.includes('workspace._leaves'));
     const viewStateSources = fs.readdirSync(path.join(ROOT, 'src', 'views'))
       .filter((name) => name.endsWith('.ts'))
       .map((name) => fs.readFileSync(path.join(ROOT, 'src', 'views', name), 'utf8'))
