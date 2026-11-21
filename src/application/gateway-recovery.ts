@@ -106,25 +106,16 @@ const RECORD_KEYS_V2 = [
   ...RECORD_KEYS, 'draft_owner',
 ] as const;
 
+/**
+ * Only these writes carry a `draft_owner`, so only they persist schema 2.
+ * Every other write keeps the V1 shape, and a V1 record is validated and
+ * settled as V1: there is no migration, and an older plugin can still read
+ * any record a non-Ability write leaves behind.
+ */
 const ABILITY_DRAFT_CAPABILITIES = new Set([
   'learner.ability-observation.append',
   'ability.candidate.append',
 ]);
-
-/** Explicit versioned upgrade preserving V1 contents without modifying existing V1 fields. */
-export function migrateGatewayRecoveryV1ToV2(
-  legacy: GatewayRecoveryRecordV1,
-): GatewayRecoveryRecordV2 {
-  return {
-    schema_version: 2,
-    phase: legacy.phase,
-    created_at: legacy.created_at,
-    envelope_json: legacy.envelope_json,
-    confirmation: legacy.confirmation,
-    last_error: legacy.last_error,
-    draft_owner: null,
-  };
-}
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

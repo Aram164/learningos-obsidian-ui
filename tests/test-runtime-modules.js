@@ -26,7 +26,6 @@ const {
   SettingsGatewayRecoveryStore,
   clearDraftsOwnedBy,
   gatewayRecoverySummary,
-  migrateGatewayRecoveryV1ToV2,
   validateGatewayRecoveryRecord,
 } = load('src/application/gateway-recovery.ts');
 const { isProjectionConflict, GatewayError } = load('src/contracts/gateway-v1.ts');
@@ -3159,7 +3158,7 @@ function routerPlugin(settings = {}) {
     assert.equal('ability-claim-1' in legacyAbility.abilityDrafts, true);
   });
 
-  await test('recovery schema_version 2 validates draft_owner strictly and migrates V1 explicitly', async () => {
+  await test('recovery schema_version 2 validates draft_owner strictly and leaves V1 records as V1', async () => {
     const { gateway, recovery } = scriptedGateway([
       answerWith((stdin) => gatewayConfirmation(stdin)),
       answerWith((stdin) => gatewayConfirmation(stdin)),
@@ -3167,10 +3166,11 @@ function routerPlugin(settings = {}) {
     await gateway.captureText('legacy v1 record');
     const v1Record = recovery.replayable().record;
     assert.equal(v1Record.schema_version, 1);
-    const migrated = migrateGatewayRecoveryV1ToV2(v1Record);
-    assert.equal(migrated.schema_version, 2);
-    assert.equal(migrated.draft_owner, null);
-    assert.equal((await validateGatewayRecoveryRecord(migrated)).ok, true);
+    // A non-Ability write keeps the V1 shape and validates back as V1, unmigrated.
+    const validatedV1 = await validateGatewayRecoveryRecord(v1Record);
+    assert.equal(validatedV1.ok, true);
+    assert.equal(validatedV1.entry.record.schema_version, 1);
+    assert.equal('draft_owner' in validatedV1.entry.record, false);
     await recovery.discardRefused();
 
     const identity = {
