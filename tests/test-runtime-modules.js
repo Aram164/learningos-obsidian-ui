@@ -26,6 +26,7 @@ const {
   SettingsGatewayRecoveryStore,
   clearDraftsOwnedBy,
   gatewayRecoverySummary,
+  migrateGatewayRecoveryV1ToV2,
   validateGatewayRecoveryRecord,
 } = load('src/application/gateway-recovery.ts');
 const { isProjectionConflict, GatewayError } = load('src/contracts/gateway-v1.ts');
@@ -3065,6 +3066,237 @@ function routerPlugin(settings = {}) {
     clearDraftsOwnedBy(picker, envelope('capture.create', { file: '/tmp/x.pdf', file_sha256: SNAPSHOT }));
     assert.equal(picker.inbox.text, 'unrelated typing',
       'a file capture owns no composer draft');
+
+    const baseClaim = {
+      kind: 'claim',
+      id: 'ability-claim-1',
+      abilityId: 'ability-sad-ols',
+      abilityTitle: 'OLS derivation',
+      workspace: 'workspace-demo',
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      conditionsMet: ['specified differentiable graph and loss'],
+      conditionsNotMet: [],
+      evidenceTags: ['correct local derivative chain'],
+      workRef: 'conversation://synthetic/1',
+      claim: 'Exact claim',
+      supersedes: null,
+      createdAt: '2026-11-21T09:00:00.000Z',
+      updatedAt: '2026-11-21T09:00:00.000Z',
+    };
+    const identicalSibling = {
+      ...baseClaim,
+      id: 'ability-claim-2',
+      createdAt: '2026-11-21T09:01:00.000Z',
+      updatedAt: '2026-11-21T09:01:00.000Z',
+    };
+    const abilityCleanup = emptyUiDrafts();
+    abilityCleanup.abilityDrafts['ability-claim-1'] = baseClaim;
+    abilityCleanup.abilityDrafts['ability-claim-2'] = identicalSibling;
+    clearDraftsOwnedBy(
+      abilityCleanup,
+      envelope('learner.ability-observation.append', { ability: 'ability-sad-ols', claim: 'Exact claim' }),
+      { id: 'ability-claim-1', updated_at: '2026-11-21T09:00:00.000Z' },
+    );
+    assert.equal('ability-claim-1' in abilityCleanup.abilityDrafts, false,
+      'the exact confirmed Ability claim revision clears');
+    assert.equal(abilityCleanup.abilityDrafts['ability-claim-2']?.id, 'ability-claim-2',
+      'an identical sibling claim draft with a distinct id survives');
+
+    const editedClaim = emptyUiDrafts();
+    editedClaim.abilityDrafts['ability-claim-1'] = {
+      ...baseClaim,
+      updatedAt: '2026-11-21T09:05:00.000Z',
+    };
+    clearDraftsOwnedBy(
+      editedClaim,
+      envelope('learner.ability-observation.append', { ability: 'ability-sad-ols', claim: 'Exact claim' }),
+      { id: 'ability-claim-1', updated_at: '2026-11-21T09:00:00.000Z' },
+    );
+    assert.equal(editedClaim.abilityDrafts['ability-claim-1']?.updatedAt, '2026-11-21T09:05:00.000Z',
+      'a newer revision of the same Ability claim survives');
+
+    const baseConnection = {
+      kind: 'connection',
+      id: 'ability-connection-1',
+      fromAbility: 'ability-sad-ols',
+      fromTitle: 'OLS',
+      toAbility: 'ability-aml-ols',
+      toTitle: 'AML OLS',
+      connection: 'connection',
+      carries: 'Same normal equation',
+      changes: 'Regularizer added',
+      conditions: ['linear model'],
+      sourceRef: '',
+      createdAt: '2026-11-21T09:00:00.000Z',
+      updatedAt: '2026-11-21T09:00:00.000Z',
+    };
+    const connCleanup = emptyUiDrafts();
+    connCleanup.abilityDrafts['ability-connection-1'] = baseConnection;
+    connCleanup.abilityDrafts['ability-connection-2'] = {
+      ...baseConnection,
+      id: 'ability-connection-2',
+    };
+    clearDraftsOwnedBy(
+      connCleanup,
+      envelope('ability.candidate.append', { from_ability: 'ability-sad-ols', to_ability: 'ability-aml-ols' }),
+      { id: 'ability-connection-1', updated_at: '2026-11-21T09:00:00.000Z' },
+    );
+    assert.equal('ability-connection-1' in connCleanup.abilityDrafts, false,
+      'confirmed Ability connection draft clears by (id, updatedAt)');
+    assert.equal(connCleanup.abilityDrafts['ability-connection-2']?.id, 'ability-connection-2',
+      'identical sibling connection draft survives');
+
+    // Legacy V1 records without draft_owner never guess by text/pointer.
+    const legacyAbility = emptyUiDrafts();
+    legacyAbility.abilityDrafts['ability-claim-1'] = baseClaim;
+    clearDraftsOwnedBy(
+      legacyAbility,
+      envelope('learner.ability-observation.append', { ability: 'ability-sad-ols', claim: 'Exact claim' }),
+      null,
+    );
+    assert.equal('ability-claim-1' in legacyAbility.abilityDrafts, true);
+  });
+
+  await test('recovery schema_version 2 validates draft_owner strictly and migrates V1 explicitly', async () => {
+    const { gateway, recovery } = scriptedGateway([
+      answerWith((stdin) => gatewayConfirmation(stdin)),
+      answerWith((stdin) => gatewayConfirmation(stdin)),
+    ]);
+    await gateway.captureText('legacy v1 record');
+    const v1Record = recovery.replayable().record;
+    assert.equal(v1Record.schema_version, 1);
+    const migrated = migrateGatewayRecoveryV1ToV2(v1Record);
+    assert.equal(migrated.schema_version, 2);
+    assert.equal(migrated.draft_owner, null);
+    assert.equal((await validateGatewayRecoveryRecord(migrated)).ok, true);
+    await recovery.discardRefused();
+
+    const identity = {
+      requestId: 'req-learner-ability-observation-append-1',
+      idempotencyKey: 'idem-req-learner-ability-observation-append-1',
+    };
+    await gateway.recordAbilityObservation({
+      workspace: 'workspace-demo',
+      ability: 'ability-sad-ols',
+      claim: 'Exact claim',
+      work_ref: 'conversation://synthetic/1',
+      confirmation_ref: `conversation://learningos-app/${identity.idempotencyKey}`,
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      condition: ['c1'],
+      condition_not_met: [],
+      evidence_tag: ['t1'],
+    }, identity, { 'workspace-demo': 0 }, {
+      id: 'ability-claim-v2',
+      updated_at: '2026-11-21T09:00:00.000Z',
+    });
+    const v2Record = recovery.replayable().record;
+    assert.equal(v2Record.schema_version, 2);
+    assert.deepEqual(v2Record.draft_owner, {
+      id: 'ability-claim-v2',
+      updated_at: '2026-11-21T09:00:00.000Z',
+    });
+    assert.equal((await validateGatewayRecoveryRecord(v2Record)).ok, true);
+
+    const invalidV2 = [
+      [{ ...v2Record, draft_owner: { id: 'ability-claim-v2' } }, /draft_owner/],
+      [{ ...v2Record, draft_owner: { id: 'ability-claim-v2', updated_at: 'not-a-date' } }, /draft_owner/],
+      [{ ...v1Record, schema_version: 2, draft_owner: { id: 'x', updated_at: '2026-11-21T09:00:00.000Z' } }, /draft_owner cannot bind/],
+      [{ ...v2Record, extra: 1 }, /schema_version 2/],
+    ];
+    for (const [candidate, pattern] of invalidV2) {
+      const checked = await validateGatewayRecoveryRecord(candidate);
+      assert.equal(checked.ok, false);
+      assert.match(checked.error, pattern);
+    }
+  });
+
+  await test('a failed settleConfirmed restores abilityDrafts and preserves concurrent edits', async () => {
+    const claimDraft = {
+      kind: 'claim',
+      id: 'ability-claim-rollback',
+      abilityId: 'ability-sad-ols',
+      abilityTitle: 'OLS',
+      workspace: 'workspace-demo',
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      conditionsMet: ['c1'],
+      conditionsNotMet: [],
+      evidenceTags: ['t1'],
+      workRef: 'conversation://synthetic/1',
+      claim: 'Exact claim',
+      supersedes: null,
+      createdAt: '2026-11-21T09:00:00.000Z',
+      updatedAt: '2026-11-21T09:00:00.000Z',
+    };
+    const siblingDraft = {
+      ...claimDraft,
+      id: 'ability-claim-sibling',
+      updatedAt: '2026-11-21T09:00:01.000Z',
+    };
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.abilityDrafts[claimDraft.id] = claimDraft;
+    settings.uiDrafts.abilityDrafts[siblingDraft.id] = siblingDraft;
+
+    let failMode = 'none';
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failMode === 'reject') throw new Error('data.json could not be written');
+      if (failMode === 'reject-after-edit') {
+        settings.uiDrafts.abilityDrafts[claimDraft.id] = {
+          ...claimDraft,
+          claim: 'Edited during save',
+          updatedAt: '2026-11-21T09:02:00.000Z',
+        };
+        throw new Error('data.json could not be written');
+      }
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+    const identity = {
+      requestId: 'req-learner-ability-observation-append-2',
+      idempotencyKey: 'idem-req-learner-ability-observation-append-2',
+    };
+    await gateway.recordAbilityObservation({
+      workspace: 'workspace-demo',
+      ability: 'ability-sad-ols',
+      claim: 'Exact claim',
+      work_ref: 'conversation://synthetic/1',
+      confirmation_ref: `conversation://learningos-app/${identity.idempotencyKey}`,
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      condition: ['c1'],
+      condition_not_met: [],
+      evidence_tag: ['t1'],
+    }, identity, { 'workspace-demo': 0 }, {
+      id: claimDraft.id,
+      updated_at: claimDraft.updatedAt,
+    });
+
+    failMode = 'reject';
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+    assert.equal(store.unresolved, true);
+    assert.equal(settings.uiDrafts.abilityDrafts[claimDraft.id]?.updatedAt, claimDraft.updatedAt,
+      'cleared Ability draft must be restored on persistence failure');
+    assert.equal(settings.uiDrafts.abilityDrafts[siblingDraft.id]?.id, siblingDraft.id);
+
+    failMode = 'reject-after-edit';
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+    assert.equal(settings.uiDrafts.abilityDrafts[claimDraft.id]?.updatedAt, '2026-11-21T09:02:00.000Z',
+      'concurrent edit during failed save must not be overwritten by rollback');
+
+    failMode = 'none';
+    await store.settleConfirmed();
+    assert.equal(store.unresolved, false);
+    assert.equal(settings.uiDrafts.abilityDrafts[claimDraft.id]?.updatedAt, '2026-11-21T09:02:00.000Z',
+      'eventual settlement still keeps newer edit while clearing recovery');
   });
 
   await test('the Diagnostics summary carries metadata and never the payload', async () => {

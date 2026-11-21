@@ -368,9 +368,11 @@ export class DraftStore {
    * made while the write ran is kept.
    */
   discardAbilityDraft(id: string, updatedAt: string | null = null): void {
+    const map = this.settings.uiDrafts.abilityDrafts;
+    if (!map || !(id in map)) return;
     const current = this.getAbilityDraft(id);
     if (updatedAt && current && current.updatedAt !== updatedAt) return;
-    delete this.settings.uiDrafts.abilityDrafts?.[id];
+    delete map[id];
     this.scheduleSave();
   }
 }

@@ -33,6 +33,7 @@ import {
   type GatewayRequestV2,
   type GatewaySuccessV2,
 } from '../contracts/gateway-v2';
+import { asAbilityDraft } from './ability-drafts';
 import { sameComposerDraft, type LearningOSUiDrafts } from './draft-store';
 
 export type GatewayRecoveryPhase =
@@ -46,6 +47,11 @@ export interface GatewayRecoveryErrorV1 {
   message: string;
 }
 
+export interface GatewayDraftOwnerRef {
+  readonly id: string;
+  readonly updated_at: string;
+}
+
 export interface GatewayRecoveryRecordV1 {
   schema_version: 1;
   phase: GatewayRecoveryPhase;
@@ -56,9 +62,25 @@ export interface GatewayRecoveryRecordV1 {
   last_error: GatewayRecoveryErrorV1 | null;
 }
 
+export interface GatewayRecoveryRecordV2 {
+  schema_version: 2;
+  phase: GatewayRecoveryPhase;
+  created_at: string;
+  /** The exact serialized string handed to Core. Retries resend it verbatim. */
+  envelope_json: string;
+  confirmation: GatewaySuccessV2 | null;
+  last_error: GatewayRecoveryErrorV1 | null;
+  /** Exact local Ability draft identity and revision confirmed by this request. */
+  draft_owner: GatewayDraftOwnerRef | null;
+}
+
+export type GatewayRecoveryRecord =
+  | GatewayRecoveryRecordV1
+  | GatewayRecoveryRecordV2;
+
 /** A validated record, paired with the envelope parsed out of it. */
 export interface GatewayRecoveryEntry {
-  readonly record: GatewayRecoveryRecordV1;
+  readonly record: GatewayRecoveryRecord;
   readonly envelope: GatewayRequestV2;
 }
 
@@ -79,6 +101,30 @@ const RECORD_KEYS = [
   'schema_version', 'phase', 'created_at', 'envelope_json', 'confirmation',
   'last_error',
 ] as const;
+
+const RECORD_KEYS_V2 = [
+  ...RECORD_KEYS, 'draft_owner',
+] as const;
+
+const ABILITY_DRAFT_CAPABILITIES = new Set([
+  'learner.ability-observation.append',
+  'ability.candidate.append',
+]);
+
+/** Explicit versioned upgrade preserving V1 contents without modifying existing V1 fields. */
+export function migrateGatewayRecoveryV1ToV2(
+  legacy: GatewayRecoveryRecordV1,
+): GatewayRecoveryRecordV2 {
+  return {
+    schema_version: 2,
+    phase: legacy.phase,
+    created_at: legacy.created_at,
+    envelope_json: legacy.envelope_json,
+    confirmation: legacy.confirmation,
+    last_error: legacy.last_error,
+    draft_owner: null,
+  };
+}
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -110,11 +156,15 @@ export async function validateGatewayRecoveryRecord(
   const refuse = (error: string): GatewayRecoveryValidation => ({ ok: false, error });
   const candidate = record(value);
   if (!candidate) return refuse('the recovery record is not an object');
-  if (!exactKeys(candidate, RECORD_KEYS)) {
+  const version = candidate.schema_version;
+  if (version !== 1 && version !== 2) {
+    return refuse(`unsupported recovery schema_version ${JSON.stringify(version)}`);
+  }
+  if (version === 1 && !exactKeys(candidate, RECORD_KEYS)) {
     return refuse(`the recovery record must carry exactly ${RECORD_KEYS.join(', ')}`);
   }
-  if (candidate.schema_version !== 1) {
-    return refuse(`unsupported recovery schema_version ${JSON.stringify(candidate.schema_version)}`);
+  if (version === 2 && !exactKeys(candidate, RECORD_KEYS_V2)) {
+    return refuse(`recovery schema_version 2 must carry exactly ${RECORD_KEYS_V2.join(', ')}`);
   }
   if (!PHASES.includes(candidate.phase as GatewayRecoveryPhase)) {
     return refuse(`unknown recovery phase ${JSON.stringify(candidate.phase)}`);
@@ -172,16 +222,48 @@ export async function validateGatewayRecoveryRecord(
     }
     lastError = { code: failure.code, message: failure.message };
   }
+  if (version === 1) {
+    return {
+      ok: true,
+      entry: {
+        record: {
+          schema_version: 1,
+          phase,
+          created_at: candidate.created_at,
+          envelope_json: candidate.envelope_json,
+          confirmation,
+          last_error: lastError,
+        },
+        envelope,
+      },
+    };
+  }
+  let draftOwner: GatewayDraftOwnerRef | null = null;
+  if (candidate.draft_owner !== null) {
+    const owner = record(candidate.draft_owner);
+    if (!owner
+      || !exactKeys(owner, ['id', 'updated_at'])
+      || !nonEmpty(owner.id)
+      || !nonEmpty(owner.updated_at)
+      || !Number.isFinite(Date.parse(owner.updated_at))) {
+      return refuse('the recorded draft_owner is not a {id, updated_at} pair');
+    }
+    if (!ABILITY_DRAFT_CAPABILITIES.has(envelope.capability)) {
+      return refuse(`draft_owner cannot bind capability ${envelope.capability}`);
+    }
+    draftOwner = { id: owner.id, updated_at: owner.updated_at };
+  }
   return {
     ok: true,
     entry: {
       record: {
-        schema_version: 1,
+        schema_version: 2,
         phase,
         created_at: candidate.created_at,
         envelope_json: candidate.envelope_json,
         confirmation,
         last_error: lastError,
+        draft_owner: draftOwner,
       },
       envelope,
     },
@@ -193,7 +275,7 @@ export interface GatewayRecoveryPort {
   /** True while any record — valid or malformed — remains unresolved. */
   readonly unresolved: boolean;
   readonly state: GatewayRecoveryState;
-  begin(record: GatewayRecoveryRecordV1): Promise<void>;
+  begin(record: GatewayRecoveryRecord): Promise<void>;
   /** The stored entry, or null when there is nothing replayable. */
   replayable(): GatewayRecoveryEntry | null;
   markRecovering(error: GatewayRecoveryErrorV1 | null, expected?: GatewayRecoveryEntry): Promise<void>;
@@ -236,7 +318,7 @@ export class MemoryGatewayRecoveryStore implements GatewayRecoveryPort {
     return this.current;
   }
 
-  async begin(next: GatewayRecoveryRecordV1): Promise<void> {
+  async begin(next: GatewayRecoveryRecord): Promise<void> {
     const previous = this.replayable();
     const validated = await validateGatewayRecoveryRecord(next);
     if (!validated.ok) throw new Error(`Refusing to persist an invalid recovery record: ${validated.error}`);
@@ -405,7 +487,8 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
     const previousDrafts = structuredClone(this.settings.uiDrafts);
     const version = ++this.saveVersion;
 
-    clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope);
+    const draftOwner = entry.record.schema_version === 2 ? entry.record.draft_owner : null;
+    clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope, draftOwner);
     const postCleanupDrafts = structuredClone(this.settings.uiDrafts);
 
     this.settings.gatewayRecovery = null;
@@ -433,10 +516,11 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
         }
       }
 
-      for (const mapName of ['unitNotes', 'stages', 'doneWhen'] as const) {
-        const preMap = previousDrafts[mapName] as Record<string, any>;
-        const postMap = postCleanupDrafts[mapName] as Record<string, any>;
-        const currentMap = this.settings.uiDrafts[mapName] as Record<string, any>;
+      for (const mapName of ['unitNotes', 'stages', 'doneWhen', 'abilityDrafts'] as const) {
+        const preMap = previousDrafts[mapName] as Record<string, any> | undefined;
+        const postMap = postCleanupDrafts[mapName] as Record<string, any> | undefined;
+        const currentMap = this.settings.uiDrafts[mapName] as Record<string, any> | undefined;
+        if (!preMap || !postMap || !currentMap) continue;
 
         for (const key of Object.keys(preMap)) {
           if (!(key in postMap) && !(key in currentMap)) {
@@ -465,10 +549,24 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
 export function clearDraftsOwnedBy(
   drafts: LearningOSUiDrafts,
   envelope: GatewayRequestV2,
+  draftOwner: GatewayDraftOwnerRef | null = null,
 ): void {
   const payload = envelope.payload;
   const text = typeof payload.text === 'string' ? payload.text : null;
   const title = typeof payload.title === 'string' ? payload.title : '';
+
+  if (envelope.capability === 'learner.ability-observation.append'
+    || envelope.capability === 'ability.candidate.append') {
+    if (!draftOwner) return;
+    const expectedKind = envelope.capability === 'learner.ability-observation.append'
+      ? 'claim'
+      : 'connection';
+    const current = asAbilityDraft(drafts.abilityDrafts?.[draftOwner.id]);
+    if (current && current.kind === expectedKind && current.updatedAt === draftOwner.updated_at) {
+      delete drafts.abilityDrafts[draftOwner.id];
+    }
+    return;
+  }
 
   if (envelope.capability === 'capture.create') {
     // A file capture has no persisted picker state to clear.

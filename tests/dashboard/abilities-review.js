@@ -546,4 +546,99 @@ module.exports = async function run() {
       && Notice.log.some((line) => line.includes('from_ability is not a reviewed ability')));
     plugin.onunload();
   }
+
+  heading('interrupted Ability confirmation retires the committed draft on restart without losing siblings or newer edits');
+  {
+    Notice.log.length = 0;
+    let callsCount = 0;
+    const { app, plugin } = await boot({
+      runLosOverride: (args, callback, stdin) => {
+        const envelope = stdin ? JSON.parse(stdin) : null;
+        if (envelope?.capability === 'learner.ability-observation.append') {
+          callsCount += 1;
+          if (callsCount === 1) {
+            return callback(Object.assign(new Error('interrupted response'), { code: null }), '', '');
+          }
+          if (callsCount === 2) {
+            return callback(Object.assign(new Error('replay blocked before restart'), { code: null }), '', '');
+          }
+        }
+        const { answerAbilityRead } = require('../ability-fixtures');
+        const read = answerAbilityRead(args);
+        return callback(null, JSON.stringify(read ?? { ok: true }), '');
+      },
+    });
+    const baseDraft = {
+      kind: 'claim',
+      id: 'ability-claim-f03-target',
+      abilityId: 'ability-fixture-conditional',
+      abilityTitle: 'Conditional probability and Bayes updates',
+      workspace: 'workspace-fixture-m2',
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      conditionsMet: ['specified prior and likelihood'],
+      conditionsNotMet: [],
+      evidenceTags: ['explicit Bayes update'],
+      workRef: 'conversation://synthetic-loop/F03',
+      claim: 'Exact F03 claim',
+      supersedes: null,
+      createdAt: '2026-11-21T09:00:00.000Z',
+      updatedAt: '2026-11-21T09:00:00.000Z',
+    };
+    const siblingDraft = {
+      ...baseDraft,
+      id: 'ability-claim-f03-twin',
+      createdAt: '2026-11-21T09:00:05.000Z',
+      updatedAt: '2026-11-21T09:00:05.000Z',
+    };
+    plugin.saveAbilityDraft(baseDraft);
+    plugin.saveAbilityDraft(siblingDraft);
+    await plugin.nav.openReview(baseDraft.id);
+    const review = () => leafOf(app, VIEW.review).contentEl;
+    await waitFor(() => Boolean(review().findText('los-btn', 'Confirm & record'))
+      && !review().findText('los-btn', 'Confirm & record').disabled);
+    review().findText('los-btn', 'Confirm & record').fire('click');
+    await waitFor(() => !plugin.gateway.isBusy && plugin.settings.gatewayRecovery?.phase === 'blocked');
+    const persisted = JSON.parse(JSON.stringify(plugin.settings));
+    check('interrupted Ability confirmation persists schema_version 2 draft_owner',
+      persisted.gatewayRecovery?.schema_version === 2
+      && persisted.gatewayRecovery?.phase === 'blocked'
+      && persisted.gatewayRecovery?.draft_owner?.id === baseDraft.id
+      && persisted.gatewayRecovery?.draft_owner?.updated_at === baseDraft.updatedAt);
+
+    // Simulate restart before ambiguity blocked (or fresh restart recovery) against the same persisted settings.
+    persisted.gatewayRecovery.phase = 'prepared';
+    plugin.onunload();
+
+    const restarted = await boot({
+      settings: persisted,
+      runLosOverride: (args, callback, stdin) => {
+        const envelope = stdin ? JSON.parse(stdin) : null;
+        if (envelope?.capability === 'learner.ability-observation.append') {
+          return callback(null, JSON.stringify({
+            schema_version: 2,
+            request_id: envelope.request_id,
+            idempotency_key: envelope.idempotency_key,
+            capability: envelope.capability,
+            ok: true,
+            replayed: true,
+            transaction_id: 'tx-ability-replay-1',
+            receipt_path: 'operations/transactions/tx-ability-replay-1.yaml',
+            snapshot_after: FIXTURE_SNAPSHOT,
+            result: { ok: true, observation_id: 'ability-observation-replay-1', replayed: true },
+            error: null,
+          }), '');
+        }
+        const { answerAbilityRead } = require('../ability-fixtures');
+        const read = answerAbilityRead(args);
+        return callback(null, JSON.stringify(read ?? { ok: true }), '');
+      },
+    });
+    await waitFor(() => !restarted.plugin.gateway.isBusy && restarted.plugin.settings.gatewayRecovery === null);
+    check('restart recovery retires only the confirmed Ability draft while keeping its identical twin',
+      restarted.plugin.listAbilityDrafts().map((d) => d.id).join(',') === siblingDraft.id
+      && restarted.plugin.settings.gatewayRecovery === null);
+    restarted.plugin.onunload();
+  }
 };

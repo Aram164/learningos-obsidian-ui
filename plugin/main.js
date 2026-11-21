@@ -52070,9 +52070,11 @@ ${row3.text.trim()}`).join("\n\n");
    * made while the write ran is kept.
    */
   discardAbilityDraft(id, updatedAt = null) {
+    const map = this.settings.uiDrafts.abilityDrafts;
+    if (!map || !(id in map)) return;
     const current = this.getAbilityDraft(id);
     if (updatedAt && current && current.updatedAt !== updatedAt) return;
-    delete this.settings.uiDrafts.abilityDrafts?.[id];
+    delete map[id];
     this.scheduleSave();
   }
 };
@@ -52092,6 +52094,14 @@ var RECORD_KEYS = [
   "confirmation",
   "last_error"
 ];
+var RECORD_KEYS_V2 = [
+  ...RECORD_KEYS,
+  "draft_owner"
+];
+var ABILITY_DRAFT_CAPABILITIES = /* @__PURE__ */ new Set([
+  "learner.ability-observation.append",
+  "ability.candidate.append"
+]);
 function record4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
@@ -52105,11 +52115,15 @@ async function validateGatewayRecoveryRecord(value) {
   const refuse = (error) => ({ ok: false, error });
   const candidate2 = record4(value);
   if (!candidate2) return refuse("the recovery record is not an object");
-  if (!exactKeys(candidate2, RECORD_KEYS)) {
+  const version = candidate2.schema_version;
+  if (version !== 1 && version !== 2) {
+    return refuse(`unsupported recovery schema_version ${JSON.stringify(version)}`);
+  }
+  if (version === 1 && !exactKeys(candidate2, RECORD_KEYS)) {
     return refuse(`the recovery record must carry exactly ${RECORD_KEYS.join(", ")}`);
   }
-  if (candidate2.schema_version !== 1) {
-    return refuse(`unsupported recovery schema_version ${JSON.stringify(candidate2.schema_version)}`);
+  if (version === 2 && !exactKeys(candidate2, RECORD_KEYS_V2)) {
+    return refuse(`recovery schema_version 2 must carry exactly ${RECORD_KEYS_V2.join(", ")}`);
   }
   if (!PHASES.includes(candidate2.phase)) {
     return refuse(`unknown recovery phase ${JSON.stringify(candidate2.phase)}`);
@@ -52164,16 +52178,44 @@ async function validateGatewayRecoveryRecord(value) {
     }
     lastError = { code: failure.code, message: failure.message };
   }
+  if (version === 1) {
+    return {
+      ok: true,
+      entry: {
+        record: {
+          schema_version: 1,
+          phase,
+          created_at: candidate2.created_at,
+          envelope_json: candidate2.envelope_json,
+          confirmation,
+          last_error: lastError
+        },
+        envelope
+      }
+    };
+  }
+  let draftOwner = null;
+  if (candidate2.draft_owner !== null) {
+    const owner = record4(candidate2.draft_owner);
+    if (!owner || !exactKeys(owner, ["id", "updated_at"]) || !nonEmpty2(owner.id) || !nonEmpty2(owner.updated_at) || !Number.isFinite(Date.parse(owner.updated_at))) {
+      return refuse("the recorded draft_owner is not a {id, updated_at} pair");
+    }
+    if (!ABILITY_DRAFT_CAPABILITIES.has(envelope.capability)) {
+      return refuse(`draft_owner cannot bind capability ${envelope.capability}`);
+    }
+    draftOwner = { id: owner.id, updated_at: owner.updated_at };
+  }
   return {
     ok: true,
     entry: {
       record: {
-        schema_version: 1,
+        schema_version: 2,
         phase,
         created_at: candidate2.created_at,
         envelope_json: candidate2.envelope_json,
         confirmation,
-        last_error: lastError
+        last_error: lastError,
+        draft_owner: draftOwner
       },
       envelope
     }
@@ -52345,7 +52387,8 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
     const previousStatus = this.status;
     const previousDrafts = structuredClone(this.settings.uiDrafts);
     const version = ++this.saveVersion;
-    clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope);
+    const draftOwner = entry.record.schema_version === 2 ? entry.record.draft_owner : null;
+    clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope, draftOwner);
     const postCleanupDrafts = structuredClone(this.settings.uiDrafts);
     this.settings.gatewayRecovery = null;
     this.current = null;
@@ -52368,10 +52411,11 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
           this.settings.uiDrafts.garden = previousDrafts.garden;
         }
       }
-      for (const mapName of ["unitNotes", "stages", "doneWhen"]) {
+      for (const mapName of ["unitNotes", "stages", "doneWhen", "abilityDrafts"]) {
         const preMap = previousDrafts[mapName];
         const postMap = postCleanupDrafts[mapName];
         const currentMap = this.settings.uiDrafts[mapName];
+        if (!preMap || !postMap || !currentMap) continue;
         for (const key of Object.keys(preMap)) {
           if (!(key in postMap) && !(key in currentMap)) {
             currentMap[key] = preMap[key];
@@ -52385,10 +52429,19 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
     }
   }
 };
-function clearDraftsOwnedBy(drafts, envelope) {
+function clearDraftsOwnedBy(drafts, envelope, draftOwner = null) {
   const payload = envelope.payload;
   const text4 = typeof payload.text === "string" ? payload.text : null;
   const title2 = typeof payload.title === "string" ? payload.title : "";
+  if (envelope.capability === "learner.ability-observation.append" || envelope.capability === "ability.candidate.append") {
+    if (!draftOwner) return;
+    const expectedKind = envelope.capability === "learner.ability-observation.append" ? "claim" : "connection";
+    const current = asAbilityDraft(drafts.abilityDrafts?.[draftOwner.id]);
+    if (current && current.kind === expectedKind && current.updatedAt === draftOwner.updated_at) {
+      delete drafts.abilityDrafts[draftOwner.id];
+    }
+    return;
+  }
   if (envelope.capability === "capture.create") {
     if (text4 === null) return;
     if (sameComposerDraft(drafts.inbox, { title: title2, text: text4 })) {
@@ -52533,7 +52586,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:3f4910e90a04bb8174f5e875416ba26af3d45ded930ec22e42cfdb0016f10c17" : "unavailable";
+  return true ? "sha256:a031801be353593f45ffe1d45c424a3f812f7c30966646aa1f6ea995e5b7a175" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;
@@ -52812,6 +52865,13 @@ var GatewayClient = class {
         { code: "UNCONFIRMED", retryable: false }
       );
     }
+    if (options.draftOwner && name !== "learner.ability-observation.append" && name !== "ability.candidate.append") {
+      throw new GatewayError(
+        `Draft owner metadata cannot bind capability ${name}.`,
+        null,
+        { code: "INVALID_REQUEST", retryable: false }
+      );
+    }
     this.assertFreshSnapshot();
     const expectedSnapshot = options.expectedSnapshot || this.snapshotId();
     if (!isSha256(expectedSnapshot)) {
@@ -52844,7 +52904,8 @@ var GatewayClient = class {
       payload,
       expectedSnapshot,
       expectedRevisions,
-      options.identity
+      options.identity,
+      options.draftOwner
     );
   }
   /**
@@ -52861,7 +52922,7 @@ var GatewayClient = class {
     } catch (_) {
     }
   }
-  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions, trace, identity) {
+  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions, trace, identity, draftOwner) {
     this.assertLifecycleActive();
     this.assertFreshSnapshot();
     const requestId = identity?.requestId ?? nextRequestId(name);
@@ -52890,14 +52951,16 @@ var GatewayClient = class {
     const envelopeJson = JSON.stringify(envelope);
     this.assertLifecycleActive();
     this.assertFreshSnapshot();
-    await this.recovery.begin({
-      schema_version: 1,
+    const baseRecord = {
       phase: "prepared",
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
       envelope_json: envelopeJson,
       confirmation: null,
       last_error: null
-    });
+    };
+    await this.recovery.begin(
+      draftOwner ? { schema_version: 2, ...baseRecord, draft_owner: draftOwner } : { schema_version: 1, ...baseRecord }
+    );
     if (trace !== void 0) {
       this.diagnose(diagnosticEvent(trace, "gateway.envelope.prepared", {
         request_id: requestId,
@@ -53108,7 +53171,7 @@ var GatewayClient = class {
    * blocks: looping in the background is how an interrupted write becomes many,
    * and a blocked record deliberately does not retry itself on the next launch.
    */
-  async sendCapability(name, payload, expectedSnapshot, expectedRevisions, identity) {
+  async sendCapability(name, payload, expectedSnapshot, expectedRevisions, identity, draftOwner) {
     const operation = newOperationContext();
     const envelopeJson = await this.prepareCapability(
       name,
@@ -53116,7 +53179,8 @@ var GatewayClient = class {
       expectedSnapshot,
       expectedRevisions,
       operation,
-      identity
+      identity,
+      draftOwner
     );
     let result = await this.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     if (result.outcome === "ambiguous") {
@@ -53479,19 +53543,19 @@ Last response: ${result.error.message}`,
    * Record a claim Aram confirmed in Review. The payload's confirmation
    * pointer names `identity`, which is why the identity is minted first.
    */
-  recordAbilityObservation(payload, identity, expectedRevisions = {}) {
+  recordAbilityObservation(payload, identity, expectedRevisions = {}, draftOwner = null) {
     return this.capability(
       "learner.ability-observation.append",
       { ...payload },
-      { expectedRevisions, identity }
+      { expectedRevisions, identity, draftOwner }
     );
   }
   /** Record a tentative connection. It carries nothing until reviewed. */
-  recordAbilityCandidate(payload, identity, expectedRevisions = {}) {
+  recordAbilityCandidate(payload, identity, expectedRevisions = {}, draftOwner = null) {
     return this.capability(
       "ability.candidate.append",
       { ...payload },
-      { expectedRevisions, identity }
+      { expectedRevisions, identity, draftOwner }
     );
   }
   /** Versioned read-only status surfaces. Their feature layers decode the
@@ -53734,7 +53798,12 @@ function renderClaimDraft(parent, host, draft) {
     const guard = host.plugin.store.artifactGuard(current.workspace);
     void send(
       host,
-      () => host.plugin.gateway.recordAbilityObservation(payload, identity, guard),
+      () => host.plugin.gateway.recordAbilityObservation(
+        payload,
+        identity,
+        guard,
+        { id: current.id, updated_at: current.updatedAt }
+      ),
       "Recorded. Core recomputed this ability\u2019s state."
     ).then((recorded) => {
       if (!recorded) return;
@@ -53791,7 +53860,12 @@ function renderConnectionDraft(parent, host, draft) {
     const guard = host.plugin.store.artifactGuard("ability-candidates");
     void send(
       host,
-      () => host.plugin.gateway.recordAbilityCandidate(payload, identity, guard),
+      () => host.plugin.gateway.recordAbilityCandidate(
+        payload,
+        identity,
+        guard,
+        { id: current.id, updated_at: current.updatedAt }
+      ),
       "Recorded as a tentative connection. It carries nothing until reviewed."
     ).then((recorded) => {
       if (!recorded) return;
@@ -58155,6 +58229,9 @@ var LearningOSUI = class extends import_obsidian29.Plugin {
       new import_obsidian29.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed(owner);
+    if (owner.envelope.capability === "learner.ability-observation.append" || owner.envelope.capability === "ability.candidate.append") {
+      this.redrawAbilitySurfaces();
+    }
     this.gateway.noteSettlementObserved(confirmation);
   }
   /**

@@ -216,7 +216,12 @@ function renderClaimDraft(parent: HTMLElement, host: ReviewHost, draft: AbilityC
     const guard = host.plugin.store.artifactGuard(current.workspace);
     void send(
       host,
-      () => host.plugin.gateway.recordAbilityObservation(payload, identity, guard),
+      () => host.plugin.gateway.recordAbilityObservation(
+        payload,
+        identity,
+        guard,
+        { id: current.id, updated_at: current.updatedAt },
+      ),
       'Recorded. Core recomputed this ability’s state.',
     ).then((recorded) => {
       if (!recorded) return;
@@ -274,7 +279,12 @@ function renderConnectionDraft(parent: HTMLElement, host: ReviewHost, draft: Abi
     const guard = host.plugin.store.artifactGuard('ability-candidates');
     void send(
       host,
-      () => host.plugin.gateway.recordAbilityCandidate(payload, identity, guard),
+      () => host.plugin.gateway.recordAbilityCandidate(
+        payload,
+        identity,
+        guard,
+        { id: current.id, updated_at: current.updatedAt },
+      ),
       'Recorded as a tentative connection. It carries nothing until reviewed.',
     ).then((recorded) => {
       if (!recorded) return;

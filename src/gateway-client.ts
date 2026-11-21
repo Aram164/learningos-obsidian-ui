@@ -31,6 +31,7 @@ import {
 } from './contracts/gateway-v2';
 import {
   MemoryGatewayRecoveryStore,
+  type GatewayDraftOwnerRef,
   type GatewayRecoveryEntry,
   type GatewayRecoveryErrorV1,
   type GatewayRecoveryPort,
@@ -365,6 +366,7 @@ export class GatewayClient {
       expectedSnapshot?: string;
       expectedRevisions?: Readonly<Record<string, number>>;
       identity?: GatewayIdentity;
+      draftOwner?: GatewayDraftOwnerRef | null;
     } = {},
   ): Promise<GatewaySuccessV2> {
     // Every envelope this client sends claims `direct-user-gesture`, because
@@ -377,6 +379,15 @@ export class GatewayClient {
         gestureUnavailableMessage(name),
         null,
         { code: 'UNCONFIRMED', retryable: false },
+      );
+    }
+    if (options.draftOwner
+        && name !== 'learner.ability-observation.append'
+        && name !== 'ability.candidate.append') {
+      throw new GatewayError(
+        `Draft owner metadata cannot bind capability ${name}.`,
+        null,
+        { code: 'INVALID_REQUEST', retryable: false },
       );
     }
     this.assertFreshSnapshot();
@@ -421,6 +432,7 @@ export class GatewayClient {
       expectedSnapshot,
       expectedRevisions,
       options.identity,
+      options.draftOwner,
     );
   }
 
@@ -443,6 +455,7 @@ export class GatewayClient {
     expectedRevisions: Readonly<Record<string, number>>,
     trace?: TraceContext,
     identity?: GatewayIdentity,
+    draftOwner?: GatewayDraftOwnerRef | null,
   ): Promise<string> {
     this.assertLifecycleActive();
     this.assertFreshSnapshot();
@@ -482,14 +495,18 @@ export class GatewayClient {
     const envelopeJson = JSON.stringify(envelope);
     this.assertLifecycleActive();
     this.assertFreshSnapshot();
-    await this.recovery.begin({
-      schema_version: 1,
-      phase: 'prepared',
+    const baseRecord = {
+      phase: 'prepared' as const,
       created_at: new Date().toISOString(),
       envelope_json: envelopeJson,
       confirmation: null,
       last_error: null,
-    });
+    };
+    await this.recovery.begin(
+      draftOwner
+        ? { schema_version: 2, ...baseRecord, draft_owner: draftOwner }
+        : { schema_version: 1, ...baseRecord },
+    );
     if (trace !== undefined) {
       this.diagnose(diagnosticEvent(trace, 'gateway.envelope.prepared', {
         request_id: requestId,
@@ -740,13 +757,14 @@ export class GatewayClient {
     expectedSnapshot: string,
     expectedRevisions: Readonly<Record<string, number>>,
     identity?: GatewayIdentity,
+    draftOwner?: GatewayDraftOwnerRef | null,
   ): Promise<GatewaySuccessV2> {
     // One operation for the send and its in-session replay: the same trace
     // id reaches Core on every event and both attempts, each attempt with
     // its own span id.
     const operation = newOperationContext();
     const envelopeJson = await this.prepareCapability(
-      name, payload, expectedSnapshot, expectedRevisions, operation, identity,
+      name, payload, expectedSnapshot, expectedRevisions, operation, identity, draftOwner,
     );
     let result = await this.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     if (result.outcome === 'ambiguous') {
@@ -1195,11 +1213,12 @@ export class GatewayClient {
     payload: AbilityObservationPayloadV1,
     identity: GatewayIdentity,
     expectedRevisions: Readonly<Record<string, number>> = {},
+    draftOwner: GatewayDraftOwnerRef | null = null,
   ) {
     return this.capability(
       'learner.ability-observation.append',
       { ...payload },
-      { expectedRevisions, identity },
+      { expectedRevisions, identity, draftOwner },
     );
   }
 
@@ -1208,11 +1227,12 @@ export class GatewayClient {
     payload: AbilityCandidatePayloadV1,
     identity: GatewayIdentity,
     expectedRevisions: Readonly<Record<string, number>> = {},
+    draftOwner: GatewayDraftOwnerRef | null = null,
   ) {
     return this.capability(
       'ability.candidate.append',
       { ...payload },
-      { expectedRevisions, identity },
+      { expectedRevisions, identity, draftOwner },
     );
   }
 
