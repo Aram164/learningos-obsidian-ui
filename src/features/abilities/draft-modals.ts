@@ -31,7 +31,7 @@ export interface ClaimDraftOptions {
   readonly existing: AbilityClaimDraft | null;
   /** A correction supersedes exactly one earlier observation. */
   readonly supersedes?: string | null;
-  save(draft: AbilityDraft): void;
+  save(draft: AbilityDraft): AbilityDraft | void;
   onSaved?(draft: AbilityDraft): void;
 }
 
@@ -39,7 +39,7 @@ export interface ConnectionDraftOptions {
   readonly from: AbilityRowV1;
   readonly candidates: readonly AbilityRowV1[];
   readonly existing: AbilityConnectionDraft | null;
-  save(draft: AbilityDraft): void;
+  save(draft: AbilityDraft): AbilityDraft | void;
   onSaved?(draft: AbilityDraft): void;
 }
 
@@ -256,10 +256,10 @@ export class AbilityClaimDraftModal extends Modal {
     const actions = root.createDiv({ cls: 'los-actions los-ability-draft-actions' });
     button(actions, existing ? 'Save changes' : 'Save draft', () => {
       const draft = collect();
-      this.options.save(draft);
+      const saved = this.options.save(draft) ?? draft;
       new Notice('Draft saved. Nothing is recorded until you confirm it in Review.');
       this.close();
-      this.options.onSaved?.(draft);
+      this.options.onSaved?.(saved);
     }, 'cta');
     button(actions, 'Cancel', () => this.close(), 'quiet');
     this.restore = makeModalAccessible(root, {
@@ -342,10 +342,10 @@ export class AbilityConnectionDraftModal extends Modal {
         createdAt: existing?.createdAt ?? stamp,
         updatedAt: stamp,
       };
-      this.options.save(draft);
+      const saved = this.options.save(draft) ?? draft;
       new Notice('Draft saved. Nothing is recorded until you confirm it in Review.');
       this.close();
-      this.options.onSaved?.(draft);
+      this.options.onSaved?.(saved);
     }, 'cta');
     button(actions, 'Cancel', () => this.close(), 'quiet');
     this.restore = makeModalAccessible(root, {

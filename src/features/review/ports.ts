@@ -19,6 +19,7 @@ export type ReviewPlugin = Pick<
   | 'openAuthoredPath'
   | 'openVaultPath'
   | 'saveAbilityDraft'
+  | 'saveAbilityDraftEdit'
   | 'store'
 > & {
   readonly nav: Pick<

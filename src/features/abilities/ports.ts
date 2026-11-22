@@ -21,6 +21,7 @@ export type AbilityPlugin = Pick<
   | 'listAbilityDrafts'
   | 'openAuthoredPath'
   | 'saveAbilityDraft'
+  | 'saveAbilityDraftEdit'
   | 'store'
 > & {
   readonly nav: Pick<

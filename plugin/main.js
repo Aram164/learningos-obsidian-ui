@@ -32570,10 +32570,10 @@ var AbilityClaimDraftModal = class extends import_obsidian3.Modal {
     const actions = root.createDiv({ cls: "los-actions los-ability-draft-actions" });
     button(actions, existing ? "Save changes" : "Save draft", () => {
       const draft = collect();
-      this.options.save(draft);
+      const saved = this.options.save(draft) ?? draft;
       new import_obsidian3.Notice("Draft saved. Nothing is recorded until you confirm it in Review.");
       this.close();
-      this.options.onSaved?.(draft);
+      this.options.onSaved?.(saved);
     }, "cta");
     button(actions, "Cancel", () => this.close(), "quiet");
     this.restore = makeModalAccessible(root, {
@@ -32650,10 +32650,10 @@ var AbilityConnectionDraftModal = class extends import_obsidian3.Modal {
         createdAt: existing?.createdAt ?? stamp,
         updatedAt: stamp
       };
-      this.options.save(draft);
+      const saved = this.options.save(draft) ?? draft;
       new import_obsidian3.Notice("Draft saved. Nothing is recorded until you confirm it in Review.");
       this.close();
-      this.options.onSaved?.(draft);
+      this.options.onSaved?.(saved);
     }, "cta");
     button(actions, "Cancel", () => this.close(), "quiet");
     this.restore = makeModalAccessible(root, {
@@ -32731,7 +32731,7 @@ function openDraft(host, row3, focus2, supersedes = null) {
     workPointers: abilityWorkPointers(host.plugin.store, focus2),
     existing: null,
     supersedes,
-    save: (draft) => host.plugin.saveAbilityDraft(draft),
+    save: (draft) => host.plugin.saveAbilityDraftEdit(draft),
     onSaved: () => host.render()
   }).open();
 }
@@ -32740,7 +32740,7 @@ function openConnection(host, row3, brief) {
     from: row3,
     candidates: brief.abilities,
     existing: null,
-    save: (draft) => host.plugin.saveAbilityDraft(draft),
+    save: (draft) => host.plugin.saveAbilityDraftEdit(draft),
     onSaved: () => host.render()
   }).open();
 }
@@ -52065,6 +52065,32 @@ ${row3.text.trim()}`).join("\n\n");
     this.scheduleSave();
   }
   /**
+   * Save an interactive Ability draft edit with an `updatedAt` strictly greater
+   * than the currently stored revision.
+   *
+   * Keeps `saveAbilityDraft` exact for fixture/test seeding while ensuring two
+   * stale modal instances or same-millisecond edits can never collide with a
+   * `draft_owner.updated_at` pinned by an unresolved confirmation.
+   */
+  saveAbilityDraftEdit(draft) {
+    const stored = this.getAbilityDraft(draft.id);
+    const nowMs = Date.now();
+    const floorMs = stored ? Date.parse(stored.updatedAt) : NaN;
+    let targetMs = Number.isFinite(floorMs) && nowMs <= floorMs ? floorMs + 1 : nowMs;
+    let updatedAt = new Date(targetMs).toISOString();
+    while (stored && updatedAt === stored.updatedAt) {
+      targetMs += 1;
+      updatedAt = new Date(targetMs).toISOString();
+    }
+    const next = {
+      ...draft,
+      createdAt: stored?.createdAt ?? draft.createdAt,
+      updatedAt
+    };
+    this.saveAbilityDraft(next);
+    return next;
+  }
+  /**
    * Drop one draft. `updatedAt` makes this safe after an awaited write: the
    * draft goes only if it is still the version that was confirmed, so an edit
    * made while the write ran is kept.
@@ -52586,7 +52612,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:0d1c468df1c9f128fa991d5cbb570b26de9f7f1b1b511a9507b480d6b6562e6a" : "unavailable";
+  return true ? "sha256:b506b45ddd21a37f2d3a37b52cef9d085e75b34d0f360d89a16ab8e1ff179e8d" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;
@@ -53683,7 +53709,7 @@ function editClaim(host, draft) {
     workspaces: abilityWorkspaces(host.plugin.store, row3),
     workPointers: abilityWorkPointers(host.plugin.store, focus2),
     existing: draft,
-    save: (next) => host.plugin.saveAbilityDraft(next),
+    save: (next) => host.plugin.saveAbilityDraftEdit(next),
     onSaved: () => host.render()
   }).open();
 }
@@ -53698,7 +53724,7 @@ function editConnection(host, draft) {
     from,
     candidates: brief.abilities,
     existing: draft,
-    save: (next) => host.plugin.saveAbilityDraft(next),
+    save: (next) => host.plugin.saveAbilityDraftEdit(next),
     onSaved: () => host.render()
   }).open();
 }
@@ -58009,6 +58035,11 @@ var LearningOSUI = class extends import_obsidian29.Plugin {
   saveAbilityDraft(draft) {
     this.drafts.saveAbilityDraft(draft);
     this.redrawAbilitySurfaces();
+  }
+  saveAbilityDraftEdit(draft) {
+    const saved = this.drafts.saveAbilityDraftEdit(draft);
+    this.redrawAbilitySurfaces();
+    return saved;
   }
   discardAbilityDraft(id, updatedAt = null) {
     this.drafts.discardAbilityDraft(id, updatedAt);

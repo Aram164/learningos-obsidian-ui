@@ -3299,6 +3299,111 @@ function routerPlugin(settings = {}) {
       'eventual settlement still keeps newer edit while clearing recovery');
   });
 
+  await test('saveAbilityDraftEdit allocates monotonic updatedAt against the stored draft and survives unresolved confirmation', async () => {
+    const initialStamp = '2026-11-21T09:00:00.000Z';
+    const initialMs = Date.parse(initialStamp);
+    const baseDraft = {
+      kind: 'claim',
+      id: 'ability-claim-monotonic',
+      abilityId: 'ability-sad-ols',
+      abilityTitle: 'OLS',
+      workspace: 'workspace-demo',
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      conditionsMet: ['c1'],
+      conditionsNotMet: [],
+      evidenceTags: ['t1'],
+      workRef: 'conversation://synthetic/1',
+      claim: 'Initial claim',
+      supersedes: null,
+      createdAt: '2026-11-21T08:00:00.000Z',
+      updatedAt: initialStamp,
+    };
+
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    const drafts = new DraftStore(settings, async () => {});
+    drafts.saveAbilityDraft(baseDraft);
+
+    const realDateNow = Date.now;
+    Date.now = () => initialMs;
+    try {
+      // Two stale modal snapshots opened against the same initial revision and saved in the same ms.
+      const staleSnapshot = {
+        ...baseDraft,
+        createdAt: '2026-11-21T07:00:00.000Z',
+        updatedAt: initialStamp,
+      };
+      const firstEdit = drafts.saveAbilityDraftEdit({ ...staleSnapshot, claim: 'Stale modal edit 1' });
+      const secondEdit = drafts.saveAbilityDraftEdit({ ...staleSnapshot, claim: 'Stale modal edit 2' });
+      assert.equal(firstEdit.updatedAt, '2026-11-21T09:00:00.001Z');
+      assert.equal(secondEdit.updatedAt, '2026-11-21T09:00:00.002Z');
+      assert.equal(secondEdit.createdAt, '2026-11-21T08:00:00.000Z',
+        'stored createdAt is preserved against stale modal snapshots');
+      drafts.dispose();
+
+      // Now confirm the initial revision, lose the response, and save a second edit in the same ms.
+      const recoverySettings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+      const recoveryDrafts = new DraftStore(recoverySettings, async () => {});
+      recoveryDrafts.saveAbilityDraft(baseDraft);
+      const recoveryStore = new SettingsGatewayRecoveryStore(recoverySettings, async () => {});
+      let attempts = 0;
+      const gateway = new GatewayClient({
+        runLos: (_args, callback, stdin) => {
+          attempts += 1;
+          if (attempts <= 2) return callback(new Error('interrupted response'), '', '');
+          return callback(null, gatewayConfirmation(stdin), '');
+        },
+        store: { snapshotId: SNAPSHOT },
+        recovery: recoveryStore,
+      });
+      const identity = {
+        requestId: 'req-learner-ability-observation-append-monotonic',
+        idempotencyKey: 'idem-req-learner-ability-observation-append-monotonic',
+      };
+      await assert.rejects(
+        gateway.recordAbilityObservation({
+          workspace: 'workspace-demo',
+          ability: 'ability-sad-ols',
+          claim: 'Initial claim',
+          work_ref: 'conversation://synthetic/1',
+          confirmation_ref: `conversation://learningos-app/${identity.idempotencyKey}`,
+          activity: 'Worked problem 1',
+          result: 'correct',
+          assistance: 'none',
+          condition: ['c1'],
+          condition_not_met: [],
+          evidence_tag: ['t1'],
+        }, identity, { 'workspace-demo': 0 }, {
+          id: baseDraft.id,
+          updated_at: baseDraft.updatedAt,
+        }),
+        /interrupted response/,
+      );
+      assert.equal(recoveryStore.unresolved, true);
+      assert.equal(recoveryStore.replayable()?.record.draft_owner?.updated_at, initialStamp);
+
+      const editDuringRecovery = recoveryDrafts.saveAbilityDraftEdit({
+        ...baseDraft,
+        claim: 'Second edit in the same ms while confirmation is unresolved',
+      });
+      assert.equal(editDuringRecovery.updatedAt, '2026-11-21T09:00:00.001Z');
+
+      const outcome = await gateway.recoverPreparedEnvelope();
+      assert.equal(outcome.outcome, 'confirmed');
+      await gateway.settle(outcome);
+      await recoveryStore.settleConfirmed();
+      assert.equal(recoveryStore.unresolved, false);
+      assert.equal(recoverySettings.uiDrafts.abilityDrafts[baseDraft.id]?.claim,
+        'Second edit in the same ms while confirmation is unresolved');
+      assert.equal(recoverySettings.uiDrafts.abilityDrafts[baseDraft.id]?.updatedAt,
+        '2026-11-21T09:00:00.001Z');
+      recoveryDrafts.dispose();
+    } finally {
+      Date.now = realDateNow;
+    }
+  });
+
   await test('the Diagnostics summary carries metadata and never the payload', async () => {
     const { gateway, recovery } = scriptedGateway([
       answerWith('', new Error('interrupted')),

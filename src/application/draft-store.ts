@@ -363,6 +363,33 @@ export class DraftStore {
   }
 
   /**
+   * Save an interactive Ability draft edit with an `updatedAt` strictly greater
+   * than the currently stored revision.
+   *
+   * Keeps `saveAbilityDraft` exact for fixture/test seeding while ensuring two
+   * stale modal instances or same-millisecond edits can never collide with a
+   * `draft_owner.updated_at` pinned by an unresolved confirmation.
+   */
+  saveAbilityDraftEdit(draft: AbilityDraft): AbilityDraft {
+    const stored = this.getAbilityDraft(draft.id);
+    const nowMs = Date.now();
+    const floorMs = stored ? Date.parse(stored.updatedAt) : NaN;
+    let targetMs = Number.isFinite(floorMs) && nowMs <= floorMs ? floorMs + 1 : nowMs;
+    let updatedAt = new Date(targetMs).toISOString();
+    while (stored && updatedAt === stored.updatedAt) {
+      targetMs += 1;
+      updatedAt = new Date(targetMs).toISOString();
+    }
+    const next: AbilityDraft = {
+      ...draft,
+      createdAt: stored?.createdAt ?? draft.createdAt,
+      updatedAt,
+    };
+    this.saveAbilityDraft(next);
+    return next;
+  }
+
+  /**
    * Drop one draft. `updatedAt` makes this safe after an awaited write: the
    * draft goes only if it is still the version that was confirmed, so an edit
    * made while the write ran is kept.

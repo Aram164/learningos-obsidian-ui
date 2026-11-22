@@ -192,5 +192,6 @@ export interface AppSurface {
    */
   listAbilityDrafts(): AbilityDraft[];
   saveAbilityDraft(draft: AbilityDraft): void;
+  saveAbilityDraftEdit(draft: AbilityDraft): AbilityDraft;
   discardAbilityDraft(id: string, updatedAt?: string | null): void;
 }

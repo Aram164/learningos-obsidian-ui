@@ -78,7 +78,7 @@ function openDraft(
     workPointers: abilityWorkPointers(host.plugin.store, focus),
     existing: null,
     supersedes,
-    save: (draft) => host.plugin.saveAbilityDraft(draft),
+    save: (draft) => host.plugin.saveAbilityDraftEdit(draft),
     onSaved: () => host.render(),
   }).open();
 }
@@ -88,7 +88,7 @@ function openConnection(host: AbilityHost, row: AbilityRowV1, brief: AbilityBrie
     from: row,
     candidates: brief.abilities,
     existing: null,
-    save: (draft) => host.plugin.saveAbilityDraft(draft),
+    save: (draft) => host.plugin.saveAbilityDraftEdit(draft),
     onSaved: () => host.render(),
   }).open();
 }

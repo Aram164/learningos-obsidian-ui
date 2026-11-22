@@ -641,4 +641,105 @@ module.exports = async function run() {
       && restarted.plugin.settings.gatewayRecovery === null);
     restarted.plugin.onunload();
   }
+
+  heading('editing an Ability claim through the Review modal in the same ms while confirmation is unresolved preserves the newer edit');
+  {
+    Notice.log.length = 0;
+    let callsCount = 0;
+    const { app, plugin } = await boot({
+      runLosOverride: (args, callback, stdin) => {
+        const envelope = stdin ? JSON.parse(stdin) : null;
+        if (envelope?.capability === 'learner.ability-observation.append') {
+          callsCount += 1;
+          if (callsCount === 1) {
+            return callback(Object.assign(new Error('interrupted response'), { code: null }), '', '');
+          }
+          if (callsCount === 2) {
+            return callback(Object.assign(new Error('replay blocked before restart'), { code: null }), '', '');
+          }
+        }
+        const { answerAbilityRead } = require('../ability-fixtures');
+        const read = answerAbilityRead(args);
+        return callback(null, JSON.stringify(read ?? { ok: true }), '');
+      },
+    });
+    const baseStamp = '2026-11-21T09:00:00.000Z';
+    const targetDraft = {
+      kind: 'claim',
+      id: 'ability-claim-same-ms-edit',
+      abilityId: 'ability-fixture-conditional',
+      abilityTitle: 'Conditional probability and Bayes updates',
+      workspace: 'workspace-fixture-m2',
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      conditionsMet: ['specified prior and likelihood'],
+      conditionsNotMet: [],
+      evidenceTags: ['explicit Bayes update'],
+      workRef: 'conversation://synthetic-loop/same-ms',
+      claim: 'Original claim before same-ms edit',
+      supersedes: null,
+      createdAt: baseStamp,
+      updatedAt: baseStamp,
+    };
+    plugin.saveAbilityDraft(targetDraft);
+    await plugin.nav.openReview(targetDraft.id);
+    const review = () => leafOf(app, VIEW.review).contentEl;
+    await waitFor(() => Boolean(review().findText('los-btn', 'Confirm & record'))
+      && !review().findText('los-btn', 'Confirm & record').disabled);
+    review().findText('los-btn', 'Confirm & record').fire('click');
+    await waitFor(() => !plugin.gateway.isBusy && plugin.settings.gatewayRecovery?.phase === 'blocked');
+
+    const realDateNow = Date.now;
+    Date.now = () => Date.parse(baseStamp);
+    try {
+      review().findText('los-btn', 'Edit').fire('click');
+      const modal = stub.Modal.last.contentEl;
+      const areas = modal.find('los-ability-form-textarea');
+      areas[0].value = 'Updated claim in the same ms while confirmation is unresolved';
+      modal.findText('los-btn', 'Save changes').fire('click');
+    } finally {
+      Date.now = realDateNow;
+    }
+    const edited = plugin.listAbilityDrafts().find((d) => d.id === targetDraft.id);
+    check('same-ms modal edit allocates an updatedAt strictly greater than stored draft_owner',
+      edited?.claim === 'Updated claim in the same ms while confirmation is unresolved'
+      && edited?.updatedAt === '2026-11-21T09:00:00.001Z');
+
+    const persisted = JSON.parse(JSON.stringify(plugin.settings));
+    persisted.gatewayRecovery.phase = 'prepared';
+    plugin.onunload();
+
+    const restarted = await boot({
+      settings: persisted,
+      runLosOverride: (args, callback, stdin) => {
+        const envelope = stdin ? JSON.parse(stdin) : null;
+        if (envelope?.capability === 'learner.ability-observation.append') {
+          return callback(null, JSON.stringify({
+            schema_version: 2,
+            request_id: envelope.request_id,
+            idempotency_key: envelope.idempotency_key,
+            capability: envelope.capability,
+            ok: true,
+            replayed: true,
+            transaction_id: 'tx-ability-replay-same-ms',
+            receipt_path: 'operations/transactions/tx-ability-replay-same-ms.yaml',
+            snapshot_after: FIXTURE_SNAPSHOT,
+            result: { ok: true, observation_id: 'ability-observation-replay-same-ms', replayed: true },
+            error: null,
+          }), '');
+        }
+        const { answerAbilityRead } = require('../ability-fixtures');
+        const read = answerAbilityRead(args);
+        return callback(null, JSON.stringify(read ?? { ok: true }), '');
+      },
+    });
+    await waitFor(() => !restarted.plugin.gateway.isBusy && restarted.plugin.settings.gatewayRecovery === null);
+    const retained = restarted.plugin.listAbilityDrafts().find((d) => d.id === targetDraft.id);
+    check('restart recovery preserves the same-ms modal edit made while confirmation was unresolved',
+      retained?.claim === 'Updated claim in the same ms while confirmation is unresolved'
+      && retained?.updatedAt === '2026-11-21T09:00:00.001Z'
+      && restarted.plugin.settings.gatewayRecovery === null);
+    restarted.plugin.onunload();
+  }
 };

@@ -87,7 +87,7 @@ function editClaim(host: ReviewHost, draft: AbilityClaimDraft): void {
     workspaces: abilityWorkspaces(host.plugin.store, row),
     workPointers: abilityWorkPointers(host.plugin.store, focus),
     existing: draft,
-    save: (next) => host.plugin.saveAbilityDraft(next),
+    save: (next) => host.plugin.saveAbilityDraftEdit(next),
     onSaved: () => host.render(),
   }).open();
 }
@@ -103,7 +103,7 @@ function editConnection(host: ReviewHost, draft: AbilityConnectionDraft): void {
     from,
     candidates: brief.abilities,
     existing: draft,
-    save: (next) => host.plugin.saveAbilityDraft(next),
+    save: (next) => host.plugin.saveAbilityDraftEdit(next),
     onSaved: () => host.render(),
   }).open();
 }

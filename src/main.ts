@@ -412,6 +412,11 @@ export class LearningOSUI extends Plugin implements AppSurface {
     this.drafts.saveAbilityDraft(draft);
     this.redrawAbilitySurfaces();
   }
+  saveAbilityDraftEdit(draft: AbilityDraft): AbilityDraft {
+    const saved = this.drafts.saveAbilityDraftEdit(draft);
+    this.redrawAbilitySurfaces();
+    return saved;
+  }
   discardAbilityDraft(id: string, updatedAt: string | null = null): void {
     this.drafts.discardAbilityDraft(id, updatedAt);
     this.redrawAbilitySurfaces();
