@@ -3,6 +3,8 @@
 This project implements a human interface for LearningOS. It is governed by
 the boundary in the core repository:
 `../repository/system/adr/ADR-006-interface-layer-boundary-2026-08-03.md`.
+For task routing, owning paths, focused test suites, and release gates, start
+at [`AGENTS.md`](AGENTS.md) and [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Ownership
 
@@ -18,18 +20,30 @@ here.
    never the real repository vault.
 2. Read canonical state only through `../repository/generated/`
    (`manifest.json` is the versioned, atomic interface contract and contains
-   its reverse indexes) and, for the validation badge only, the CLI
-   (`python ../repository/tools/los.py status --json`). **Never parse
-   canonical Markdown or YAML from UI code.** If a view needs a field the
-   manifest lacks, add it CORE-side and regenerate — do not regex for it.
-   Corollary: the app must render fully with the CLI unavailable.
-3. Send mutations only through explicit CLI commands (`unit-note`, `stage-note`,
-   `stage-progress`, `stage-attach`, `source-feedback`, detour commands,
-   selected-only shelving, `session-end`, `generate`, `validate`). Every stage
-   mutation carries the current snapshot. Never rewrite YAML registries or
-   canonical notes from UI code. AI canonical changes require an
-   action-specific capability, scope check, rendered proposal where semantic,
-   and explicit selected-item approval.
+   its reverse indexes) and bounded on-demand Core CLI queries (`tools/los.py`:
+   `status --json [--no-validate]`, `material-span`, `ability-context`,
+   `study-sequence`, `plan-template`, `unit-map-import --check`,
+   `projection-observe`, `health-report`, `operations`,
+   `legacy-archive-status`, `masters-planning-dashboard`, `ai-action-status`,
+   and `capability ... --replay-only`). **Never parse canonical Markdown or
+   YAML from UI code.** If a view needs a field the manifest or a declared Core
+   response lacks, add it CORE-side and regenerate — do not regex for it.
+   Corollary: the app must render its projected views from `manifest.json` even
+   when the CLI is unavailable.
+3. Send canonical mutations only through Core's gateway (`tools/los.py`):
+   sealed `GatewayEnvelopeV2` requests via `capability NAME --payload-file -`
+   over stdin for the gesture-admitted capabilities in
+   `UI_GESTURE_CAPABILITIES` (`src/contracts/gateway-v2.ts`, mirrored against
+   Core's `system/contracts/capabilities.yaml`, plus the retained
+   `stage.note.write` compatibility method), and explicit positional CLI
+   commands for session closure, AI-action bundles, and view refresh
+   (`session-end --session-id ui`, `ai-action-prepare`,
+   `ai-action-apply-delivery`, `validate`, `generate`). Every canonical
+   mutation carries the current manifest snapshot and required artifact
+   revision guards. Never rewrite YAML registries or canonical notes from UI
+   code. AI canonical changes require an action-specific capability, scope
+   check, rendered proposal where semantic, and explicit selected-item
+   approval.
 4. Do not duplicate LearningOS validation or business rules in TypeScript —
    one implementation of every rule, and it lives in the core.
 5. Treat generated files as disposable; never cache them as truth.

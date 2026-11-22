@@ -66,6 +66,7 @@ focused expansion remains explicit and bound to the horizon snapshot.
 
 The current primary navigation is **Home · Modules · Learn · Library · Atlas · Garden · Review** (Review shows its live count), with structural Search available from the navigator and command palette. Thesis work is an ordinary Module under Bachelor’s; its Overview opens the full research workspace context, and historical Project links resolve to their canonical owners. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Future Master's Planning remains a policy-only boundary. Job learning uses the same projected module, unit, study-map, note, search, and AI surfaces as every other learning area, with a small visual badge for `program-job`.
 
+[`AGENTS.md`](AGENTS.md) is the developer entry and task router;
 [`ARCHITECTURE.md`](ARCHITECTURE.md) is the concise source map: runtime flow,
 directory ownership, dependency direction, compatibility surfaces, artifacts,
 and code-only gates.
@@ -83,19 +84,33 @@ and code-only gates.
   that every non-declaration TypeScript source module is reachable from
   `src/main.ts`, the runtime graph is acyclic, and feature code does not depend
   on concrete view classes.
-- The app reads only atomic `generated/manifest.json` contract v20. It never
-  parses canonical Markdown/YAML and remains useful when Python is offline.
-  The contract is declared by the producer — core's
-  `system/contracts/manifest-contract.yaml` — and the single
+- The app reads atomic `generated/manifest.json` contract v20 for its primary
+  projection and calls bounded on-demand Core CLI queries (`tools/los.py`:
+  `status --json [--no-validate]`, `material-span`, `ability-context`,
+  `study-sequence`, `plan-template`, `unit-map-import --check`,
+  `projection-observe`, `health-report`, `operations`,
+  `legacy-archive-status`, `masters-planning-dashboard`, `ai-action-status`,
+  and `capability ... --replay-only`). It never parses canonical Markdown/YAML
+  and remains useful when Python is offline. The contract is declared by the
+  producer — core's `system/contracts/manifest-contract.yaml` — and the single
   `contracts/manifest-v<N>.lock.json` here is a mirror of it. `npm run contract:check` verifies the
   mirror whenever
   core is checked out beside this repo, so a projection change cannot reach the
   UI as a surprise. Bump both together; they release together.
-- Mutations use `tools/los.py` action-specific commands: `unit-note`, legacy `stage-note`,
-  `stage-progress`, `stage-attach`, `source-feedback`, detour commands,
-  selected-only shelving, validation/generation, and `session-end`.
-- Every stage mutation carries the manifest snapshot. Stale views reload instead
-  of overwriting newer authored state.
+- Mutations use `tools/los.py`: sealed `GatewayEnvelopeV2` calls over stdin
+  (`capability NAME --payload-file -`) for the gesture-admitted capabilities in
+  `UI_GESTURE_CAPABILITIES` (`src/contracts/gateway-v2.ts`, including
+  `unit.note.append`, `stage.progress.update`, `stage.attachment.add`,
+  `unit.source-selection.set`, `unit.map.import`, `source.feedback.record`,
+  `detour.create`, `detour.resolve`, `capture.create`, `garden.seed.create`,
+  `atlas.question.save`, `concept.relations.change`, `review.prepare`,
+  `review.apply`, `learner.ability-observation.append`,
+  `ability.candidate.append`, plus retained `stage.note.write` compatibility),
+  and explicit positional commands for `session-end --session-id ui`,
+  `ai-action-prepare`, `ai-action-apply-delivery`, `validate`, and `generate`.
+- Every canonical mutation carries the manifest snapshot and required artifact
+  revision guards. Stale views reload instead of overwriting newer authored
+  state.
 - AI prompts carry explicit area, module, component, unit, stage, source,
   material and snapshot context. The active file is supplementary only.
 - The Garden's **Shelve with AI** button is a registered `garden.shelve`
@@ -148,12 +163,15 @@ view types, including Modules group queries and Library collection/group/filter
 state. Back restores scroll and selected-row context without reintroducing a
 permanent master/detail split.
 
-Installation remains explicit:
+Installation remains explicit (`install.py` refuses unless either
+`--accepted-artifact` or `--local-build` is specified):
 
 ```bash
-python3 install.py                 # build + fixture test + install into ../repository
-python3 install.py --ecosystem     # + the pinned AI/search/OCR/PDF plugins
-python3 install.py --dry-run       # print actions only
+python3 install.py --accepted-artifact DIRECTORY --validate-run ID --ui-run ID  # hosted release -> ../repository
+python3 install.py --local-build                             # local build + fixture test + install into ../repository
+python3 install.py --local-build --vault fixture-vault --dry-run  # dry-run against the fixture vault
+python3 install.py --local-build --ecosystem                 # + the pinned AI/search/OCR/PDF plugins
+python3 install.py --local-build --dry-run                   # print local-build actions only
 ```
 
 `install.py` runs the runtime fixture gate before writing. The broader
