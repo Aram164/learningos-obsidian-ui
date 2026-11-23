@@ -161,7 +161,7 @@ export class AtlasView extends ItemView implements AtlasHost {
   openEvidence(relationId: string, ordinal: number): void {
     openEvidenceBinding({
       store: this.plugin.store,
-      openMaterialPath: (path, destination) => this.plugin.openMaterialPath(path, destination),
+      openMaterialReferencePath: (path, destination) => this.plugin.openMaterialReferencePath(path, destination),
       notify: (message) => new Notice(message),
     }, relationId, ordinal);
   }

@@ -1,7 +1,6 @@
 import type { AppNavigator } from '../../app/navigator';
 import type { AppSurface } from '../../app/surface';
 import type { AtlasDepthV1, AtlasLensV1 } from '../../contracts/route-v1';
-import type { PageDestination } from '../../infrastructure/resource-target';
 import type { AtlasFilters, EvidenceBinding } from './graph';
 
 /**
@@ -24,13 +23,12 @@ export type AtlasPlugin = Pick<
   | 'gateway'
   | 'generate'
   | 'mutate'
+  | 'openMaterialReferencePath'
   | 'openVaultPath'
   | 'router'
   | 'settings'
   | 'store'
 > & {
-  /** Open a sibling material file at a physical page (evidence bindings). */
-  openMaterialPath(path: string, destination?: PageDestination | null): unknown;
   readonly nav: Pick<
     AppNavigator,
     | 'openAbilities'

@@ -129,7 +129,7 @@ export function registerApplication(plugin: ApplicationPlugin): void {
     }
       openEvidenceBinding({
         store: plugin.store,
-        openMaterialPath: (path, destination) => plugin.openMaterialPath(path, destination),
+        openMaterialReferencePath: (path, destination) => plugin.openMaterialReferencePath(path, destination),
         notify: (message) => plugin.notify(message),
       }, parsed.relationId, parsed.ordinal);
     });

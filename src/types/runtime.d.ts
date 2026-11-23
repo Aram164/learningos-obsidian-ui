@@ -459,6 +459,11 @@ declare module 'node:fs' {
     path: string,
   ): Stats;
 
+  export function lstatSync(
+    path: string,
+    options: { throwIfNoEntry: false },
+  ): Stats | undefined;
+
   export function mkdirSync(
     path: string,
     options?: { recursive?: boolean },

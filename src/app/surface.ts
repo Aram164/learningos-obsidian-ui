@@ -124,6 +124,7 @@ export interface AppSurface {
   openVaultPath(path: string, destination?: PageDestination | null): unknown;
   openAuthoredPath(path: string): unknown;
   openMaterialPath(path: string, destination?: PageDestination | null): unknown;
+  openMaterialReferencePath(path: string, destination: PageDestination): unknown;
   copyText(value: string): void;
 
   /*

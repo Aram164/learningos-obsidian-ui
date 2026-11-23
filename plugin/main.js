@@ -32538,7 +32538,7 @@ function openEvidenceBinding(ports, relationId, ordinal) {
   }
   const { binding } = resolved;
   const destination = { page: binding.page, label: `physical page ${binding.page}` };
-  void ports.openMaterialPath(`materials/${binding.material_relpath}`, destination);
+  void ports.openMaterialReferencePath(binding.material_relpath, destination);
   return true;
 }
 var EVIDENCE_PROTOCOL_ACTION = "learningos-atlas-evidence";
@@ -32699,8 +32699,9 @@ function renderVerification(parent, plugin, note2, context, item, done) {
     official.hidden = method.value !== "source-matched";
   });
   source.addEventListener("change", () => {
-    const pathHint = asString(plugin.store.get(source.value)?.material_path);
-    path.value = pathHint?.startsWith("materials/") ? pathHint.slice("materials/".length) : "";
+    const material = asString(plugin.store.get(source.value)?.material);
+    const registeredPath = material?.startsWith("material://") ? material.slice("material://".length).split(/[?#]/, 1)[0] ?? "" : "";
+    path.value = /\.pdf$/i.test(registeredPath) ? registeredPath : "";
     page2.value = "";
     quote.value = "";
   });
@@ -46133,7 +46134,7 @@ var AtlasView = class extends import_obsidian14.ItemView {
   openEvidence(relationId, ordinal) {
     openEvidenceBinding({
       store: this.plugin.store,
-      openMaterialPath: (path, destination) => this.plugin.openMaterialPath(path, destination),
+      openMaterialReferencePath: (path, destination) => this.plugin.openMaterialReferencePath(path, destination),
       notify: (message2) => new import_obsidian14.Notice(message2)
     }, relationId, ordinal);
   }
@@ -52828,7 +52829,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:cd0fdc0acf3df0859d7cbc3623d80fb24b1a800c321136e211327ed179bb6df5" : "unavailable";
+  return true ? "sha256:d2c349fe39c8793aab10fe3a460ed961d76fc4c6bc9d6c088adc5506bce1f797" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;
@@ -55688,7 +55689,7 @@ function registerApplication(plugin) {
       }
       openEvidenceBinding({
         store: plugin.store,
-        openMaterialPath: (path, destination) => plugin.openMaterialPath(path, destination),
+        openMaterialReferencePath: (path, destination) => plugin.openMaterialReferencePath(path, destination),
         notify: (message2) => plugin.notify(message2)
       }, parsed.relationId, parsed.ordinal);
     });
@@ -57482,6 +57483,23 @@ var ResourceOpener = class {
     }
     return this.openSystemPath(realPath, successMessage);
   }
+  /** Evidence records carry a path relative to Core's material lookup root. */
+  openMaterialReferencePath(path, destination) {
+    if (!path || path.startsWith("/") || path.includes("\\") || path.split("/").includes("..")) {
+      new import_obsidian30.Notice(`Unsafe material reference refused: ${path || "unknown path"}`);
+      return false;
+    }
+    const vault = this.app.vault.adapter.getBasePath();
+    const aliases = nodePath4.resolve(nodePath4.dirname(vault), "materials", ".flat");
+    let hasAliases;
+    try {
+      hasAliases = fs4.lstatSync(aliases, { throwIfNoEntry: false })?.isDirectory() === true;
+    } catch (_) {
+      new import_obsidian30.Notice(`Material reference unavailable: ${path}`);
+      return false;
+    }
+    return this.openMaterialPath(nodePath4.join(hasAliases ? "materials/.flat" : "materials", path), destination);
+  }
   openMaterialPath(path, destination = null) {
     const vault = this.app.vault.adapter.getBasePath();
     const learningRoot = nodePath4.dirname(vault);
@@ -58666,6 +58684,9 @@ var LearningOSUI = class extends import_obsidian31.Plugin {
   }
   openMaterialPath(path, destination = null) {
     return this.resources.openMaterialPath(path, destination);
+  }
+  openMaterialReferencePath(path, destination) {
+    return this.resources.openMaterialReferencePath(path, destination);
   }
   openAuthoredPath(path) {
     return this.resources.openAuthoredPath(path);

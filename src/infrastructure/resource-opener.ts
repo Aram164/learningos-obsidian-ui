@@ -210,6 +210,26 @@ export class ResourceOpener {
     return this.openSystemPath(realPath, successMessage);
   }
 
+  /** Evidence records carry a path relative to Core's material lookup root. */
+  openMaterialReferencePath(path: string, destination: PageDestination): Promise<boolean> | false {
+    if (!path || path.startsWith('/') || path.includes('\\') || path.split('/').includes('..')) {
+      new Notice(`Unsafe material reference refused: ${path || 'unknown path'}`);
+      return false;
+    }
+
+    const vault = this.app.vault.adapter.getBasePath();
+    const aliases = nodePath.resolve(nodePath.dirname(vault), 'materials', '.flat');
+    let hasAliases: boolean;
+    try {
+      // As in Core, only a real directory can serve as the alias root.
+      hasAliases = fs.lstatSync(aliases, { throwIfNoEntry: false })?.isDirectory() === true;
+    } catch (_) {
+      new Notice(`Material reference unavailable: ${path}`);
+      return false;
+    }
+    return this.openMaterialPath(nodePath.join(hasAliases ? 'materials/.flat' : 'materials', path), destination);
+  }
+
   openMaterialPath(
     path: string,
     destination: PageDestination | null = null,

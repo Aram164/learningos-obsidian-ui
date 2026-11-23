@@ -12,7 +12,15 @@ module.exports = async function run() {
   let invalid = true;
   const { app, plugin, calls } = await boot({
     patchManifest(manifest) {
-      manifest.records.find((record) => record.id === note).role = 'exercise-bank';
+      const practice = manifest.records.find((record) => record.id === note);
+      practice.role = 'exercise-bank';
+      practice.sources = ['source-fixture-book', 'source-fixture-islp'];
+      const book = manifest.records.find((record) => record.id === 'source-fixture-book');
+      book.material = 'material://source-fixture-book/official answers.pdf#page=2';
+      book.material_path = 'materials/topic/book/official answers.pdf';
+      const collection = manifest.records.find((record) => record.id === 'source-fixture-islp');
+      collection.material = 'material://source-fixture-islp/exercises';
+      collection.material_path = 'materials/topic/exercises';
     },
     runLosOverride(args, callback, stdin) {
       if (args[0] === 'practice-context') {
@@ -55,11 +63,23 @@ module.exports = async function run() {
       !labels.some((label) => /SHA-256|Reviewer/.test(label)));
     const field = (label) => root.find('los-atlas-practice-field')
       .find((row) => row.children[0].text === label).children[1];
-    field('Verification method').value = 'confirmed';
+    field('Verification method').value = 'source-matched';
     field('Verification method').fire('change');
+    const source = field('Primary evidence source');
+    const pdfPath = field('PDF path relative to materials');
+    source.value = 'source-fixture-islp';
+    source.fire('change');
+    check('a directory source requires a specific PDF', pdfPath.value === '');
+    source.value = 'source-fixture-book';
+    source.fire('change');
+    check('a file source prefills the registered material path without its selector',
+      pdfPath.value === 'source-fixture-book/official answers.pdf');
+    field('Physical PDF page').value = '29';
+    field('Evidence excerpt').value = 'Quoted answer';
     root.findText('los-btn', 'Preview verification').fire('click');
     check('preview names exact reviewed fields before sending',
-      root.allText().includes('"method": "explicit-review"')
+      root.allText().includes('"method": "official-source"')
+      && root.allText().includes('"material_relpath": "source-fixture-book/official answers.pdf"')
       && root.allText().includes('"reviewer_id": "aram"')
       && root.allText().includes(`"artifact_sha256": "${digest}"`)
       && !root.allText().includes('Synthetic prompt')
@@ -76,6 +96,13 @@ module.exports = async function run() {
       && envelope.expected_revisions['registry-practice-index'] === 3
       && JSON.stringify(envelope.payload.record.expected_old) === JSON.stringify(stored)
       && envelope.payload.record.artifact_sha256 === digest);
+    check('the reviewed alias, page and excerpt reach Core without a user supplied digest',
+      JSON.stringify(envelope.payload.record.source_binding) === JSON.stringify({
+        source_id: 'source-fixture-book',
+        material_relpath: 'source-fixture-book/official answers.pdf',
+        page: 29,
+        quote: 'Quoted answer',
+      }));
   } finally {
     plugin.onunload();
   }

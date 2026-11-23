@@ -17,7 +17,7 @@ import {
 
 export interface EvidencePorts {
   readonly store: AtlasGraphStore;
-  openMaterialPath(path: string, destination: { page: number; label: string }): unknown;
+  openMaterialReferencePath(path: string, destination: { page: number; label: string }): unknown;
   notify(message: string): void;
 }
 
@@ -83,7 +83,7 @@ export function openEvidenceBinding(
   }
   const { binding } = resolved;
   const destination = { page: binding.page, label: `physical page ${binding.page}` };
-  void ports.openMaterialPath(`materials/${binding.material_relpath}`, destination);
+  void ports.openMaterialReferencePath(binding.material_relpath, destination);
   return true;
 }
 

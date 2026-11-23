@@ -65,8 +65,11 @@ function renderVerification(
     official.hidden = method.value !== 'source-matched';
   });
   source.addEventListener('change', () => {
-    const pathHint = asString(plugin.store.get(source.value)?.material_path);
-    path.value = pathHint?.startsWith('materials/') ? pathHint.slice('materials/'.length) : '';
+    const material = asString(plugin.store.get(source.value)?.material);
+    const registeredPath = material?.startsWith('material://')
+      ? material.slice('material://'.length).split(/[?#]/, 1)[0] ?? ''
+      : '';
+    path.value = /\.pdf$/i.test(registeredPath) ? registeredPath : '';
     page.value = '';
     quote.value = '';
   });
