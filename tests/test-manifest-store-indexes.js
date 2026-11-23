@@ -204,6 +204,8 @@ function fixtureManifest() {
         to: 'concept-conditional-probability',
         context: 'the link function is a conditional probability',
         source: 'note-stats-l04',
+        origin: 'pilot', status: 'active', pinned: false, status_reason: null,
+        evidence_disputed: false, evidence: [], evidence_state: 'missing',
       },
       {
         from: 'concept-gradient-descent',
@@ -211,6 +213,8 @@ function fixtureManifest() {
         to: 'concept-derivative',
         context: null,
         source: null,
+        origin: 'pilot', status: 'active', pinned: false, status_reason: null,
+        evidence_disputed: false, evidence: [], evidence_state: 'missing',
       },
     ],
     'relations() preserves context and source, and drops only unplaceable rows',

@@ -286,6 +286,42 @@ function renderConnectAction(
   control.addClass('los-atlas-connect-action');
 }
 
+/** Editable-board controls (ADR-024, P3): explicit open/refresh only. */
+function renderBoardControls(root: HTMLElement, host: AtlasHost): void {
+  const catalog = host.boardCatalog();
+  if (!catalog.length) return;
+  const row = root.createDiv({ cls: 'los-atlas-board-controls' });
+  const select = row.createEl('select', {
+    cls: 'los-atlas-board-scope',
+    attr: { 'aria-label': 'Board scope' },
+  });
+  select.createEl('option', { text: 'Choose a board', attr: { value: '' } });
+  for (const entry of catalog) {
+    select.createEl('option', {
+      text: `${entry.kind} · ${entry.id}`,
+      attr: { value: `${entry.kind}/${entry.id}` },
+    });
+  }
+  if (!host.boardScope) {
+    const current = catalog.find((entry) => entry.kind === 'module' && entry.id === host.state.module)
+      ?? catalog[0];
+    host.boardScope = current ? `${current.kind}/${current.id}` : null;
+  }
+  select.value = host.boardScope ?? '';
+  select.addEventListener('change', () => { host.boardScope = select.value || null; host.render(); });
+  const selected = catalog.find(
+    (entry) => `${entry.kind}/${entry.id}` === host.boardScope);
+  const open = button(row, 'Open board', () => { if (selected) void host.openAtlasBoard(selected); }, 'quiet');
+  const refresh = button(row, 'Refresh board', () => { if (selected) void host.refreshAtlasBoard(selected); }, 'quiet');
+  open.disabled = !selected;
+  refresh.disabled = !selected;
+  if (host.plugin.settings.atlasAdvancedCanvas) {
+    const advanced = button(row, 'Advanced board',
+      () => { if (selected) void host.openAtlasBoard(selected, true); }, 'quiet');
+    advanced.disabled = !selected;
+  }
+}
+
 export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   const domainLens = host.state.lens === 'domains';
 
@@ -319,6 +355,7 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   const about = conceptDisclosure(heading, host, 'atlas-about', 'About Atlas');
   about.createDiv({ text: 'Explore authored concepts, their linked notes and learning order. Modules show where teaching is mapped. Semantic connections explain related ideas; only prerequisites order learning.' });
   renderAtlasVariants(root, host.plugin.nav, 'concepts', (target) => host.go(target));
+  renderBoardControls(root, host);
 
   const controls = root.createDiv({ cls: 'los-atlas-controls' });
   const history = controls.createDiv({ cls: 'los-atlas-concept-history', attr: {

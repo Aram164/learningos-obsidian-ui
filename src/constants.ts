@@ -45,6 +45,12 @@ export const DEFAULT_SETTINGS = {
    */
   atlasRecentConcepts: [] as string[],
   /**
+   * Optional Advanced Canvas portal view over the same editable Atlas
+   * boards (ADR-024). Off by default; the ordinary board, list and
+   * authoring work without the plugin.
+   */
+  atlasAdvancedCanvas: false,
+  /**
    * Selected colour scheme. 'wine' is the base palette in 00-tokens.css and
    * sets no marker; every other value is applied as the class
    * `los-palette-<id>` (and the attribute `data-los-palette`) on

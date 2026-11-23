@@ -1,10 +1,10 @@
 {
   "_generated": {
-    "closure_sha256": "sha256:7250f565e3cfb16e583a1d22e2dbaa267a87274c8654977d6160afa638cf4253",
-    "contract_version": 20,
+    "closure_sha256": "sha256:c30fc2f18f391830a8a32107e4389d2dbabc25337aa09052952860f6dbde1543",
+    "contract_version": 21,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:e2169561904ad15b60c6956eb0f7b97d4f810589cd1684639808c4ef24ae3236",
+    "schema_sha256": "sha256:3f7283aa5f85ebc0602f44132247c366c984f85aacbfe10303da8341c06fb1d1",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -1386,35 +1386,70 @@
       "from": "concept-bayes",
       "source": "source-fixture-book",
       "to": "concept-bedingte-wahrscheinlichkeit",
-      "type": "requires"
+      "type": "requires",
+      "origin": "pilot",
+      "status": "active",
+      "pinned": false,
+      "status_reason": null,
+      "evidence_disputed": false,
+      "evidence": [],
+      "evidence_state": "missing"
     },
     {
       "context": null,
       "from": "concept-bedingte-wahrscheinlichkeit",
       "source": null,
       "to": "concept-wahrscheinlichkeit",
-      "type": "requires"
+      "type": "requires",
+      "origin": "pilot",
+      "status": "active",
+      "pinned": false,
+      "status_reason": null,
+      "evidence_disputed": false,
+      "evidence": [],
+      "evidence_state": "missing"
     },
     {
       "context": null,
       "from": "concept-logistic-regression",
       "source": "source-fixture-islp",
       "to": "concept-bayes",
-      "type": "builds-on"
+      "type": "builds-on",
+      "origin": "pilot",
+      "status": "active",
+      "pinned": false,
+      "status_reason": null,
+      "evidence_disputed": false,
+      "evidence": [],
+      "evidence_state": "missing"
     },
     {
       "context": null,
       "from": "concept-logistic-regression",
       "source": null,
       "to": "concept-bedingte-wahrscheinlichkeit",
-      "type": "requires"
+      "type": "requires",
+      "origin": "pilot",
+      "status": "active",
+      "pinned": false,
+      "status_reason": null,
+      "evidence_disputed": false,
+      "evidence": [],
+      "evidence_state": "missing"
     },
     {
       "context": "Two readings of the same probability statement.",
       "from": "concept-bayes",
       "source": "source-fixture-missing",
       "to": "concept-frequentist-inference",
-      "type": "contrasts-with"
+      "type": "contrasts-with",
+      "origin": "pilot",
+      "status": "active",
+      "pinned": false,
+      "status_reason": null,
+      "evidence_disputed": false,
+      "evidence": [],
+      "evidence_state": "missing"
     }
   ],
   "resume_pointer": {
@@ -2382,5 +2417,6 @@
         "workspace-fixture-thesis"
       ]
     }
-  ]
+  ],
+  "atlas_boards": []
 }

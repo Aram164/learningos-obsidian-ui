@@ -433,6 +433,10 @@ export class ManifestStore {
    * cannot be placed on a graph, and is dropped instead of rendered half-known.
    * `context` and `source` stay nullable, because null is their meaning.
    */
+  atlasBoards(): readonly { kind: string; id: string; title: string; parent_kind: string | null; parent_id: string | null; template_path: string; working_path: string; sha256: string; concept_count: number; relation_count: number }[] {
+    return this.data?.atlas_boards ?? [];
+  }
+
   relations(): RelationRecord[] {
     return this.rows('relations').flatMap((row) => {
       const from = projectedText(row.from);
@@ -446,6 +450,18 @@ export class ManifestStore {
           to,
           context: projectedText(row.context),
           source: projectedText(row.source),
+          origin: (row as { origin?: unknown }).origin === 'aram' ? 'aram' : 'pilot',
+          status: ['retracted', 'vetoed'].includes(String((row as { status?: unknown }).status))
+            ? String((row as { status?: unknown }).status) as 'retracted' | 'vetoed' : 'active',
+          pinned: (row as { pinned?: unknown }).pinned === true,
+          status_reason: projectedText((row as { status_reason?: unknown }).status_reason),
+          evidence_disputed: (row as { evidence_disputed?: unknown }).evidence_disputed === true,
+          evidence: Array.isArray((row as { evidence?: unknown }).evidence)
+            ? (row as { evidence: unknown[] }).evidence as never[] : [],
+          evidence_state: ['disputed', 'stale', 'verified'].includes(
+            String((row as { evidence_state?: unknown }).evidence_state))
+            ? String((row as { evidence_state?: unknown }).evidence_state) as 'disputed' | 'stale' | 'verified'
+            : 'missing',
         }]
         : [];
     });

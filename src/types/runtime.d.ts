@@ -133,6 +133,10 @@ declare module 'obsidian' {
     ): Promise<void>;
   }
 
+  export interface TFile extends TAbstractFile {
+    readonly extension: string;
+  }
+
   export interface Vault {
     readonly adapter: VaultAdapter;
 
@@ -142,6 +146,14 @@ declare module 'obsidian' {
     getAbstractFileByPath(
       path: string,
     ): TAbstractFile | null;
+
+    read(file: TFile): Promise<string>;
+
+    create(path: string, data: string): Promise<TFile>;
+
+    createFolder(path: string): Promise<unknown>;
+
+    process(file: TFile, fn: (data: string) => string): Promise<string>;
   }
 
   export interface CommandManager {

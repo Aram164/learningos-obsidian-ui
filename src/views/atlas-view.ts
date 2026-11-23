@@ -21,6 +21,11 @@ import type {
   AtlasRouteState,
 } from '../features/atlas/ports';
 import { renderAtlas, rememberConcept } from '../features/atlas/shell';
+import {
+  BoardController, advancedBoardAvailable,
+  type BoardCatalogEntry,
+} from '../features/atlas/board-controller';
+import { AtlasBoardVault } from '../infrastructure/atlas-board-vault';
 import { drawDesignScreen } from '../designs/registry';
 import type {
   RelationDraft,
@@ -76,6 +81,45 @@ export class AtlasView extends ItemView implements AtlasHost {
     browseAll: false, visibleLimit: 30, domain: null, subdomain: null,
     selected: null, recentsOnly: false, disclosures: new Map(),
   };
+  boardScope: string | null = null;
+
+  boardCatalog(): readonly BoardCatalogEntry[] {
+    return this.plugin.store.atlasBoards();
+  }
+
+  private boardController(): BoardController {
+    return new BoardController(new AtlasBoardVault(this.app));
+  }
+
+  async openAtlasBoard(entry: BoardCatalogEntry, advanced = false): Promise<void> {
+    if (advanced) {
+      const installed = await this.app.vault.adapter.exists(
+        '.obsidian/plugins/advanced-canvas/manifest.json');
+      if (!advancedBoardAvailable(this.plugin.settings.atlasAdvancedCanvas, installed)) {
+        new Notice('Advanced board needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin.');
+        return;
+      }
+    }
+    const vault = new AtlasBoardVault(this.app);
+    const template = await vault.read(entry.template_path);
+    if (template === null) { new Notice('Board unavailable. Rebuild views and try again.'); return; }
+    const result = await this.boardController().openBoard(entry, template);
+    if (!result.ok) new Notice(result.reason);
+  }
+
+  async refreshAtlasBoard(entry: BoardCatalogEntry): Promise<void> {
+    const vault = new AtlasBoardVault(this.app);
+    const [template, preview] = [await vault.read(entry.template_path),
+      await vault.read(entry.working_path)];
+    if (template === null || preview === null) {
+      new Notice('Board unavailable. Reopen it and review before refreshing.');
+      return;
+    }
+    const result = await this.boardController().refreshBoard(entry, template, preview);
+    new Notice(result.ok ? 'Board refreshed.' : result.reason);
+    this.render();
+  }
+
   tab: AtlasInspectorTab = 'summary';
   semanticOpen = false;
   remainderOpen = false;

@@ -1,17 +1,18 @@
 {
   "_comment": [
-    "Mirror of Core manifest v20: stamps closure_sha256 into _generated and checks it at UI boundary (D-20)."
+    "Mirror of Core manifest v21: atlas_boards catalog and enriched relation lifecycle/evidence fields (P1/P2)."
   ],
-  "contract_version": 20,
+  "contract_version": 21,
   "mirrors": "../repository/system/contracts/manifest-contract.yaml",
-  "schema_path": "system/contracts/manifest-v20.schema.json",
-  "schema_sha256": "sha256:e2169561904ad15b60c6956eb0f7b97d4f810589cd1684639808c4ef24ae3236",
-  "closure_sha256": "sha256:7250f565e3cfb16e583a1d22e2dbaa267a87274c8654977d6160afa638cf4253",
+  "schema_path": "system/contracts/manifest-v21.schema.json",
+  "schema_sha256": "sha256:3f7283aa5f85ebc0602f44132247c366c984f85aacbfe10303da8341c06fb1d1",
+  "closure_sha256": "sha256:c30fc2f18f391830a8a32107e4389d2dbabc25337aa09052952860f6dbde1543",
   "top_level_keys": [
     "_generated",
     "academic_deadlines",
     "ai_actions",
     "artifact_revisions",
+    "atlas_boards",
     "backlinks",
     "counts",
     "domains",

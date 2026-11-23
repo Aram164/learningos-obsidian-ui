@@ -948,7 +948,9 @@ module.exports = async function run() {
       for (let i = 0; i < 74; i += 1) {
         const id = `concept-fixture-extra-${i}`;
         manifest.records.push({ ...template, id, title: `Extra concept ${String(i).padStart(2, '0')}` });
-        manifest.relations.push({ from: 'concept-bayes', to: id, type: 'requires', context: null, source: null });
+        manifest.relations.push({ from: 'concept-bayes', to: id, type: 'requires', context: null, source: null,
+          origin: 'pilot', status: 'active', pinned: false, status_reason: null,
+          evidence_disputed: false, evidence: [], evidence_state: 'missing' });
       }
       manifest.records.push({ ...template, id: 'concept-fixture-zero', title: 'Zero linked notes' });
       for (let i = 0; i < 22; i += 1) {

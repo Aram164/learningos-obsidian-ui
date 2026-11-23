@@ -174,4 +174,10 @@ export interface AtlasHost {
    * somewhere else.
    */
   changeRelations(operations: readonly RelationOperation[]): Promise<void>;
+
+  /** Editable-board scope selection and lifecycle (ADR-024, P3). */
+  boardScope: string | null;
+  boardCatalog(): readonly import('./board-controller').BoardCatalogEntry[];
+  openAtlasBoard(entry: import('./board-controller').BoardCatalogEntry, advanced?: boolean): Promise<void>;
+  refreshAtlasBoard(entry: import('./board-controller').BoardCatalogEntry): Promise<void>;
 }
