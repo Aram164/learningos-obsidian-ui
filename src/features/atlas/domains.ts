@@ -1,3 +1,4 @@
+import { renderPracticeReview } from './practice';
 import { button, empty, factList, filterTabs, pageHeader } from '../../components';
 import { withRenderFocus } from '../../accessibility/render-focus';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
@@ -134,6 +135,7 @@ function renderNoteInspector(parent: HTMLElement, host: AtlasHost, index: Domain
   const actions = panel.createDiv({ cls: 'los-actions' });
   button(actions, 'Open note', () => host.plugin.nav.openRecord(note), 'quiet').addClass('los-domain-open-note');
   button(actions, 'Clear selection', () => { host.domains.selectedNote = null; redraw(asText(note.id) ?? ''); }, 'tertiary');
+  renderPracticeReview(panel, host.plugin, note);
   const ids = asStrings(note.concepts);
   const concepts = panel.createDiv({ cls: 'los-domain-note-concepts' });
   concepts.createEl('h4', { text: `Linked concepts · ${ids.length}` });

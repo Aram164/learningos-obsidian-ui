@@ -1,10 +1,11 @@
+import { createHash } from 'node:crypto';
 /**
  * One serialized lifecycle for editable Atlas boards (P3 steps 19, 21).
  * The vault port is the only host surface; tests drive a fake port.
  */
 import {
   mergeBoards, parseBoard, parseSidecar, serializeBoard, sidecarFor,
-  type BoardSidecar,
+  type BoardSidecar, type CanvasData,
 } from './board-merge';
 
 export interface BoardCatalogEntry {
@@ -48,12 +49,20 @@ export interface BoardVaultPort {
   /** Atomic read-modify-write; `fn` returns null to refuse without writing. */
   process(path: string, fn: (latest: string) => string | null): Promise<boolean>;
   openLeaf(path: string): Promise<void>;
-  managedCanvasOpen(workingPaths: readonly string[]): Promise<boolean>;
+  managedCanvasOpen(): Promise<boolean>;
 }
 
 export type BoardResult =
   | { ok: true; action: 'opened' | 'created' | 'refreshed' | 'portal-target' }
   | { ok: false; reason: string };
+
+export type BoardRefreshPreview = {
+  readonly ok: true;
+  readonly workingText: string;
+  readonly templateText: string;
+  readonly ownershipText: string;
+  readonly changes: readonly string[];
+};
 
 export function sidecarPath(entry: BoardCatalogEntry): string {
   return `boards/atlas/.state/${entry.kind}/${entry.id}.json`;
@@ -61,6 +70,23 @@ export function sidecarPath(entry: BoardCatalogEntry): string {
 
 export function advancedBoardAvailable(settingEnabled: boolean, pluginEnabled: boolean): boolean {
   return settingEnabled && pluginEnabled;
+}
+
+const SCOPE_KINDS = new Set(['semester', 'module', 'lecture', 'exam']);
+const SCOPE_ID = /^[a-z0-9][a-z0-9._-]*$/;
+
+function validPaths(entry: BoardCatalogEntry): boolean {
+  if (!SCOPE_KINDS.has(entry.kind) || !SCOPE_ID.test(entry.id)) return false;
+  const suffix = `${entry.kind}/${entry.id}.canvas`;
+  return entry.template_path === `generated/atlas/templates/${suffix}`
+    && entry.working_path === `boards/atlas/${suffix}`;
+}
+
+function verifiedTemplate(entry: BoardCatalogEntry, text: string | null): CanvasData | null {
+  if (text === null || createHash('sha256').update(new TextEncoder().encode(text)).digest('hex') !== entry.sha256) return null;
+  const template = parseBoard(text);
+  if (!template || !mergeBoards([], {}, template).ok) return null;
+  return template;
 }
 
 export class BoardController {
@@ -74,24 +100,59 @@ export class BoardController {
     return run;
   }
 
-  openBoard(entry: BoardCatalogEntry, templateText: string): Promise<BoardResult> {
+  openBoard(entry: BoardCatalogEntry, templateText: string | null): Promise<BoardResult> {
     return this.enqueue(() => this.openBoardNow(entry, templateText));
   }
 
-  refreshBoard(
-    entry: BoardCatalogEntry, templateText: string, previewText: string,
-  ): Promise<BoardResult> {
-    return this.enqueue(() => this.refreshBoardNow(entry, templateText, previewText));
+  previewRefresh(entry: BoardCatalogEntry): Promise<BoardRefreshPreview | { ok: false; reason: string }> {
+    return this.enqueue(async () => {
+      if (!validPaths(entry)) return { ok: false, reason: 'Board paths do not match the selected scope.' };
+      if (await this.port.managedCanvasOpen()) {
+        return { ok: false, reason: 'Close all managed Atlas boards before refreshing, and leave the Atlas pane open.' };
+      }
+      const [templateText, workingText, ownershipText] = await Promise.all([
+        this.port.read(entry.template_path), this.port.read(entry.working_path), this.port.read(sidecarPath(entry)),
+      ]);
+      const template = verifiedTemplate(entry, templateText);
+      const working = workingText === null ? null : parseBoard(workingText);
+      const ownership = ownershipText === null ? null : parseSidecar(ownershipText);
+      if (!template || !working || !ownership || templateText === null || workingText === null || ownershipText === null) {
+        return { ok: false, reason: 'The board, template or ownership record is unavailable. Rebuild views and inspect the files.' };
+      }
+      const merge = mergeBoards(ownership.managed_ids, working, template);
+      if (!merge.ok) return merge;
+      const before = new Map([...(working.nodes ?? []), ...(working.edges ?? [])].map((object) => [object.id, object]));
+      const after = new Map([...(merge.canvas.nodes ?? []), ...(merge.canvas.edges ?? [])].map((object) => [object.id, object]));
+      const changes: string[] = [];
+      for (const id of new Set([...ownership.managed_ids, ...merge.managedIds])) {
+        if (!before.has(id) && after.has(id)) changes.push(`Add ${id}`);
+        else if (!after.has(id) && before.has(id)) changes.push(`Remove ${id}`);
+        else if (JSON.stringify(before.get(id)) !== JSON.stringify(after.get(id))) changes.push(`Update ${id}`);
+      }
+      return { ok: true, workingText, templateText, ownershipText, changes };
+    });
   }
 
-  private async openBoardNow(entry: BoardCatalogEntry, templateText: string): Promise<BoardResult> {
+  refreshBoard(
+    entry: BoardCatalogEntry, templateText: string | null, previewText: string, ownershipText?: string,
+  ): Promise<BoardResult> {
+    return this.enqueue(() => this.refreshBoardNow(entry, templateText, previewText, ownershipText));
+  }
+
+  private async openBoardNow(entry: BoardCatalogEntry, templateText: string | null): Promise<BoardResult> {
+    if (!validPaths(entry)) return { ok: false, reason: 'Board paths do not match the selected scope.' };
     const existing = await this.port.read(entry.working_path);
     if (existing !== null) {
       await this.port.openLeaf(entry.working_path);
       return { ok: true, action: 'opened' };
     }
-    const template = parseBoard(templateText);
-    if (!template) return { ok: false, reason: 'Board template is unavailable.' };
+    const template = verifiedTemplate(entry, templateText);
+    if (!template || templateText === null) {
+      return { ok: false, reason: 'Board template is unavailable or changed. Rebuild views and try again.' };
+    }
+    if (await this.port.read(sidecarPath(entry)) !== null) {
+      return { ok: false, reason: 'The board is absent but its ownership record exists. Restore the board before opening it.' };
+    }
     await this.port.create(entry.working_path, templateText);
     const managed = [...(template.nodes ?? []), ...(template.edges ?? [])].map((node) => String(node.id));
     await this.port.create(sidecarPath(entry), JSON.stringify(sidecarFor(entry.sha256, managed)) + '\n');
@@ -100,17 +161,23 @@ export class BoardController {
   }
 
   private async refreshBoardNow(
-    entry: BoardCatalogEntry, templateText: string, previewText: string,
+    entry: BoardCatalogEntry, templateText: string | null, previewText: string, ownershipText?: string,
   ): Promise<BoardResult> {
-    if (await this.port.managedCanvasOpen([entry.working_path])) {
+    if (!validPaths(entry)) return { ok: false, reason: 'Board paths do not match the selected scope.' };
+    if (await this.port.managedCanvasOpen()) {
       return {
         ok: false,
-        reason: 'Close the board before refreshing it, and leave the Atlas pane open.',
+        reason: 'Close all managed Atlas boards before refreshing, and leave the Atlas pane open.',
       };
     }
-    const template = parseBoard(templateText);
-    if (!template) return { ok: false, reason: 'Board template is unavailable.' };
+    const template = verifiedTemplate(entry, templateText);
+    if (!template || templateText === null) {
+      return { ok: false, reason: 'Board template is unavailable or changed. Rebuild views and try again.' };
+    }
     const sidecarText = await this.port.read(sidecarPath(entry));
+    if (ownershipText !== undefined && sidecarText !== ownershipText) {
+      return { ok: false, reason: 'Board ownership changed since the preview. Review it again.' };
+    }
     const sidecar: BoardSidecar | null = sidecarText ? parseSidecar(sidecarText) : null;
     if (!sidecar) {
       return {
@@ -133,8 +200,9 @@ export class BoardController {
       return serializeBoard(merged.canvas);
     });
     if (!wrote) return { ok: false, reason: failure ?? 'Board refresh was refused.' };
-    await this.port.process(sidecarPath(entry), () =>
-      JSON.stringify(sidecarFor(entry.sha256, managed)) + '\n');
+    const settled = await this.port.process(sidecarPath(entry), (latest) =>
+      latest === sidecarText ? JSON.stringify(sidecarFor(entry.sha256, managed)) + '\n' : null);
+    if (!settled) return { ok: false, reason: 'Board merged but ownership changed. Review both files before refreshing again.' };
     return { ok: true, action: 'refreshed' };
   }
 
@@ -148,10 +216,14 @@ export class BoardController {
     child: BoardCatalogEntry,
   ): Promise<BoardResult> {
     return this.enqueue(async () => {
-      if (await this.port.managedCanvasOpen([parent.working_path])) {
+      if (!validPaths(parent) || !validPaths(child)
+          || child.parent_kind !== parent.kind || child.parent_id !== parent.id) {
+        return { ok: false, reason: 'The selected board is not a child of that parent.' };
+      }
+      if (await this.port.managedCanvasOpen()) {
         return {
           ok: false,
-          reason: 'Close the board before changing its portal target, and leave the Atlas pane open.',
+          reason: 'Close all managed Atlas boards before changing a portal target.',
         };
       }
       if (await this.port.read(child.working_path) === null) {

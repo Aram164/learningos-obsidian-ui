@@ -22,10 +22,10 @@ import type {
 } from '../features/atlas/ports';
 import { renderAtlas, rememberConcept } from '../features/atlas/shell';
 import {
-  BoardController, advancedBoardAvailable,
+  advancedBoardAvailable,
   type BoardCatalogEntry,
 } from '../features/atlas/board-controller';
-import { AtlasBoardVault } from '../infrastructure/atlas-board-vault';
+import { AtlasBoardVault, atlasBoardController } from '../infrastructure/atlas-board-vault';
 import { drawDesignScreen } from '../designs/registry';
 import {
   editDraft,
@@ -42,6 +42,7 @@ import {
   type AtlasFilters,
 } from '../features/atlas/graph';
 import type { RelationActionState } from '../features/atlas/ports';
+import { BoardRefreshModal } from '../features/atlas/board-preview';
 import { openEvidenceBinding } from '../features/atlas/evidence';
 
 /** The artifact every relation change is guarded against, as Core names it. */
@@ -99,10 +100,6 @@ export class AtlasView extends ItemView implements AtlasHost {
     return this.plugin.store.atlasBoards();
   }
 
-  private boardController(): BoardController {
-    return new BoardController(new AtlasBoardVault(this.app));
-  }
-
   async openAtlasBoard(entry: BoardCatalogEntry, advanced = false): Promise<void> {
     if (advanced) {
       const installed = await this.app.vault.adapter.exists(
@@ -114,8 +111,7 @@ export class AtlasView extends ItemView implements AtlasHost {
     }
     const vault = new AtlasBoardVault(this.app);
     const template = await vault.read(entry.template_path);
-    if (template === null) { new Notice('Board unavailable. Rebuild views and try again.'); return; }
-    const result = await this.boardController().openBoard(entry, template);
+    const result = await atlasBoardController(this.app).openBoard(entry, template);
     if (!result.ok) new Notice(result.reason);
   }
 
@@ -126,7 +122,7 @@ export class AtlasView extends ItemView implements AtlasHost {
       new Notice('This scope has no parent board to point at it.');
       return;
     }
-    const result = await this.boardController().useEditableChild(parent, child);
+    const result = await atlasBoardController(this.app).useEditableChild(parent, child);
     new Notice(result.ok
       ? 'Portals on the parent board now open the editable child.'
       : result.reason);
@@ -134,16 +130,21 @@ export class AtlasView extends ItemView implements AtlasHost {
   }
 
   async refreshAtlasBoard(entry: BoardCatalogEntry): Promise<void> {
-    const vault = new AtlasBoardVault(this.app);
-    const [template, preview] = [await vault.read(entry.template_path),
-      await vault.read(entry.working_path)];
-    if (template === null || preview === null) {
-      new Notice('Board unavailable. Reopen it and review before refreshing.');
-      return;
+    const controller = atlasBoardController(this.app);
+    try {
+      const preview = await controller.previewRefresh(entry);
+      if (!preview.ok) {
+        new Notice(preview.reason);
+        return;
+      }
+      new BoardRefreshModal(this.app, entry.title ?? entry.id, preview, () => {
+        void controller.refreshBoard(entry, preview.templateText, preview.workingText, preview.ownershipText)
+          .then((result) => new Notice(result.ok ? 'Board refreshed.' : result.reason))
+          .catch((error: unknown) => new Notice(errorMessage(error)));
+      }).open();
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
     }
-    const result = await this.boardController().refreshBoard(entry, template, preview);
-    new Notice(result.ok ? 'Board refreshed.' : result.reason);
-    this.render();
   }
 
   tab: AtlasInspectorTab = 'summary';
@@ -406,6 +407,7 @@ export class AtlasView extends ItemView implements AtlasHost {
       this.concept = state.concept;
     }
     if (typeof state.module === 'string' || state.module === null) {
+      if (this.module !== state.module) this.boardScope = null;
       this.module = state.module;
     }
     this.lens = asAtlasLens(state.lens);

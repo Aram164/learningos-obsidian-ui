@@ -1,4 +1,3 @@
-import { isDirectMaterialFileTarget } from '../../infrastructure/resource-target';
 import {
   buildAtlasGraph,
   type AtlasEdge,
@@ -17,7 +16,7 @@ import {
  */
 
 export interface EvidencePorts {
-  readonly store: AtlasGraphStore & { get(id: string): unknown };
+  readonly store: AtlasGraphStore;
   openMaterialPath(path: string, destination: { page: number; label: string }): unknown;
   notify(message: string): void;
 }
@@ -29,12 +28,14 @@ export type EvidenceParams =
 const RELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*--[A-Za-z0-9._-]+--[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const DIGEST = /^[0-9a-f]{64}$/;
 
-/** Only `relation` and `ordinal` may arrive; anything else refuses. */
+/** The host adds its own action field. User parameters are relation and ordinal. */
 export function parseEvidenceParams(
   params: Readonly<Record<string, string>>,
 ): EvidenceParams {
-  const keys = Object.keys(params).filter((key) => params[key] !== '');
-  if (keys.some((key) => key !== 'relation' && key !== 'ordinal')) {
+  const action = params.action;
+  const keys = Object.keys(params);
+  if ((action !== undefined && action !== EVIDENCE_PROTOCOL_ACTION)
+      || keys.some((key) => key !== 'relation' && key !== 'ordinal' && key !== 'action')) {
     return { error: 'Evidence link refused: unexpected parameters.' };
   }
   const relationId = params.relation ?? '';
@@ -82,12 +83,6 @@ export function openEvidenceBinding(
   }
   const { binding } = resolved;
   const destination = { page: binding.page, label: `physical page ${binding.page}` };
-  const source = ports.store.get(binding.source_id) as
-    { material_path?: unknown } | null;
-  if (source && isDirectMaterialFileTarget(source as never)) {
-    void ports.openMaterialPath(String(source.material_path), destination);
-    return true;
-  }
   void ports.openMaterialPath(`materials/${binding.material_relpath}`, destination);
   return true;
 }

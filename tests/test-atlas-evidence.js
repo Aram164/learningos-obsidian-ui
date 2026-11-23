@@ -37,6 +37,10 @@ assert.deepEqual(parseEvidenceParams({ relation: 'concept-a--requires--concept-b
   { relationId: 'concept-a--requires--concept-b', ordinal: 0 });
 assert.ok('error' in parseEvidenceParams({ relation: 'concept-a--requires--concept-b', ordinal: '0', path: '/etc/passwd' }),
   'a raw path parameter refuses');
+assert.deepEqual(parseEvidenceParams({
+  action: 'learningos-atlas-evidence', relation: 'concept-a--requires--concept-b', ordinal: '0',
+}), { relationId: 'concept-a--requires--concept-b', ordinal: 0 });
+assert.ok('error' in parseEvidenceParams({ action: 'open', relation: 'concept-a--requires--concept-b', ordinal: '0' }));
 assert.ok('error' in parseEvidenceParams({ relation: 'not-a-relation', ordinal: '0' }));
 assert.ok('error' in parseEvidenceParams({ relation: 'concept-a--requires--concept-b', ordinal: '-1' }));
 assert.ok('error' in parseEvidenceParams({ relation: 'concept-a--requires--concept-b' }));

@@ -12,6 +12,7 @@ const SUITE_NAMES = [
   'domain-atlas',
   'atlas-browser',
   'atlas-parity',
+  'atlas-practice',
   'active-leaf-navigation',
   'library-capture',
   'study-surfaces',

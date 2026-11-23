@@ -1474,6 +1474,31 @@
 .los-atlas-binding-quote { font-style: italic; }
 .los-atlas-path-steps { display: grid; gap: var(--los-2); margin: 0; padding-left: var(--los-5); }
 .los-atlas-path-step-button { text-align: left; }
+
+.los-atlas-practice-results:not(:empty),
+.los-atlas-practice-item + .los-atlas-practice-item {
+  margin-block: 0.5rem;
+}
+
+.los-atlas-practice-fields {
+  display: grid;
+  gap: 0.4rem;
+  margin-block: 0.5rem;
+}
+
+.los-atlas-practice-fields[hidden] {
+  display: none;
+}
+
+.los-atlas-practice-field {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.los-atlas-practice-fields pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 /* Progressive disclosure. Native details, so it works with the keyboard and
  * with no script at all. */
 .los-disclosure > summary { min-height: 36px; padding: var(--los-1) 0; color: var(--los-accent); cursor: pointer; font-size: 13px; }

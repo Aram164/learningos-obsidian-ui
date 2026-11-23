@@ -66,17 +66,25 @@ export function mergeBoards(
   }
   const previous = new Set(previousManagedIds);
   const templateSet = new Set(templateNodeIds);
+  if (new Set([...templateNodeIds, ...templateEdgeIds]).size !== templateNodeIds.length + templateEdgeIds.length
+      || new Set([...workingNodeIds, ...workingEdgeIds]).size !== workingNodeIds.length + workingEdgeIds.length) {
+    return { ok: false, reason: 'Board node and edge ids overlap.' };
+  }
+  if (templateEdges.some((edge) => typeof edge.fromNode !== 'string'
+      || typeof edge.toNode !== 'string' || !templateSet.has(edge.fromNode) || !templateSet.has(edge.toNode))) {
+    return { ok: false, reason: 'Board template contains an edge with a missing endpoint.' };
+  }
+  const incoming = new Set([...templateNodeIds, ...templateEdgeIds]);
+  for (const id of [...workingNodeIds, ...workingEdgeIds]) {
+    if (isReserved(id) && !previous.has(id) && !incoming.has(id)) {
+      return { ok: false, reason: `Board contains an unknown reserved object: ${id}.` };
+    }
+  }
   for (const node of [...workingNodes, ...templateNodes]) {
     if (!validGeometry(node)) {
       return { ok: false, reason: `Board object ${String(node.id)} has invalid geometry.` };
     }
   }
-  for (const id of workingNodeIds) {
-    if (isReserved(id) && !previous.has(id) && !templateSet.has(id)) {
-      return { ok: false, reason: `Board contains an unknown reserved object: ${id}.` };
-    }
-  }
-
   const workingById = new Map(workingNodes.map((node) => [node.id as string, node]));
   const templateById = new Map(templateNodes.map((node) => [node.id as string, node]));
   const merged = new Map<string, CanvasObject>();
@@ -164,8 +172,9 @@ export function parseBoard(text: string): CanvasData | null {
   try {
     const value = JSON.parse(text) as CanvasData;
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    if (value.nodes !== undefined && !Array.isArray(value.nodes)) return null;
-    if (value.edges !== undefined && !Array.isArray(value.edges)) return null;
+    const objects = (items: unknown): boolean => Array.isArray(items)
+      && items.every((item) => item && typeof item === 'object' && !Array.isArray(item));
+    if (!objects(value.nodes) || !objects(value.edges)) return null;
     return value;
   } catch {
     return null;
@@ -184,8 +193,10 @@ export function parseSidecar(text: string): BoardSidecar | null {
   try {
     const value = JSON.parse(text) as BoardSidecar;
     if (!value || value.schema_version !== 1
-        || typeof value.template_sha256 !== 'string'
-        || !Array.isArray(value.managed_ids)) return null;
+        || typeof value.template_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(value.template_sha256)
+        || !Array.isArray(value.managed_ids)
+        || !value.managed_ids.every((id) => typeof id === 'string' && isReserved(id))
+        || new Set(value.managed_ids).size !== value.managed_ids.length) return null;
     return value;
   } catch {
     return null;

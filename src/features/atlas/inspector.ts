@@ -1,3 +1,4 @@
+import { renderPracticeReview } from './practice';
 import { button, empty } from '../../components';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import type {
@@ -398,7 +399,7 @@ function renderLinkedNote(parent: HTMLElement, host: AtlasHost, note: Projection
   row.addEventListener('click', () => host.plugin.nav.openRecord(note));
 }
 
-/** Practice notes linked to the concept; verification counts join in P6. */
+/** Practice notes explicitly linked to the concept. */
 function renderPractice(
   parent: HTMLElement,
   host: AtlasHost,
@@ -415,7 +416,11 @@ function renderPractice(
   }
   const list = parent.createDiv({ cls: 'los-atlas-records' });
   enableButtonGroupKeyboardNavigation(list, 'vertical');
-  for (const note of practice) renderLinkedNote(list, host, note);
+  for (const note of practice) {
+    const entry = list.createDiv();
+    renderLinkedNote(entry, host, note);
+    renderPracticeReview(entry, host.plugin, note);
+  }
   parent.createDiv({
     cls: 'los-micro',
     text: 'Practice links back to the source note. No answer text, key or mastery score is shown here.',

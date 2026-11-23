@@ -19545,16 +19545,16 @@ var require_manifest_validator = __commonJS({
 var require_responses_validator = __commonJS({
   "src/contracts/generated/responses.validator.cjs"(exports2) {
     "use strict";
-    exports2.validateHealthReportV1 = validate72;
+    exports2.validateHealthReportV1 = validate75;
     var schema33 = { "$id": "https://learningos.local/schema/health-report.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "checks": { "items": { "additionalProperties": false, "properties": { "details": { "type": "object" }, "id": { "minLength": 1, "type": "string" }, "owner": { "minLength": 1, "type": "string" }, "remedy": { "minLength": 1, "type": "string" }, "status": { "enum": ["ok", "warning", "error", "unknown"] }, "summary": { "minLength": 1, "type": "string" } }, "required": ["id", "status", "summary", "owner", "remedy"], "type": "object" }, "type": "array" }, "generated_at": { "format": "date-time", "type": "string" }, "schema_version": { "const": 1 }, "status": { "enum": ["healthy", "attention-required"] }, "type": { "const": "health-report" } }, "required": ["schema_version", "type", "generated_at", "status", "checks"], "title": "LearningOS health report", "type": "object", "x-governs": "artifact" };
     var func1 = require_ucs2length().default;
     var formats0 = require_formats().fullFormats["date-time"];
     var pattern4 = new RegExp("\\S", "u");
     var pattern8 = new RegExp("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$", "u");
-    function validate72(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate75(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate72.evaluated;
+      const evaluated0 = validate75.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -19567,13 +19567,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.schema_version === void 0 && (missing0 = "schema_version") || data.type === void 0 && (missing0 = "type") || data.generated_at === void 0 && (missing0 = "generated_at") || data.status === void 0 && (missing0 = "status") || data.checks === void 0 && (missing0 = "checks")) {
-            validate72.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/health-report.schema.json/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate75.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/health-report.schema.json/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             const _errs3 = errors;
             for (const key0 in data) {
               if (!(key0 === "checks" || key0 === "generated_at" || key0 === "schema_version" || key0 === "status" || key0 === "type")) {
-                validate72.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/health-report.schema.json/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                validate75.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/health-report.schema.json/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
                 return false;
                 break;
               }
@@ -19593,13 +19593,13 @@ var require_responses_validator = __commonJS({
                         if (data1 && typeof data1 == "object" && !Array.isArray(data1)) {
                           let missing1;
                           if (data1.id === void 0 && (missing1 = "id") || data1.status === void 0 && (missing1 = "status") || data1.summary === void 0 && (missing1 = "summary") || data1.owner === void 0 && (missing1 = "owner") || data1.remedy === void 0 && (missing1 = "remedy")) {
-                            validate72.errors = [{ instancePath: instancePath + "/checks/" + i0, schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                            validate75.errors = [{ instancePath: instancePath + "/checks/" + i0, schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                             return false;
                           } else {
                             const _errs8 = errors;
                             for (const key1 in data1) {
                               if (!(key1 === "details" || key1 === "id" || key1 === "owner" || key1 === "remedy" || key1 === "status" || key1 === "summary")) {
-                                validate72.errors = [{ instancePath: instancePath + "/checks/" + i0, schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
+                                validate75.errors = [{ instancePath: instancePath + "/checks/" + i0, schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
                                 return false;
                                 break;
                               }
@@ -19609,7 +19609,7 @@ var require_responses_validator = __commonJS({
                                 let data2 = data1.details;
                                 const _errs9 = errors;
                                 if (!(data2 && typeof data2 == "object" && !Array.isArray(data2))) {
-                                  validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/details", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/details/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                  validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/details", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/details/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                   return false;
                                 }
                                 var valid4 = _errs9 === errors;
@@ -19623,11 +19623,11 @@ var require_responses_validator = __commonJS({
                                   if (errors === _errs11) {
                                     if (typeof data3 === "string") {
                                       if (func1(data3) < 1) {
-                                        validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/id", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                        validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/id", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                         return false;
                                       }
                                     } else {
-                                      validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/id", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                      validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/id", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                       return false;
                                     }
                                   }
@@ -19642,11 +19642,11 @@ var require_responses_validator = __commonJS({
                                     if (errors === _errs13) {
                                       if (typeof data4 === "string") {
                                         if (func1(data4) < 1) {
-                                          validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/owner", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/owner/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                          validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/owner", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/owner/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                           return false;
                                         }
                                       } else {
-                                        validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/owner", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/owner/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                        validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/owner", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/owner/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                         return false;
                                       }
                                     }
@@ -19661,11 +19661,11 @@ var require_responses_validator = __commonJS({
                                       if (errors === _errs15) {
                                         if (typeof data5 === "string") {
                                           if (func1(data5) < 1) {
-                                            validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/remedy", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/remedy/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                            validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/remedy", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/remedy/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                             return false;
                                           }
                                         } else {
-                                          validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/remedy", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/remedy/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                          validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/remedy", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/remedy/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                           return false;
                                         }
                                       }
@@ -19678,7 +19678,7 @@ var require_responses_validator = __commonJS({
                                         let data6 = data1.status;
                                         const _errs17 = errors;
                                         if (!(data6 === "ok" || data6 === "warning" || data6 === "error" || data6 === "unknown")) {
-                                          validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/status", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/status/enum", keyword: "enum", params: { allowedValues: schema33.properties.checks.items.properties.status.enum }, message: "must be equal to one of the allowed values" }];
+                                          validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/status", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/status/enum", keyword: "enum", params: { allowedValues: schema33.properties.checks.items.properties.status.enum }, message: "must be equal to one of the allowed values" }];
                                           return false;
                                         }
                                         var valid4 = _errs17 === errors;
@@ -19692,11 +19692,11 @@ var require_responses_validator = __commonJS({
                                           if (errors === _errs18) {
                                             if (typeof data7 === "string") {
                                               if (func1(data7) < 1) {
-                                                validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/summary", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/summary/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/summary", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/summary/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                                 return false;
                                               }
                                             } else {
-                                              validate72.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/summary", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/summary/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate75.errors = [{ instancePath: instancePath + "/checks/" + i0 + "/summary", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/properties/summary/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
                                             }
                                           }
@@ -19712,7 +19712,7 @@ var require_responses_validator = __commonJS({
                             }
                           }
                         } else {
-                          validate72.errors = [{ instancePath: instancePath + "/checks/" + i0, schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                          validate75.errors = [{ instancePath: instancePath + "/checks/" + i0, schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                           return false;
                         }
                       }
@@ -19722,7 +19722,7 @@ var require_responses_validator = __commonJS({
                       }
                     }
                   } else {
-                    validate72.errors = [{ instancePath: instancePath + "/checks", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                    validate75.errors = [{ instancePath: instancePath + "/checks", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/checks/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                     return false;
                   }
                 }
@@ -19738,11 +19738,11 @@ var require_responses_validator = __commonJS({
                     if (errors === _errs20) {
                       if (typeof data8 === "string") {
                         if (!formats0.validate(data8)) {
-                          validate72.errors = [{ instancePath: instancePath + "/generated_at", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/generated_at/format", keyword: "format", params: { format: "date-time" }, message: 'must match format "date-time"' }];
+                          validate75.errors = [{ instancePath: instancePath + "/generated_at", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/generated_at/format", keyword: "format", params: { format: "date-time" }, message: 'must match format "date-time"' }];
                           return false;
                         }
                       } else {
-                        validate72.errors = [{ instancePath: instancePath + "/generated_at", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/generated_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                        validate75.errors = [{ instancePath: instancePath + "/generated_at", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/generated_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                         return false;
                       }
                     }
@@ -19755,7 +19755,7 @@ var require_responses_validator = __commonJS({
                   if (data.schema_version !== void 0) {
                     const _errs22 = errors;
                     if (1 !== data.schema_version) {
-                      validate72.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
+                      validate75.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
                       return false;
                     }
                     var valid2 = _errs22 === errors;
@@ -19767,7 +19767,7 @@ var require_responses_validator = __commonJS({
                       let data10 = data.status;
                       const _errs23 = errors;
                       if (!(data10 === "healthy" || data10 === "attention-required")) {
-                        validate72.errors = [{ instancePath: instancePath + "/status", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/status/enum", keyword: "enum", params: { allowedValues: schema33.properties.status.enum }, message: "must be equal to one of the allowed values" }];
+                        validate75.errors = [{ instancePath: instancePath + "/status", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/status/enum", keyword: "enum", params: { allowedValues: schema33.properties.status.enum }, message: "must be equal to one of the allowed values" }];
                         return false;
                       }
                       var valid2 = _errs23 === errors;
@@ -19778,7 +19778,7 @@ var require_responses_validator = __commonJS({
                       if (data.type !== void 0) {
                         const _errs24 = errors;
                         if ("health-report" !== data.type) {
-                          validate72.errors = [{ instancePath: instancePath + "/type", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/type/const", keyword: "const", params: { allowedValue: "health-report" }, message: "must be equal to constant" }];
+                          validate75.errors = [{ instancePath: instancePath + "/type", schemaPath: "https://learningos.local/schema/health-report.schema.json/properties/type/const", keyword: "const", params: { allowedValue: "health-report" }, message: "must be equal to constant" }];
                           return false;
                         }
                         var valid2 = _errs24 === errors;
@@ -19792,7 +19792,7 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate72.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/health-report.schema.json/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate75.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/health-report.schema.json/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
@@ -19819,11 +19819,11 @@ var require_responses_validator = __commonJS({
                           if (errors === _errs31) {
                             if (typeof data14 === "string") {
                               if (!pattern4.test(data14)) {
-                                validate72.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/id", schemaPath: "#/allOf/1/properties/checks/items/properties/id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                validate75.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/id", schemaPath: "#/allOf/1/properties/checks/items/properties/id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                 return false;
                               }
                             } else {
-                              validate72.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/id", schemaPath: "#/allOf/1/properties/checks/items/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                              validate75.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/id", schemaPath: "#/allOf/1/properties/checks/items/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                               return false;
                             }
                           }
@@ -19838,11 +19838,11 @@ var require_responses_validator = __commonJS({
                             if (errors === _errs33) {
                               if (typeof data15 === "string") {
                                 if (!pattern4.test(data15)) {
-                                  validate72.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/owner", schemaPath: "#/allOf/1/properties/checks/items/properties/owner/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                  validate75.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/owner", schemaPath: "#/allOf/1/properties/checks/items/properties/owner/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                   return false;
                                 }
                               } else {
-                                validate72.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/owner", schemaPath: "#/allOf/1/properties/checks/items/properties/owner/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                validate75.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/owner", schemaPath: "#/allOf/1/properties/checks/items/properties/owner/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                 return false;
                               }
                             }
@@ -19857,11 +19857,11 @@ var require_responses_validator = __commonJS({
                               if (errors === _errs35) {
                                 if (typeof data16 === "string") {
                                   if (!pattern4.test(data16)) {
-                                    validate72.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/remedy", schemaPath: "#/allOf/1/properties/checks/items/properties/remedy/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                    validate75.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/remedy", schemaPath: "#/allOf/1/properties/checks/items/properties/remedy/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                     return false;
                                   }
                                 } else {
-                                  validate72.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/remedy", schemaPath: "#/allOf/1/properties/checks/items/properties/remedy/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                  validate75.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/remedy", schemaPath: "#/allOf/1/properties/checks/items/properties/remedy/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                   return false;
                                 }
                               }
@@ -19876,11 +19876,11 @@ var require_responses_validator = __commonJS({
                                 if (errors === _errs37) {
                                   if (typeof data17 === "string") {
                                     if (!pattern4.test(data17)) {
-                                      validate72.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/summary", schemaPath: "#/allOf/1/properties/checks/items/properties/summary/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                      validate75.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/summary", schemaPath: "#/allOf/1/properties/checks/items/properties/summary/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                       return false;
                                     }
                                   } else {
-                                    validate72.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/summary", schemaPath: "#/allOf/1/properties/checks/items/properties/summary/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                    validate75.errors = [{ instancePath: instancePath + "/checks/" + i1 + "/summary", schemaPath: "#/allOf/1/properties/checks/items/properties/summary/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                     return false;
                                   }
                                 }
@@ -19892,7 +19892,7 @@ var require_responses_validator = __commonJS({
                           }
                         }
                       } else {
-                        validate72.errors = [{ instancePath: instancePath + "/checks/" + i1, schemaPath: "#/allOf/1/properties/checks/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                        validate75.errors = [{ instancePath: instancePath + "/checks/" + i1, schemaPath: "#/allOf/1/properties/checks/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                         return false;
                       }
                     }
@@ -19902,7 +19902,7 @@ var require_responses_validator = __commonJS({
                     }
                   }
                 } else {
-                  validate72.errors = [{ instancePath: instancePath + "/checks", schemaPath: "#/allOf/1/properties/checks/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                  validate75.errors = [{ instancePath: instancePath + "/checks", schemaPath: "#/allOf/1/properties/checks/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                   return false;
                 }
               }
@@ -19917,11 +19917,11 @@ var require_responses_validator = __commonJS({
                 if (errors === _errs39) {
                   if (typeof data18 === "string") {
                     if (!pattern8.test(data18)) {
-                      validate72.errors = [{ instancePath: instancePath + "/generated_at", schemaPath: "#/allOf/1/properties/generated_at/pattern", keyword: "pattern", params: { pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }, message: 'must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"' }];
+                      validate75.errors = [{ instancePath: instancePath + "/generated_at", schemaPath: "#/allOf/1/properties/generated_at/pattern", keyword: "pattern", params: { pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }, message: 'must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"' }];
                       return false;
                     }
                   } else {
-                    validate72.errors = [{ instancePath: instancePath + "/generated_at", schemaPath: "#/allOf/1/properties/generated_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                    validate75.errors = [{ instancePath: instancePath + "/generated_at", schemaPath: "#/allOf/1/properties/generated_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                     return false;
                   }
                 }
@@ -19931,24 +19931,24 @@ var require_responses_validator = __commonJS({
               }
             }
           } else {
-            validate72.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+            validate75.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
             return false;
           }
         }
         var valid0 = _errs25 === errors;
       }
-      validate72.errors = vErrors;
+      validate75.errors = vErrors;
       return errors === 0;
     }
-    validate72.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateLegacyArchiveLockV1 = validate73;
+    validate75.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateLegacyArchiveLockV1 = validate76;
     var schema35 = { "$id": "https://learningos.local/schema/legacy-archive-lock.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "created_at": { "format": "date-time", "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "canonical_targets": { "items": { "additionalProperties": false, "properties": { "checksum_matches": { "type": ["boolean", "null"] }, "exists": { "type": "boolean" }, "path": { "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$", "type": "string" }, "sha256": { "pattern": "^sha256:[a-f0-9]{64}$", "type": ["string", "null"] } }, "required": ["path", "exists", "checksum_matches"], "type": "object" }, "type": "array" }, "category": { "minLength": 1, "type": "string" }, "disposition": { "enum": ["canonicalized", "byte-preserved", "superseded-system", "historical-only", "unresolved"] }, "relative_path": { "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$", "type": "string" }, "sha256": { "pattern": "^sha256:[a-f0-9]{64}$", "type": "string" }, "size": { "minimum": 0, "type": "integer" } }, "required": ["relative_path", "size", "sha256", "category", "disposition", "canonical_targets"], "type": "object" }, "type": "array" }, "excluded": { "additionalProperties": false, "properties": { "count": { "minimum": 0, "type": "integer" }, "status": { "const": "sealed-not-inspected" } }, "required": ["count", "status"], "type": "object" }, "id": { "const": "legacy-archive-lock" }, "schema_version": { "const": 1 }, "type": { "const": "legacy-archive-lock" }, "verification": { "additionalProperties": false, "properties": { "issues": { "items": { "minLength": 1, "type": "string" }, "type": "array" }, "status": { "enum": ["verified", "attention-required"] }, "verified_at": { "format": "date-time", "type": "string" } }, "required": ["verified_at", "status"], "type": "object" } }, "required": ["schema_version", "id", "type", "created_at", "entries", "excluded", "verification"], "title": "Reviewed Legacy archive disposition lock", "type": "object", "x-governs": "record" };
     var pattern9 = new RegExp("^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$", "u");
     var pattern10 = new RegExp("^sha256:[a-f0-9]{64}$", "u");
-    function validate73(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate76(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate73.evaluated;
+      const evaluated0 = validate76.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -19961,13 +19961,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.schema_version === void 0 && (missing0 = "schema_version") || data.id === void 0 && (missing0 = "id") || data.type === void 0 && (missing0 = "type") || data.created_at === void 0 && (missing0 = "created_at") || data.entries === void 0 && (missing0 = "entries") || data.excluded === void 0 && (missing0 = "excluded") || data.verification === void 0 && (missing0 = "verification")) {
-            validate73.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate76.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             const _errs3 = errors;
             for (const key0 in data) {
               if (!(key0 === "created_at" || key0 === "entries" || key0 === "excluded" || key0 === "id" || key0 === "schema_version" || key0 === "type" || key0 === "verification")) {
-                validate73.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                validate76.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
                 return false;
                 break;
               }
@@ -19980,11 +19980,11 @@ var require_responses_validator = __commonJS({
                   if (errors === _errs4) {
                     if (typeof data0 === "string") {
                       if (!formats0.validate(data0)) {
-                        validate73.errors = [{ instancePath: instancePath + "/created_at", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/created_at/format", keyword: "format", params: { format: "date-time" }, message: 'must match format "date-time"' }];
+                        validate76.errors = [{ instancePath: instancePath + "/created_at", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/created_at/format", keyword: "format", params: { format: "date-time" }, message: 'must match format "date-time"' }];
                         return false;
                       }
                     } else {
-                      validate73.errors = [{ instancePath: instancePath + "/created_at", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/created_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                      validate76.errors = [{ instancePath: instancePath + "/created_at", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/created_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                       return false;
                     }
                   }
@@ -20008,13 +20008,13 @@ var require_responses_validator = __commonJS({
                           if (data2 && typeof data2 == "object" && !Array.isArray(data2)) {
                             let missing1;
                             if (data2.relative_path === void 0 && (missing1 = "relative_path") || data2.size === void 0 && (missing1 = "size") || data2.sha256 === void 0 && (missing1 = "sha256") || data2.category === void 0 && (missing1 = "category") || data2.disposition === void 0 && (missing1 = "disposition") || data2.canonical_targets === void 0 && (missing1 = "canonical_targets")) {
-                              validate73.errors = [{ instancePath: instancePath + "/entries/" + i0, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                              validate76.errors = [{ instancePath: instancePath + "/entries/" + i0, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                               return false;
                             } else {
                               const _errs10 = errors;
                               for (const key1 in data2) {
                                 if (!(key1 === "canonical_targets" || key1 === "category" || key1 === "disposition" || key1 === "relative_path" || key1 === "sha256" || key1 === "size")) {
-                                  validate73.errors = [{ instancePath: instancePath + "/entries/" + i0, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
+                                  validate76.errors = [{ instancePath: instancePath + "/entries/" + i0, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
                                   return false;
                                   break;
                                 }
@@ -20034,13 +20034,13 @@ var require_responses_validator = __commonJS({
                                           if (data4 && typeof data4 == "object" && !Array.isArray(data4)) {
                                             let missing2;
                                             if (data4.path === void 0 && (missing2 = "path") || data4.exists === void 0 && (missing2 = "exists") || data4.checksum_matches === void 0 && (missing2 = "checksum_matches")) {
-                                              validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
+                                              validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
                                               return false;
                                             } else {
                                               const _errs15 = errors;
                                               for (const key2 in data4) {
                                                 if (!(key2 === "checksum_matches" || key2 === "exists" || key2 === "path" || key2 === "sha256")) {
-                                                  validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" }];
+                                                  validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" }];
                                                   return false;
                                                   break;
                                                 }
@@ -20050,7 +20050,7 @@ var require_responses_validator = __commonJS({
                                                   let data5 = data4.checksum_matches;
                                                   const _errs16 = errors;
                                                   if (typeof data5 !== "boolean" && data5 !== null) {
-                                                    validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/checksum_matches", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/checksum_matches/type", keyword: "type", params: { type: schema35.properties.entries.items.properties.canonical_targets.items.properties.checksum_matches.type }, message: "must be boolean,null" }];
+                                                    validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/checksum_matches", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/checksum_matches/type", keyword: "type", params: { type: schema35.properties.entries.items.properties.canonical_targets.items.properties.checksum_matches.type }, message: "must be boolean,null" }];
                                                     return false;
                                                   }
                                                   var valid6 = _errs16 === errors;
@@ -20061,7 +20061,7 @@ var require_responses_validator = __commonJS({
                                                   if (data4.exists !== void 0) {
                                                     const _errs18 = errors;
                                                     if (typeof data4.exists !== "boolean") {
-                                                      validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/exists", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/exists/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                                                      validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/exists", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/exists/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                                       return false;
                                                     }
                                                     var valid6 = _errs18 === errors;
@@ -20075,16 +20075,16 @@ var require_responses_validator = __commonJS({
                                                       if (errors === _errs20) {
                                                         if (typeof data7 === "string") {
                                                           if (func1(data7) < 1) {
-                                                            validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                            validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                                             return false;
                                                           } else {
                                                             if (!pattern9.test(data7)) {
-                                                              validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/path/pattern", keyword: "pattern", params: { pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, message: 'must match pattern "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"' }];
+                                                              validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/path/pattern", keyword: "pattern", params: { pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, message: 'must match pattern "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"' }];
                                                               return false;
                                                             }
                                                           }
                                                         } else {
-                                                          validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                          validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                           return false;
                                                         }
                                                       }
@@ -20097,13 +20097,13 @@ var require_responses_validator = __commonJS({
                                                         let data8 = data4.sha256;
                                                         const _errs22 = errors;
                                                         if (typeof data8 !== "string" && data8 !== null) {
-                                                          validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/sha256", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/sha256/type", keyword: "type", params: { type: schema35.properties.entries.items.properties.canonical_targets.items.properties.sha256.type }, message: "must be string,null" }];
+                                                          validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/sha256", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/sha256/type", keyword: "type", params: { type: schema35.properties.entries.items.properties.canonical_targets.items.properties.sha256.type }, message: "must be string,null" }];
                                                           return false;
                                                         }
                                                         if (errors === _errs22) {
                                                           if (typeof data8 === "string") {
                                                             if (!pattern10.test(data8)) {
-                                                              validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/sha256", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/sha256/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                                                              validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1 + "/sha256", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/properties/sha256/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                                                               return false;
                                                             }
                                                           }
@@ -20118,7 +20118,7 @@ var require_responses_validator = __commonJS({
                                               }
                                             }
                                           } else {
-                                            validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                            validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets/" + i1, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                             return false;
                                           }
                                         }
@@ -20128,7 +20128,7 @@ var require_responses_validator = __commonJS({
                                         }
                                       }
                                     } else {
-                                      validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                      validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/canonical_targets", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/canonical_targets/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                       return false;
                                     }
                                   }
@@ -20143,11 +20143,11 @@ var require_responses_validator = __commonJS({
                                     if (errors === _errs24) {
                                       if (typeof data9 === "string") {
                                         if (func1(data9) < 1) {
-                                          validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/category", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/category/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                          validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/category", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/category/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                           return false;
                                         }
                                       } else {
-                                        validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/category", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/category/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                        validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/category", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/category/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                         return false;
                                       }
                                     }
@@ -20160,7 +20160,7 @@ var require_responses_validator = __commonJS({
                                       let data10 = data2.disposition;
                                       const _errs26 = errors;
                                       if (!(data10 === "canonicalized" || data10 === "byte-preserved" || data10 === "superseded-system" || data10 === "historical-only" || data10 === "unresolved")) {
-                                        validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/disposition", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/disposition/enum", keyword: "enum", params: { allowedValues: schema35.properties.entries.items.properties.disposition.enum }, message: "must be equal to one of the allowed values" }];
+                                        validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/disposition", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/disposition/enum", keyword: "enum", params: { allowedValues: schema35.properties.entries.items.properties.disposition.enum }, message: "must be equal to one of the allowed values" }];
                                         return false;
                                       }
                                       var valid4 = _errs26 === errors;
@@ -20174,16 +20174,16 @@ var require_responses_validator = __commonJS({
                                         if (errors === _errs27) {
                                           if (typeof data11 === "string") {
                                             if (func1(data11) < 1) {
-                                              validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/relative_path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/relative_path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                              validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/relative_path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/relative_path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                               return false;
                                             } else {
                                               if (!pattern9.test(data11)) {
-                                                validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/relative_path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/relative_path/pattern", keyword: "pattern", params: { pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, message: 'must match pattern "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"' }];
+                                                validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/relative_path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/relative_path/pattern", keyword: "pattern", params: { pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, message: 'must match pattern "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"' }];
                                                 return false;
                                               }
                                             }
                                           } else {
-                                            validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/relative_path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/relative_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/relative_path", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/relative_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                             return false;
                                           }
                                         }
@@ -20198,11 +20198,11 @@ var require_responses_validator = __commonJS({
                                           if (errors === _errs29) {
                                             if (typeof data12 === "string") {
                                               if (!pattern10.test(data12)) {
-                                                validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/sha256", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/sha256/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                                                validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/sha256", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/sha256/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                                                 return false;
                                               }
                                             } else {
-                                              validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/sha256", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/sha256/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/sha256", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/sha256/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
                                             }
                                           }
@@ -20215,13 +20215,13 @@ var require_responses_validator = __commonJS({
                                             let data13 = data2.size;
                                             const _errs31 = errors;
                                             if (!(typeof data13 == "number" && (!(data13 % 1) && !isNaN(data13)) && isFinite(data13))) {
-                                              validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/size", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/size/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                                              validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/size", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/size/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                               return false;
                                             }
                                             if (errors === _errs31) {
                                               if (typeof data13 == "number" && isFinite(data13)) {
                                                 if (data13 < 0 || isNaN(data13)) {
-                                                  validate73.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/size", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/size/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
+                                                  validate76.errors = [{ instancePath: instancePath + "/entries/" + i0 + "/size", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/properties/size/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
                                                   return false;
                                                 }
                                               }
@@ -20238,7 +20238,7 @@ var require_responses_validator = __commonJS({
                               }
                             }
                           } else {
-                            validate73.errors = [{ instancePath: instancePath + "/entries/" + i0, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                            validate76.errors = [{ instancePath: instancePath + "/entries/" + i0, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                             return false;
                           }
                         }
@@ -20248,7 +20248,7 @@ var require_responses_validator = __commonJS({
                         }
                       }
                     } else {
-                      validate73.errors = [{ instancePath: instancePath + "/entries", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                      validate76.errors = [{ instancePath: instancePath + "/entries", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/entries/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                       return false;
                     }
                   }
@@ -20264,13 +20264,13 @@ var require_responses_validator = __commonJS({
                       if (data14 && typeof data14 == "object" && !Array.isArray(data14)) {
                         let missing3;
                         if (data14.count === void 0 && (missing3 = "count") || data14.status === void 0 && (missing3 = "status")) {
-                          validate73.errors = [{ instancePath: instancePath + "/excluded", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
+                          validate76.errors = [{ instancePath: instancePath + "/excluded", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
                           return false;
                         } else {
                           const _errs35 = errors;
                           for (const key3 in data14) {
                             if (!(key3 === "count" || key3 === "status")) {
-                              validate73.errors = [{ instancePath: instancePath + "/excluded", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" }];
+                              validate76.errors = [{ instancePath: instancePath + "/excluded", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" }];
                               return false;
                               break;
                             }
@@ -20280,13 +20280,13 @@ var require_responses_validator = __commonJS({
                               let data15 = data14.count;
                               const _errs36 = errors;
                               if (!(typeof data15 == "number" && (!(data15 % 1) && !isNaN(data15)) && isFinite(data15))) {
-                                validate73.errors = [{ instancePath: instancePath + "/excluded/count", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/properties/count/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                                validate76.errors = [{ instancePath: instancePath + "/excluded/count", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/properties/count/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                 return false;
                               }
                               if (errors === _errs36) {
                                 if (typeof data15 == "number" && isFinite(data15)) {
                                   if (data15 < 0 || isNaN(data15)) {
-                                    validate73.errors = [{ instancePath: instancePath + "/excluded/count", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/properties/count/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
+                                    validate76.errors = [{ instancePath: instancePath + "/excluded/count", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/properties/count/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
                                     return false;
                                   }
                                 }
@@ -20299,7 +20299,7 @@ var require_responses_validator = __commonJS({
                               if (data14.status !== void 0) {
                                 const _errs38 = errors;
                                 if ("sealed-not-inspected" !== data14.status) {
-                                  validate73.errors = [{ instancePath: instancePath + "/excluded/status", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/properties/status/const", keyword: "const", params: { allowedValue: "sealed-not-inspected" }, message: "must be equal to constant" }];
+                                  validate76.errors = [{ instancePath: instancePath + "/excluded/status", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/properties/status/const", keyword: "const", params: { allowedValue: "sealed-not-inspected" }, message: "must be equal to constant" }];
                                   return false;
                                 }
                                 var valid7 = _errs38 === errors;
@@ -20310,7 +20310,7 @@ var require_responses_validator = __commonJS({
                           }
                         }
                       } else {
-                        validate73.errors = [{ instancePath: instancePath + "/excluded", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                        validate76.errors = [{ instancePath: instancePath + "/excluded", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/excluded/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                         return false;
                       }
                     }
@@ -20322,7 +20322,7 @@ var require_responses_validator = __commonJS({
                     if (data.id !== void 0) {
                       const _errs39 = errors;
                       if ("legacy-archive-lock" !== data.id) {
-                        validate73.errors = [{ instancePath: instancePath + "/id", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/id/const", keyword: "const", params: { allowedValue: "legacy-archive-lock" }, message: "must be equal to constant" }];
+                        validate76.errors = [{ instancePath: instancePath + "/id", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/id/const", keyword: "const", params: { allowedValue: "legacy-archive-lock" }, message: "must be equal to constant" }];
                         return false;
                       }
                       var valid2 = _errs39 === errors;
@@ -20333,7 +20333,7 @@ var require_responses_validator = __commonJS({
                       if (data.schema_version !== void 0) {
                         const _errs40 = errors;
                         if (1 !== data.schema_version) {
-                          validate73.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
+                          validate76.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
                           return false;
                         }
                         var valid2 = _errs40 === errors;
@@ -20344,7 +20344,7 @@ var require_responses_validator = __commonJS({
                         if (data.type !== void 0) {
                           const _errs41 = errors;
                           if ("legacy-archive-lock" !== data.type) {
-                            validate73.errors = [{ instancePath: instancePath + "/type", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/type/const", keyword: "const", params: { allowedValue: "legacy-archive-lock" }, message: "must be equal to constant" }];
+                            validate76.errors = [{ instancePath: instancePath + "/type", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/type/const", keyword: "const", params: { allowedValue: "legacy-archive-lock" }, message: "must be equal to constant" }];
                             return false;
                           }
                           var valid2 = _errs41 === errors;
@@ -20359,13 +20359,13 @@ var require_responses_validator = __commonJS({
                               if (data20 && typeof data20 == "object" && !Array.isArray(data20)) {
                                 let missing4;
                                 if (data20.verified_at === void 0 && (missing4 = "verified_at") || data20.status === void 0 && (missing4 = "status")) {
-                                  validate73.errors = [{ instancePath: instancePath + "/verification", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/required", keyword: "required", params: { missingProperty: missing4 }, message: "must have required property '" + missing4 + "'" }];
+                                  validate76.errors = [{ instancePath: instancePath + "/verification", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/required", keyword: "required", params: { missingProperty: missing4 }, message: "must have required property '" + missing4 + "'" }];
                                   return false;
                                 } else {
                                   const _errs44 = errors;
                                   for (const key4 in data20) {
                                     if (!(key4 === "issues" || key4 === "status" || key4 === "verified_at")) {
-                                      validate73.errors = [{ instancePath: instancePath + "/verification", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key4 }, message: "must NOT have additional properties" }];
+                                      validate76.errors = [{ instancePath: instancePath + "/verification", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key4 }, message: "must NOT have additional properties" }];
                                       return false;
                                       break;
                                     }
@@ -20384,11 +20384,11 @@ var require_responses_validator = __commonJS({
                                             if (errors === _errs47) {
                                               if (typeof data22 === "string") {
                                                 if (func1(data22) < 1) {
-                                                  validate73.errors = [{ instancePath: instancePath + "/verification/issues/" + i2, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/issues/items/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                  validate76.errors = [{ instancePath: instancePath + "/verification/issues/" + i2, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/issues/items/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                                   return false;
                                                 }
                                               } else {
-                                                validate73.errors = [{ instancePath: instancePath + "/verification/issues/" + i2, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/issues/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                validate76.errors = [{ instancePath: instancePath + "/verification/issues/" + i2, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/issues/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                 return false;
                                               }
                                             }
@@ -20398,7 +20398,7 @@ var require_responses_validator = __commonJS({
                                             }
                                           }
                                         } else {
-                                          validate73.errors = [{ instancePath: instancePath + "/verification/issues", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/issues/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                          validate76.errors = [{ instancePath: instancePath + "/verification/issues", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/issues/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                           return false;
                                         }
                                       }
@@ -20411,7 +20411,7 @@ var require_responses_validator = __commonJS({
                                         let data23 = data20.status;
                                         const _errs49 = errors;
                                         if (!(data23 === "verified" || data23 === "attention-required")) {
-                                          validate73.errors = [{ instancePath: instancePath + "/verification/status", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/status/enum", keyword: "enum", params: { allowedValues: schema35.properties.verification.properties.status.enum }, message: "must be equal to one of the allowed values" }];
+                                          validate76.errors = [{ instancePath: instancePath + "/verification/status", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/status/enum", keyword: "enum", params: { allowedValues: schema35.properties.verification.properties.status.enum }, message: "must be equal to one of the allowed values" }];
                                           return false;
                                         }
                                         var valid8 = _errs49 === errors;
@@ -20426,11 +20426,11 @@ var require_responses_validator = __commonJS({
                                             if (errors === _errs50) {
                                               if (typeof data24 === "string") {
                                                 if (!formats0.validate(data24)) {
-                                                  validate73.errors = [{ instancePath: instancePath + "/verification/verified_at", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/verified_at/format", keyword: "format", params: { format: "date-time" }, message: 'must match format "date-time"' }];
+                                                  validate76.errors = [{ instancePath: instancePath + "/verification/verified_at", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/verified_at/format", keyword: "format", params: { format: "date-time" }, message: 'must match format "date-time"' }];
                                                   return false;
                                                 }
                                               } else {
-                                                validate73.errors = [{ instancePath: instancePath + "/verification/verified_at", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/verified_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                validate76.errors = [{ instancePath: instancePath + "/verification/verified_at", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/properties/verified_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                 return false;
                                               }
                                             }
@@ -20444,7 +20444,7 @@ var require_responses_validator = __commonJS({
                                   }
                                 }
                               } else {
-                                validate73.errors = [{ instancePath: instancePath + "/verification", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                validate76.errors = [{ instancePath: instancePath + "/verification", schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/properties/verification/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                 return false;
                               }
                             }
@@ -20461,7 +20461,7 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate73.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate76.errors = [{ instancePath, schemaPath: "https://learningos.local/schema/legacy-archive-lock.schema.json/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
@@ -20476,11 +20476,11 @@ var require_responses_validator = __commonJS({
               if (errors === _errs54) {
                 if (typeof data25 === "string") {
                   if (!pattern8.test(data25)) {
-                    validate73.errors = [{ instancePath: instancePath + "/created_at", schemaPath: "#/allOf/1/properties/created_at/pattern", keyword: "pattern", params: { pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }, message: 'must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"' }];
+                    validate76.errors = [{ instancePath: instancePath + "/created_at", schemaPath: "#/allOf/1/properties/created_at/pattern", keyword: "pattern", params: { pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }, message: 'must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"' }];
                     return false;
                   }
                 } else {
-                  validate73.errors = [{ instancePath: instancePath + "/created_at", schemaPath: "#/allOf/1/properties/created_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                  validate76.errors = [{ instancePath: instancePath + "/created_at", schemaPath: "#/allOf/1/properties/created_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                   return false;
                 }
               }
@@ -20519,17 +20519,17 @@ var require_responses_validator = __commonJS({
                                         if (errors === _errs64) {
                                           if (typeof data30 === "string") {
                                             if (!pattern4.test(data30)) {
-                                              validate73.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/canonical_targets/" + i4 + "/path", schemaPath: "#/allOf/1/properties/entries/items/properties/canonical_targets/items/properties/path/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                              validate76.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/canonical_targets/" + i4 + "/path", schemaPath: "#/allOf/1/properties/entries/items/properties/canonical_targets/items/properties/path/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                               return false;
                                             }
                                           } else {
-                                            validate73.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/canonical_targets/" + i4 + "/path", schemaPath: "#/allOf/1/properties/entries/items/properties/canonical_targets/items/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            validate76.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/canonical_targets/" + i4 + "/path", schemaPath: "#/allOf/1/properties/entries/items/properties/canonical_targets/items/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                             return false;
                                           }
                                         }
                                       }
                                     } else {
-                                      validate73.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/canonical_targets/" + i4, schemaPath: "#/allOf/1/properties/entries/items/properties/canonical_targets/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                      validate76.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/canonical_targets/" + i4, schemaPath: "#/allOf/1/properties/entries/items/properties/canonical_targets/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                       return false;
                                     }
                                   }
@@ -20539,7 +20539,7 @@ var require_responses_validator = __commonJS({
                                   }
                                 }
                               } else {
-                                validate73.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/canonical_targets", schemaPath: "#/allOf/1/properties/entries/items/properties/canonical_targets/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                validate76.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/canonical_targets", schemaPath: "#/allOf/1/properties/entries/items/properties/canonical_targets/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                 return false;
                               }
                             }
@@ -20554,11 +20554,11 @@ var require_responses_validator = __commonJS({
                               if (errors === _errs66) {
                                 if (typeof data31 === "string") {
                                   if (!pattern4.test(data31)) {
-                                    validate73.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/category", schemaPath: "#/allOf/1/properties/entries/items/properties/category/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                    validate76.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/category", schemaPath: "#/allOf/1/properties/entries/items/properties/category/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                     return false;
                                   }
                                 } else {
-                                  validate73.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/category", schemaPath: "#/allOf/1/properties/entries/items/properties/category/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                  validate76.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/category", schemaPath: "#/allOf/1/properties/entries/items/properties/category/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                   return false;
                                 }
                               }
@@ -20573,11 +20573,11 @@ var require_responses_validator = __commonJS({
                                 if (errors === _errs68) {
                                   if (typeof data32 === "string") {
                                     if (!pattern4.test(data32)) {
-                                      validate73.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/relative_path", schemaPath: "#/allOf/1/properties/entries/items/properties/relative_path/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                      validate76.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/relative_path", schemaPath: "#/allOf/1/properties/entries/items/properties/relative_path/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                       return false;
                                     }
                                   } else {
-                                    validate73.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/relative_path", schemaPath: "#/allOf/1/properties/entries/items/properties/relative_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                    validate76.errors = [{ instancePath: instancePath + "/entries/" + i3 + "/relative_path", schemaPath: "#/allOf/1/properties/entries/items/properties/relative_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                     return false;
                                   }
                                 }
@@ -20588,7 +20588,7 @@ var require_responses_validator = __commonJS({
                             }
                           }
                         } else {
-                          validate73.errors = [{ instancePath: instancePath + "/entries/" + i3, schemaPath: "#/allOf/1/properties/entries/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                          validate76.errors = [{ instancePath: instancePath + "/entries/" + i3, schemaPath: "#/allOf/1/properties/entries/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                           return false;
                         }
                       }
@@ -20598,7 +20598,7 @@ var require_responses_validator = __commonJS({
                       }
                     }
                   } else {
-                    validate73.errors = [{ instancePath: instancePath + "/entries", schemaPath: "#/allOf/1/properties/entries/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                    validate76.errors = [{ instancePath: instancePath + "/entries", schemaPath: "#/allOf/1/properties/entries/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                     return false;
                   }
                 }
@@ -20625,11 +20625,11 @@ var require_responses_validator = __commonJS({
                               if (errors === _errs74) {
                                 if (typeof data35 === "string") {
                                   if (!pattern4.test(data35)) {
-                                    validate73.errors = [{ instancePath: instancePath + "/verification/issues/" + i5, schemaPath: "#/allOf/1/properties/verification/properties/issues/items/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                    validate76.errors = [{ instancePath: instancePath + "/verification/issues/" + i5, schemaPath: "#/allOf/1/properties/verification/properties/issues/items/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                     return false;
                                   }
                                 } else {
-                                  validate73.errors = [{ instancePath: instancePath + "/verification/issues/" + i5, schemaPath: "#/allOf/1/properties/verification/properties/issues/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                  validate76.errors = [{ instancePath: instancePath + "/verification/issues/" + i5, schemaPath: "#/allOf/1/properties/verification/properties/issues/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                   return false;
                                 }
                               }
@@ -20639,7 +20639,7 @@ var require_responses_validator = __commonJS({
                               }
                             }
                           } else {
-                            validate73.errors = [{ instancePath: instancePath + "/verification/issues", schemaPath: "#/allOf/1/properties/verification/properties/issues/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                            validate76.errors = [{ instancePath: instancePath + "/verification/issues", schemaPath: "#/allOf/1/properties/verification/properties/issues/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                             return false;
                           }
                         }
@@ -20654,11 +20654,11 @@ var require_responses_validator = __commonJS({
                           if (errors === _errs76) {
                             if (typeof data36 === "string") {
                               if (!pattern8.test(data36)) {
-                                validate73.errors = [{ instancePath: instancePath + "/verification/verified_at", schemaPath: "#/allOf/1/properties/verification/properties/verified_at/pattern", keyword: "pattern", params: { pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }, message: 'must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"' }];
+                                validate76.errors = [{ instancePath: instancePath + "/verification/verified_at", schemaPath: "#/allOf/1/properties/verification/properties/verified_at/pattern", keyword: "pattern", params: { pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }, message: 'must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"' }];
                                 return false;
                               }
                             } else {
-                              validate73.errors = [{ instancePath: instancePath + "/verification/verified_at", schemaPath: "#/allOf/1/properties/verification/properties/verified_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                              validate76.errors = [{ instancePath: instancePath + "/verification/verified_at", schemaPath: "#/allOf/1/properties/verification/properties/verified_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                               return false;
                             }
                           }
@@ -20668,7 +20668,7 @@ var require_responses_validator = __commonJS({
                         }
                       }
                     } else {
-                      validate73.errors = [{ instancePath: instancePath + "/verification", schemaPath: "#/allOf/1/properties/verification/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                      validate76.errors = [{ instancePath: instancePath + "/verification", schemaPath: "#/allOf/1/properties/verification/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                       return false;
                     }
                   }
@@ -20679,17 +20679,17 @@ var require_responses_validator = __commonJS({
               }
             }
           } else {
-            validate73.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+            validate76.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
             return false;
           }
         }
         var valid0 = _errs52 === errors;
       }
-      validate73.errors = vErrors;
+      validate76.errors = vErrors;
       return errors === 0;
     }
-    validate73.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateLegacyArchiveStatusV1 = validate74;
+    validate76.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateLegacyArchiveStatusV1 = validate77;
     function validate26(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       ;
       let vErrors = null;
@@ -22313,10 +22313,10 @@ var require_responses_validator = __commonJS({
       return errors === 0;
     }
     validate23.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    function validate74(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate77(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate74.evaluated;
+      const evaluated0 = validate77.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -22364,7 +22364,7 @@ var require_responses_validator = __commonJS({
                   vErrors.push(err1);
                 }
                 errors++;
-                validate74.errors = vErrors;
+                validate77.errors = vErrors;
                 return false;
               } else {
                 errors = _errs4;
@@ -22378,17 +22378,17 @@ var require_responses_validator = __commonJS({
               }
             }
           } else {
-            validate74.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+            validate77.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
             return false;
           }
         }
         var valid0 = _errs1 === errors;
       }
-      validate74.errors = vErrors;
+      validate77.errors = vErrors;
       return errors === 0;
     }
-    validate74.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateMastersPlanningDashboardV1 = validate77;
+    validate77.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateMastersPlanningDashboardV1 = validate80;
     var schema41 = { "$defs": { "factState": { "additionalProperties": false, "properties": { "as_of": { "format": "date", "type": ["string", "null"] }, "evidence": { "items": { "minLength": 1, "type": "string" }, "type": "array" }, "status": { "enum": ["unverified", "verified-current", "stale", "conflicting"] } }, "required": ["status", "as_of", "evidence"], "type": "object" } }, "$id": "https://learningos.local/schema/master-planning-catalog.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "candidate_modules": { "items": { "additionalProperties": false, "properties": { "fact_state": { "$ref": "#/$defs/factState" }, "id": { "pattern": "^candidate-module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "planning_state": { "enum": ["longlist", "shortlist", "selected", "rejected", "promoted"] }, "privacy_class": { "const": "academic-only" }, "promoted_module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provenance": { "items": { "minLength": 1, "type": "string" }, "minItems": 1, "type": "array" }, "source_ids": { "items": { "pattern": "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "unresolved_references": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "title", "planning_state", "privacy_class", "provenance", "fact_state", "source_ids", "unresolved_references"], "type": "object" }, "type": "array" }, "candidate_sources": { "items": { "additionalProperties": false, "properties": { "canonical_source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "child_titles": { "additionalProperties": { "minLength": 1, "type": "string" }, "type": "object" }, "fact_state": { "$ref": "#/$defs/factState" }, "id": { "pattern": "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "planning_state": { "enum": ["longlist", "shortlist", "selected", "rejected", "promoted"] }, "possible_use": { "maxLength": 200, "minLength": 1, "type": "string" }, "privacy_class": { "const": "academic-only" }, "provenance": { "items": { "minLength": 1, "type": "string" }, "minItems": 1, "type": "array" }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "url": { "format": "uri", "type": "string" } }, "required": ["id", "title", "planning_state", "privacy_class", "provenance", "fact_state"], "type": "object" }, "type": "array" }, "comparison_ids": { "items": { "pattern": "^candidate-comparison-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "const": "master-planning-catalog" }, "revision": { "minimum": 0, "type": "integer" }, "schema_version": { "const": 1 }, "type": { "const": "master-planning-catalog" }, "updated_at": { "format": "date-time", "type": "string" } }, "required": ["schema_version", "id", "type", "revision", "updated_at", "candidate_modules", "candidate_sources", "comparison_ids"], "title": "Sanitized prospective Master's Planning catalog", "type": "object", "x-governs": "record" };
     var schema42 = { "additionalProperties": false, "properties": { "as_of": { "format": "date", "type": ["string", "null"] }, "evidence": { "items": { "minLength": 1, "type": "string" }, "type": "array" }, "status": { "enum": ["unverified", "verified-current", "stale", "conflicting"] } }, "required": ["status", "as_of", "evidence"], "type": "object" };
     var func13 = Object.prototype.hasOwnProperty;
@@ -25795,10 +25795,10 @@ var require_responses_validator = __commonJS({
       return errors === 0;
     }
     validate45.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    function validate77(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate80(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate77.evaluated;
+      const evaluated0 = validate80.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -25847,7 +25847,7 @@ var require_responses_validator = __commonJS({
                   vErrors.push(err1);
                 }
                 errors++;
-                validate77.errors = vErrors;
+                validate80.errors = vErrors;
                 return false;
               } else {
                 errors = _errs4;
@@ -25883,7 +25883,7 @@ var require_responses_validator = __commonJS({
                       }
                     }
                   } else {
-                    validate77.errors = [{ instancePath: instancePath + "/comparisons", schemaPath: "#/allOf/1/properties/comparisons/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                    validate80.errors = [{ instancePath: instancePath + "/comparisons", schemaPath: "#/allOf/1/properties/comparisons/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                     return false;
                   }
                 }
@@ -25898,11 +25898,11 @@ var require_responses_validator = __commonJS({
                   if (errors === _errs11) {
                     if (typeof data3 === "string") {
                       if (!pattern8.test(data3)) {
-                        validate77.errors = [{ instancePath: instancePath + "/opened_at", schemaPath: "#/allOf/1/properties/opened_at/pattern", keyword: "pattern", params: { pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }, message: 'must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"' }];
+                        validate80.errors = [{ instancePath: instancePath + "/opened_at", schemaPath: "#/allOf/1/properties/opened_at/pattern", keyword: "pattern", params: { pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }, message: 'must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"' }];
                         return false;
                       }
                     } else {
-                      validate77.errors = [{ instancePath: instancePath + "/opened_at", schemaPath: "#/allOf/1/properties/opened_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                      validate80.errors = [{ instancePath: instancePath + "/opened_at", schemaPath: "#/allOf/1/properties/opened_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                       return false;
                     }
                   }
@@ -25913,22 +25913,22 @@ var require_responses_validator = __commonJS({
               }
             }
           } else {
-            validate77.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+            validate80.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
             return false;
           }
         }
         var valid0 = _errs1 === errors;
       }
-      validate77.errors = vErrors;
+      validate80.errors = vErrors;
       return errors === 0;
     }
-    validate77.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateOperationsListV1 = validate81;
+    validate80.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateOperationsListV1 = validate84;
     var schema56 = { "additionalProperties": false, "properties": { "attempts": { "type": "number" }, "canonical_outcome": { "enum": ["COMMITTED", "NOT_COMMITTED", "AMBIGUOUS"] }, "capability": { "type": "string" }, "duration_ms": { "type": ["number", "null"] }, "first_failure_stage": { "type": ["string", "null"] }, "needs_attention": { "type": "boolean" }, "recovery_requirement": { "enum": ["none", "verify-observation", "reconcile-exact-request"] }, "replayed": { "type": "boolean" }, "request_id": { "type": ["string", "null"] }, "started_at": { "type": ["number", "null"] }, "trace_id": { "type": "string" } }, "required": ["trace_id", "request_id", "capability", "started_at", "duration_ms", "attempts", "replayed", "first_failure_stage", "canonical_outcome", "recovery_requirement", "needs_attention"], "type": "object" };
-    function validate81(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate84(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate81.evaluated;
+      const evaluated0 = validate84.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -25939,13 +25939,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.operations === void 0 && (missing0 = "operations")) {
-            validate81.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate84.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             const _errs1 = errors;
             for (const key0 in data) {
               if (!(key0 === "operations")) {
-                validate81.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                validate84.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
                 return false;
                 break;
               }
@@ -25966,13 +25966,13 @@ var require_responses_validator = __commonJS({
                         if (data1 && typeof data1 == "object" && !Array.isArray(data1)) {
                           let missing1;
                           if (data1.trace_id === void 0 && (missing1 = "trace_id") || data1.request_id === void 0 && (missing1 = "request_id") || data1.capability === void 0 && (missing1 = "capability") || data1.started_at === void 0 && (missing1 = "started_at") || data1.duration_ms === void 0 && (missing1 = "duration_ms") || data1.attempts === void 0 && (missing1 = "attempts") || data1.replayed === void 0 && (missing1 = "replayed") || data1.first_failure_stage === void 0 && (missing1 = "first_failure_stage") || data1.canonical_outcome === void 0 && (missing1 = "canonical_outcome") || data1.recovery_requirement === void 0 && (missing1 = "recovery_requirement") || data1.needs_attention === void 0 && (missing1 = "needs_attention")) {
-                            validate81.errors = [{ instancePath: instancePath + "/operations/" + i0, schemaPath: "#/$defs/OperationRowV1/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                            validate84.errors = [{ instancePath: instancePath + "/operations/" + i0, schemaPath: "#/$defs/OperationRowV1/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                             return false;
                           } else {
                             const _errs7 = errors;
                             for (const key1 in data1) {
                               if (!func13.call(schema56.properties, key1)) {
-                                validate81.errors = [{ instancePath: instancePath + "/operations/" + i0, schemaPath: "#/$defs/OperationRowV1/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
+                                validate84.errors = [{ instancePath: instancePath + "/operations/" + i0, schemaPath: "#/$defs/OperationRowV1/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
                                 return false;
                                 break;
                               }
@@ -25982,7 +25982,7 @@ var require_responses_validator = __commonJS({
                                 let data2 = data1.attempts;
                                 const _errs8 = errors;
                                 if (!(typeof data2 == "number" && isFinite(data2))) {
-                                  validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/attempts", schemaPath: "#/$defs/OperationRowV1/properties/attempts/type", keyword: "type", params: { type: "number" }, message: "must be number" }];
+                                  validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/attempts", schemaPath: "#/$defs/OperationRowV1/properties/attempts/type", keyword: "type", params: { type: "number" }, message: "must be number" }];
                                   return false;
                                 }
                                 var valid3 = _errs8 === errors;
@@ -25994,7 +25994,7 @@ var require_responses_validator = __commonJS({
                                   let data3 = data1.canonical_outcome;
                                   const _errs10 = errors;
                                   if (!(data3 === "COMMITTED" || data3 === "NOT_COMMITTED" || data3 === "AMBIGUOUS")) {
-                                    validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/canonical_outcome", schemaPath: "#/$defs/OperationRowV1/properties/canonical_outcome/enum", keyword: "enum", params: { allowedValues: schema56.properties.canonical_outcome.enum }, message: "must be equal to one of the allowed values" }];
+                                    validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/canonical_outcome", schemaPath: "#/$defs/OperationRowV1/properties/canonical_outcome/enum", keyword: "enum", params: { allowedValues: schema56.properties.canonical_outcome.enum }, message: "must be equal to one of the allowed values" }];
                                     return false;
                                   }
                                   var valid3 = _errs10 === errors;
@@ -26005,7 +26005,7 @@ var require_responses_validator = __commonJS({
                                   if (data1.capability !== void 0) {
                                     const _errs11 = errors;
                                     if (typeof data1.capability !== "string") {
-                                      validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/capability", schemaPath: "#/$defs/OperationRowV1/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                      validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/capability", schemaPath: "#/$defs/OperationRowV1/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                       return false;
                                     }
                                     var valid3 = _errs11 === errors;
@@ -26017,7 +26017,7 @@ var require_responses_validator = __commonJS({
                                       let data5 = data1.duration_ms;
                                       const _errs13 = errors;
                                       if (!(typeof data5 == "number" && isFinite(data5)) && data5 !== null) {
-                                        validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/duration_ms", schemaPath: "#/$defs/OperationRowV1/properties/duration_ms/type", keyword: "type", params: { type: schema56.properties.duration_ms.type }, message: "must be number,null" }];
+                                        validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/duration_ms", schemaPath: "#/$defs/OperationRowV1/properties/duration_ms/type", keyword: "type", params: { type: schema56.properties.duration_ms.type }, message: "must be number,null" }];
                                         return false;
                                       }
                                       var valid3 = _errs13 === errors;
@@ -26029,7 +26029,7 @@ var require_responses_validator = __commonJS({
                                         let data6 = data1.first_failure_stage;
                                         const _errs15 = errors;
                                         if (typeof data6 !== "string" && data6 !== null) {
-                                          validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/first_failure_stage", schemaPath: "#/$defs/OperationRowV1/properties/first_failure_stage/type", keyword: "type", params: { type: schema56.properties.first_failure_stage.type }, message: "must be string,null" }];
+                                          validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/first_failure_stage", schemaPath: "#/$defs/OperationRowV1/properties/first_failure_stage/type", keyword: "type", params: { type: schema56.properties.first_failure_stage.type }, message: "must be string,null" }];
                                           return false;
                                         }
                                         var valid3 = _errs15 === errors;
@@ -26040,7 +26040,7 @@ var require_responses_validator = __commonJS({
                                         if (data1.needs_attention !== void 0) {
                                           const _errs17 = errors;
                                           if (typeof data1.needs_attention !== "boolean") {
-                                            validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/needs_attention", schemaPath: "#/$defs/OperationRowV1/properties/needs_attention/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                                            validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/needs_attention", schemaPath: "#/$defs/OperationRowV1/properties/needs_attention/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                             return false;
                                           }
                                           var valid3 = _errs17 === errors;
@@ -26052,7 +26052,7 @@ var require_responses_validator = __commonJS({
                                             let data8 = data1.recovery_requirement;
                                             const _errs19 = errors;
                                             if (!(data8 === "none" || data8 === "verify-observation" || data8 === "reconcile-exact-request")) {
-                                              validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/recovery_requirement", schemaPath: "#/$defs/OperationRowV1/properties/recovery_requirement/enum", keyword: "enum", params: { allowedValues: schema56.properties.recovery_requirement.enum }, message: "must be equal to one of the allowed values" }];
+                                              validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/recovery_requirement", schemaPath: "#/$defs/OperationRowV1/properties/recovery_requirement/enum", keyword: "enum", params: { allowedValues: schema56.properties.recovery_requirement.enum }, message: "must be equal to one of the allowed values" }];
                                               return false;
                                             }
                                             var valid3 = _errs19 === errors;
@@ -26063,7 +26063,7 @@ var require_responses_validator = __commonJS({
                                             if (data1.replayed !== void 0) {
                                               const _errs20 = errors;
                                               if (typeof data1.replayed !== "boolean") {
-                                                validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/replayed", schemaPath: "#/$defs/OperationRowV1/properties/replayed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                                                validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/replayed", schemaPath: "#/$defs/OperationRowV1/properties/replayed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                                 return false;
                                               }
                                               var valid3 = _errs20 === errors;
@@ -26075,7 +26075,7 @@ var require_responses_validator = __commonJS({
                                                 let data10 = data1.request_id;
                                                 const _errs22 = errors;
                                                 if (typeof data10 !== "string" && data10 !== null) {
-                                                  validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/request_id", schemaPath: "#/$defs/OperationRowV1/properties/request_id/type", keyword: "type", params: { type: schema56.properties.request_id.type }, message: "must be string,null" }];
+                                                  validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/request_id", schemaPath: "#/$defs/OperationRowV1/properties/request_id/type", keyword: "type", params: { type: schema56.properties.request_id.type }, message: "must be string,null" }];
                                                   return false;
                                                 }
                                                 var valid3 = _errs22 === errors;
@@ -26087,7 +26087,7 @@ var require_responses_validator = __commonJS({
                                                   let data11 = data1.started_at;
                                                   const _errs24 = errors;
                                                   if (!(typeof data11 == "number" && isFinite(data11)) && data11 !== null) {
-                                                    validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/started_at", schemaPath: "#/$defs/OperationRowV1/properties/started_at/type", keyword: "type", params: { type: schema56.properties.started_at.type }, message: "must be number,null" }];
+                                                    validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/started_at", schemaPath: "#/$defs/OperationRowV1/properties/started_at/type", keyword: "type", params: { type: schema56.properties.started_at.type }, message: "must be number,null" }];
                                                     return false;
                                                   }
                                                   var valid3 = _errs24 === errors;
@@ -26098,7 +26098,7 @@ var require_responses_validator = __commonJS({
                                                   if (data1.trace_id !== void 0) {
                                                     const _errs26 = errors;
                                                     if (typeof data1.trace_id !== "string") {
-                                                      validate81.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/trace_id", schemaPath: "#/$defs/OperationRowV1/properties/trace_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                      validate84.errors = [{ instancePath: instancePath + "/operations/" + i0 + "/trace_id", schemaPath: "#/$defs/OperationRowV1/properties/trace_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                       return false;
                                                     }
                                                     var valid3 = _errs26 === errors;
@@ -26118,7 +26118,7 @@ var require_responses_validator = __commonJS({
                             }
                           }
                         } else {
-                          validate81.errors = [{ instancePath: instancePath + "/operations/" + i0, schemaPath: "#/$defs/OperationRowV1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                          validate84.errors = [{ instancePath: instancePath + "/operations/" + i0, schemaPath: "#/$defs/OperationRowV1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                           return false;
                         }
                       }
@@ -26128,7 +26128,7 @@ var require_responses_validator = __commonJS({
                       }
                     }
                   } else {
-                    validate81.errors = [{ instancePath: instancePath + "/operations", schemaPath: "#/properties/operations/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                    validate84.errors = [{ instancePath: instancePath + "/operations", schemaPath: "#/properties/operations/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                     return false;
                   }
                 }
@@ -26136,15 +26136,15 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate81.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate84.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate81.errors = vErrors;
+      validate84.errors = vErrors;
       return errors === 0;
     }
-    validate81.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateOperationDetailV1 = validate82;
+    validate84.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateOperationDetailV1 = validate85;
     var schema57 = { "additionalProperties": false, "properties": { "capability": { "type": "string" }, "diagnosis": { "$ref": "#/$defs/OperationDiagnosisV1" }, "facts": { "$ref": "#/$defs/OperationFactsV1" }, "observed_snapshot": { "type": ["string", "null"] }, "request_id": { "type": "string" }, "timeline": { "items": { "$ref": "#/$defs/OperationTimelineRowV1" }, "type": "array" }, "ui_outcome": { "enum": ["SETTLED", "REFUSED", "BLOCKED"] } }, "required": ["request_id", "capability", "diagnosis", "timeline", "observed_snapshot", "ui_outcome", "facts"], "type": "object" };
     var schema60 = { "additionalProperties": false, "properties": { "receipt_path": { "type": ["string", "null"] }, "snapshot_after": { "type": ["string", "null"] }, "snapshot_before": { "type": ["string", "null"] }, "transaction_id": { "type": ["string", "null"] } }, "required": ["transaction_id", "receipt_path", "snapshot_before", "snapshot_after"], "type": "object" };
     var schema61 = { "additionalProperties": false, "properties": { "detail": { "type": ["string", "null"] }, "stage": { "type": "string" }, "state": { "enum": ["passed", "failed", "skipped", "missing"] } }, "required": ["stage", "state", "detail"], "type": "object" };
@@ -26391,10 +26391,10 @@ var require_responses_validator = __commonJS({
       return errors === 0;
     }
     validate52.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    function validate82(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate85(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate82.evaluated;
+      const evaluated0 = validate85.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -26405,13 +26405,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.request_id === void 0 && (missing0 = "request_id") || data.capability === void 0 && (missing0 = "capability") || data.diagnosis === void 0 && (missing0 = "diagnosis") || data.timeline === void 0 && (missing0 = "timeline") || data.observed_snapshot === void 0 && (missing0 = "observed_snapshot") || data.ui_outcome === void 0 && (missing0 = "ui_outcome") || data.facts === void 0 && (missing0 = "facts")) {
-            validate82.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate85.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             const _errs1 = errors;
             for (const key0 in data) {
               if (!(key0 === "capability" || key0 === "diagnosis" || key0 === "facts" || key0 === "observed_snapshot" || key0 === "request_id" || key0 === "timeline" || key0 === "ui_outcome")) {
-                validate82.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                validate85.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
                 return false;
                 break;
               }
@@ -26420,7 +26420,7 @@ var require_responses_validator = __commonJS({
               if (data.capability !== void 0) {
                 const _errs2 = errors;
                 if (typeof data.capability !== "string") {
-                  validate82.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                  validate85.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                   return false;
                 }
                 var valid0 = _errs2 === errors;
@@ -26447,13 +26447,13 @@ var require_responses_validator = __commonJS({
                       if (data2 && typeof data2 == "object" && !Array.isArray(data2)) {
                         let missing1;
                         if (data2.transaction_id === void 0 && (missing1 = "transaction_id") || data2.receipt_path === void 0 && (missing1 = "receipt_path") || data2.snapshot_before === void 0 && (missing1 = "snapshot_before") || data2.snapshot_after === void 0 && (missing1 = "snapshot_after")) {
-                          validate82.errors = [{ instancePath: instancePath + "/facts", schemaPath: "#/$defs/OperationFactsV1/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                          validate85.errors = [{ instancePath: instancePath + "/facts", schemaPath: "#/$defs/OperationFactsV1/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                           return false;
                         } else {
                           const _errs8 = errors;
                           for (const key1 in data2) {
                             if (!(key1 === "receipt_path" || key1 === "snapshot_after" || key1 === "snapshot_before" || key1 === "transaction_id")) {
-                              validate82.errors = [{ instancePath: instancePath + "/facts", schemaPath: "#/$defs/OperationFactsV1/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
+                              validate85.errors = [{ instancePath: instancePath + "/facts", schemaPath: "#/$defs/OperationFactsV1/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
                               return false;
                               break;
                             }
@@ -26463,7 +26463,7 @@ var require_responses_validator = __commonJS({
                               let data3 = data2.receipt_path;
                               const _errs9 = errors;
                               if (typeof data3 !== "string" && data3 !== null) {
-                                validate82.errors = [{ instancePath: instancePath + "/facts/receipt_path", schemaPath: "#/$defs/OperationFactsV1/properties/receipt_path/type", keyword: "type", params: { type: schema60.properties.receipt_path.type }, message: "must be string,null" }];
+                                validate85.errors = [{ instancePath: instancePath + "/facts/receipt_path", schemaPath: "#/$defs/OperationFactsV1/properties/receipt_path/type", keyword: "type", params: { type: schema60.properties.receipt_path.type }, message: "must be string,null" }];
                                 return false;
                               }
                               var valid2 = _errs9 === errors;
@@ -26475,7 +26475,7 @@ var require_responses_validator = __commonJS({
                                 let data4 = data2.snapshot_after;
                                 const _errs11 = errors;
                                 if (typeof data4 !== "string" && data4 !== null) {
-                                  validate82.errors = [{ instancePath: instancePath + "/facts/snapshot_after", schemaPath: "#/$defs/OperationFactsV1/properties/snapshot_after/type", keyword: "type", params: { type: schema60.properties.snapshot_after.type }, message: "must be string,null" }];
+                                  validate85.errors = [{ instancePath: instancePath + "/facts/snapshot_after", schemaPath: "#/$defs/OperationFactsV1/properties/snapshot_after/type", keyword: "type", params: { type: schema60.properties.snapshot_after.type }, message: "must be string,null" }];
                                   return false;
                                 }
                                 var valid2 = _errs11 === errors;
@@ -26487,7 +26487,7 @@ var require_responses_validator = __commonJS({
                                   let data5 = data2.snapshot_before;
                                   const _errs13 = errors;
                                   if (typeof data5 !== "string" && data5 !== null) {
-                                    validate82.errors = [{ instancePath: instancePath + "/facts/snapshot_before", schemaPath: "#/$defs/OperationFactsV1/properties/snapshot_before/type", keyword: "type", params: { type: schema60.properties.snapshot_before.type }, message: "must be string,null" }];
+                                    validate85.errors = [{ instancePath: instancePath + "/facts/snapshot_before", schemaPath: "#/$defs/OperationFactsV1/properties/snapshot_before/type", keyword: "type", params: { type: schema60.properties.snapshot_before.type }, message: "must be string,null" }];
                                     return false;
                                   }
                                   var valid2 = _errs13 === errors;
@@ -26499,7 +26499,7 @@ var require_responses_validator = __commonJS({
                                     let data6 = data2.transaction_id;
                                     const _errs15 = errors;
                                     if (typeof data6 !== "string" && data6 !== null) {
-                                      validate82.errors = [{ instancePath: instancePath + "/facts/transaction_id", schemaPath: "#/$defs/OperationFactsV1/properties/transaction_id/type", keyword: "type", params: { type: schema60.properties.transaction_id.type }, message: "must be string,null" }];
+                                      validate85.errors = [{ instancePath: instancePath + "/facts/transaction_id", schemaPath: "#/$defs/OperationFactsV1/properties/transaction_id/type", keyword: "type", params: { type: schema60.properties.transaction_id.type }, message: "must be string,null" }];
                                       return false;
                                     }
                                     var valid2 = _errs15 === errors;
@@ -26512,7 +26512,7 @@ var require_responses_validator = __commonJS({
                           }
                         }
                       } else {
-                        validate82.errors = [{ instancePath: instancePath + "/facts", schemaPath: "#/$defs/OperationFactsV1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                        validate85.errors = [{ instancePath: instancePath + "/facts", schemaPath: "#/$defs/OperationFactsV1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                         return false;
                       }
                     }
@@ -26525,7 +26525,7 @@ var require_responses_validator = __commonJS({
                       let data7 = data.observed_snapshot;
                       const _errs17 = errors;
                       if (typeof data7 !== "string" && data7 !== null) {
-                        validate82.errors = [{ instancePath: instancePath + "/observed_snapshot", schemaPath: "#/properties/observed_snapshot/type", keyword: "type", params: { type: schema57.properties.observed_snapshot.type }, message: "must be string,null" }];
+                        validate85.errors = [{ instancePath: instancePath + "/observed_snapshot", schemaPath: "#/properties/observed_snapshot/type", keyword: "type", params: { type: schema57.properties.observed_snapshot.type }, message: "must be string,null" }];
                         return false;
                       }
                       var valid0 = _errs17 === errors;
@@ -26536,7 +26536,7 @@ var require_responses_validator = __commonJS({
                       if (data.request_id !== void 0) {
                         const _errs19 = errors;
                         if (typeof data.request_id !== "string") {
-                          validate82.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                          validate85.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                           return false;
                         }
                         var valid0 = _errs19 === errors;
@@ -26559,13 +26559,13 @@ var require_responses_validator = __commonJS({
                                   if (data10 && typeof data10 == "object" && !Array.isArray(data10)) {
                                     let missing2;
                                     if (data10.stage === void 0 && (missing2 = "stage") || data10.state === void 0 && (missing2 = "state") || data10.detail === void 0 && (missing2 = "detail")) {
-                                      validate82.errors = [{ instancePath: instancePath + "/timeline/" + i0, schemaPath: "#/$defs/OperationTimelineRowV1/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
+                                      validate85.errors = [{ instancePath: instancePath + "/timeline/" + i0, schemaPath: "#/$defs/OperationTimelineRowV1/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
                                       return false;
                                     } else {
                                       const _errs26 = errors;
                                       for (const key2 in data10) {
                                         if (!(key2 === "detail" || key2 === "stage" || key2 === "state")) {
-                                          validate82.errors = [{ instancePath: instancePath + "/timeline/" + i0, schemaPath: "#/$defs/OperationTimelineRowV1/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" }];
+                                          validate85.errors = [{ instancePath: instancePath + "/timeline/" + i0, schemaPath: "#/$defs/OperationTimelineRowV1/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" }];
                                           return false;
                                           break;
                                         }
@@ -26575,7 +26575,7 @@ var require_responses_validator = __commonJS({
                                           let data11 = data10.detail;
                                           const _errs27 = errors;
                                           if (typeof data11 !== "string" && data11 !== null) {
-                                            validate82.errors = [{ instancePath: instancePath + "/timeline/" + i0 + "/detail", schemaPath: "#/$defs/OperationTimelineRowV1/properties/detail/type", keyword: "type", params: { type: schema61.properties.detail.type }, message: "must be string,null" }];
+                                            validate85.errors = [{ instancePath: instancePath + "/timeline/" + i0 + "/detail", schemaPath: "#/$defs/OperationTimelineRowV1/properties/detail/type", keyword: "type", params: { type: schema61.properties.detail.type }, message: "must be string,null" }];
                                             return false;
                                           }
                                           var valid5 = _errs27 === errors;
@@ -26586,7 +26586,7 @@ var require_responses_validator = __commonJS({
                                           if (data10.stage !== void 0) {
                                             const _errs29 = errors;
                                             if (typeof data10.stage !== "string") {
-                                              validate82.errors = [{ instancePath: instancePath + "/timeline/" + i0 + "/stage", schemaPath: "#/$defs/OperationTimelineRowV1/properties/stage/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate85.errors = [{ instancePath: instancePath + "/timeline/" + i0 + "/stage", schemaPath: "#/$defs/OperationTimelineRowV1/properties/stage/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
                                             }
                                             var valid5 = _errs29 === errors;
@@ -26598,7 +26598,7 @@ var require_responses_validator = __commonJS({
                                               let data13 = data10.state;
                                               const _errs31 = errors;
                                               if (!(data13 === "passed" || data13 === "failed" || data13 === "skipped" || data13 === "missing")) {
-                                                validate82.errors = [{ instancePath: instancePath + "/timeline/" + i0 + "/state", schemaPath: "#/$defs/OperationTimelineRowV1/properties/state/enum", keyword: "enum", params: { allowedValues: schema61.properties.state.enum }, message: "must be equal to one of the allowed values" }];
+                                                validate85.errors = [{ instancePath: instancePath + "/timeline/" + i0 + "/state", schemaPath: "#/$defs/OperationTimelineRowV1/properties/state/enum", keyword: "enum", params: { allowedValues: schema61.properties.state.enum }, message: "must be equal to one of the allowed values" }];
                                                 return false;
                                               }
                                               var valid5 = _errs31 === errors;
@@ -26610,7 +26610,7 @@ var require_responses_validator = __commonJS({
                                       }
                                     }
                                   } else {
-                                    validate82.errors = [{ instancePath: instancePath + "/timeline/" + i0, schemaPath: "#/$defs/OperationTimelineRowV1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                    validate85.errors = [{ instancePath: instancePath + "/timeline/" + i0, schemaPath: "#/$defs/OperationTimelineRowV1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                     return false;
                                   }
                                 }
@@ -26620,7 +26620,7 @@ var require_responses_validator = __commonJS({
                                 }
                               }
                             } else {
-                              validate82.errors = [{ instancePath: instancePath + "/timeline", schemaPath: "#/properties/timeline/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                              validate85.errors = [{ instancePath: instancePath + "/timeline", schemaPath: "#/properties/timeline/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                               return false;
                             }
                           }
@@ -26633,7 +26633,7 @@ var require_responses_validator = __commonJS({
                             let data14 = data.ui_outcome;
                             const _errs32 = errors;
                             if (!(data14 === "SETTLED" || data14 === "REFUSED" || data14 === "BLOCKED")) {
-                              validate82.errors = [{ instancePath: instancePath + "/ui_outcome", schemaPath: "#/properties/ui_outcome/enum", keyword: "enum", params: { allowedValues: schema57.properties.ui_outcome.enum }, message: "must be equal to one of the allowed values" }];
+                              validate85.errors = [{ instancePath: instancePath + "/ui_outcome", schemaPath: "#/properties/ui_outcome/enum", keyword: "enum", params: { allowedValues: schema57.properties.ui_outcome.enum }, message: "must be equal to one of the allowed values" }];
                               return false;
                             }
                             var valid0 = _errs32 === errors;
@@ -26649,20 +26649,20 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate82.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate85.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate82.errors = vErrors;
+      validate85.errors = vErrors;
       return errors === 0;
     }
-    validate82.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateGatewaySuccessV2 = validate84;
+    validate85.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateGatewaySuccessV2 = validate87;
     var schema62 = { "additionalProperties": false, "properties": { "capability": { "pattern": "\\S", "type": "string" }, "error": { "type": "null" }, "idempotency_key": { "pattern": "\\S", "type": "string" }, "ok": { "const": true }, "receipt_path": { "pattern": "\\S", "type": "string" }, "replayed": { "type": "boolean" }, "request_id": { "pattern": "\\S", "type": "string" }, "result": { "type": "object" }, "schema_version": { "const": 2 }, "snapshot_after": { "pattern": "^sha256:[a-f0-9]{64}$", "type": "string" }, "transaction_id": { "pattern": "\\S", "type": "string" } }, "required": ["schema_version", "request_id", "idempotency_key", "capability", "replayed", "result", "ok", "transaction_id", "receipt_path", "snapshot_after", "error"], "type": "object" };
-    function validate84(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate87(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate84.evaluated;
+      const evaluated0 = validate87.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -26673,13 +26673,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.schema_version === void 0 && (missing0 = "schema_version") || data.request_id === void 0 && (missing0 = "request_id") || data.idempotency_key === void 0 && (missing0 = "idempotency_key") || data.capability === void 0 && (missing0 = "capability") || data.replayed === void 0 && (missing0 = "replayed") || data.result === void 0 && (missing0 = "result") || data.ok === void 0 && (missing0 = "ok") || data.transaction_id === void 0 && (missing0 = "transaction_id") || data.receipt_path === void 0 && (missing0 = "receipt_path") || data.snapshot_after === void 0 && (missing0 = "snapshot_after") || data.error === void 0 && (missing0 = "error")) {
-            validate84.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate87.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             const _errs1 = errors;
             for (const key0 in data) {
               if (!func13.call(schema62.properties, key0)) {
-                validate84.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                validate87.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
                 return false;
                 break;
               }
@@ -26691,11 +26691,11 @@ var require_responses_validator = __commonJS({
                 if (errors === _errs2) {
                   if (typeof data0 === "string") {
                     if (!pattern4.test(data0)) {
-                      validate84.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                      validate87.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                       return false;
                     }
                   } else {
-                    validate84.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                    validate87.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                     return false;
                   }
                 }
@@ -26707,7 +26707,7 @@ var require_responses_validator = __commonJS({
                 if (data.error !== void 0) {
                   const _errs4 = errors;
                   if (data.error !== null) {
-                    validate84.errors = [{ instancePath: instancePath + "/error", schemaPath: "#/properties/error/type", keyword: "type", params: { type: "null" }, message: "must be null" }];
+                    validate87.errors = [{ instancePath: instancePath + "/error", schemaPath: "#/properties/error/type", keyword: "type", params: { type: "null" }, message: "must be null" }];
                     return false;
                   }
                   var valid0 = _errs4 === errors;
@@ -26721,11 +26721,11 @@ var require_responses_validator = __commonJS({
                     if (errors === _errs6) {
                       if (typeof data2 === "string") {
                         if (!pattern4.test(data2)) {
-                          validate84.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                          validate87.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                           return false;
                         }
                       } else {
-                        validate84.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                        validate87.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                         return false;
                       }
                     }
@@ -26737,7 +26737,7 @@ var require_responses_validator = __commonJS({
                     if (data.ok !== void 0) {
                       const _errs8 = errors;
                       if (true !== data.ok) {
-                        validate84.errors = [{ instancePath: instancePath + "/ok", schemaPath: "#/properties/ok/const", keyword: "const", params: { allowedValue: true }, message: "must be equal to constant" }];
+                        validate87.errors = [{ instancePath: instancePath + "/ok", schemaPath: "#/properties/ok/const", keyword: "const", params: { allowedValue: true }, message: "must be equal to constant" }];
                         return false;
                       }
                       var valid0 = _errs8 === errors;
@@ -26751,11 +26751,11 @@ var require_responses_validator = __commonJS({
                         if (errors === _errs9) {
                           if (typeof data4 === "string") {
                             if (!pattern4.test(data4)) {
-                              validate84.errors = [{ instancePath: instancePath + "/receipt_path", schemaPath: "#/properties/receipt_path/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                              validate87.errors = [{ instancePath: instancePath + "/receipt_path", schemaPath: "#/properties/receipt_path/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                               return false;
                             }
                           } else {
-                            validate84.errors = [{ instancePath: instancePath + "/receipt_path", schemaPath: "#/properties/receipt_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                            validate87.errors = [{ instancePath: instancePath + "/receipt_path", schemaPath: "#/properties/receipt_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                             return false;
                           }
                         }
@@ -26767,7 +26767,7 @@ var require_responses_validator = __commonJS({
                         if (data.replayed !== void 0) {
                           const _errs11 = errors;
                           if (typeof data.replayed !== "boolean") {
-                            validate84.errors = [{ instancePath: instancePath + "/replayed", schemaPath: "#/properties/replayed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                            validate87.errors = [{ instancePath: instancePath + "/replayed", schemaPath: "#/properties/replayed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                             return false;
                           }
                           var valid0 = _errs11 === errors;
@@ -26781,11 +26781,11 @@ var require_responses_validator = __commonJS({
                             if (errors === _errs13) {
                               if (typeof data6 === "string") {
                                 if (!pattern4.test(data6)) {
-                                  validate84.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                  validate87.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                   return false;
                                 }
                               } else {
-                                validate84.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                validate87.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                 return false;
                               }
                             }
@@ -26798,7 +26798,7 @@ var require_responses_validator = __commonJS({
                               let data7 = data.result;
                               const _errs15 = errors;
                               if (!(data7 && typeof data7 == "object" && !Array.isArray(data7))) {
-                                validate84.errors = [{ instancePath: instancePath + "/result", schemaPath: "#/properties/result/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                validate87.errors = [{ instancePath: instancePath + "/result", schemaPath: "#/properties/result/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                 return false;
                               }
                               var valid0 = _errs15 === errors;
@@ -26809,7 +26809,7 @@ var require_responses_validator = __commonJS({
                               if (data.schema_version !== void 0) {
                                 const _errs17 = errors;
                                 if (2 !== data.schema_version) {
-                                  validate84.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" }];
+                                  validate87.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" }];
                                   return false;
                                 }
                                 var valid0 = _errs17 === errors;
@@ -26823,11 +26823,11 @@ var require_responses_validator = __commonJS({
                                   if (errors === _errs18) {
                                     if (typeof data9 === "string") {
                                       if (!pattern10.test(data9)) {
-                                        validate84.errors = [{ instancePath: instancePath + "/snapshot_after", schemaPath: "#/properties/snapshot_after/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                                        validate87.errors = [{ instancePath: instancePath + "/snapshot_after", schemaPath: "#/properties/snapshot_after/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                                         return false;
                                       }
                                     } else {
-                                      validate84.errors = [{ instancePath: instancePath + "/snapshot_after", schemaPath: "#/properties/snapshot_after/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                      validate87.errors = [{ instancePath: instancePath + "/snapshot_after", schemaPath: "#/properties/snapshot_after/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                       return false;
                                     }
                                   }
@@ -26842,11 +26842,11 @@ var require_responses_validator = __commonJS({
                                     if (errors === _errs20) {
                                       if (typeof data10 === "string") {
                                         if (!pattern4.test(data10)) {
-                                          validate84.errors = [{ instancePath: instancePath + "/transaction_id", schemaPath: "#/properties/transaction_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                          validate87.errors = [{ instancePath: instancePath + "/transaction_id", schemaPath: "#/properties/transaction_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                           return false;
                                         }
                                       } else {
-                                        validate84.errors = [{ instancePath: instancePath + "/transaction_id", schemaPath: "#/properties/transaction_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                        validate87.errors = [{ instancePath: instancePath + "/transaction_id", schemaPath: "#/properties/transaction_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                         return false;
                                       }
                                     }
@@ -26867,20 +26867,20 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate84.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate87.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate84.errors = vErrors;
+      validate87.errors = vErrors;
       return errors === 0;
     }
-    validate84.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateGatewayFailureV2 = validate85;
+    validate87.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateGatewayFailureV2 = validate88;
     var schema63 = { "additionalProperties": false, "properties": { "capability": { "pattern": "\\S", "type": "string" }, "error": { "$ref": "#/$defs/GatewayErrorBodyV2" }, "idempotency_key": { "pattern": "\\S", "type": "string" }, "ok": { "const": false }, "receipt_path": { "type": "null" }, "replayed": { "type": "boolean" }, "request_id": { "pattern": "\\S", "type": "string" }, "result": { "type": "object" }, "schema_version": { "const": 2 }, "snapshot_after": { "type": "null" }, "transaction_id": { "type": "null" } }, "required": ["schema_version", "request_id", "idempotency_key", "capability", "replayed", "result", "ok", "transaction_id", "receipt_path", "snapshot_after", "error"], "type": "object" };
-    function validate85(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate88(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate85.evaluated;
+      const evaluated0 = validate88.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -26891,13 +26891,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.schema_version === void 0 && (missing0 = "schema_version") || data.request_id === void 0 && (missing0 = "request_id") || data.idempotency_key === void 0 && (missing0 = "idempotency_key") || data.capability === void 0 && (missing0 = "capability") || data.replayed === void 0 && (missing0 = "replayed") || data.result === void 0 && (missing0 = "result") || data.ok === void 0 && (missing0 = "ok") || data.transaction_id === void 0 && (missing0 = "transaction_id") || data.receipt_path === void 0 && (missing0 = "receipt_path") || data.snapshot_after === void 0 && (missing0 = "snapshot_after") || data.error === void 0 && (missing0 = "error")) {
-            validate85.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate88.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             const _errs1 = errors;
             for (const key0 in data) {
               if (!func13.call(schema63.properties, key0)) {
-                validate85.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                validate88.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
                 return false;
                 break;
               }
@@ -26909,11 +26909,11 @@ var require_responses_validator = __commonJS({
                 if (errors === _errs2) {
                   if (typeof data0 === "string") {
                     if (!pattern4.test(data0)) {
-                      validate85.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                      validate88.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                       return false;
                     }
                   } else {
-                    validate85.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                    validate88.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                     return false;
                   }
                 }
@@ -26930,13 +26930,13 @@ var require_responses_validator = __commonJS({
                     if (data1 && typeof data1 == "object" && !Array.isArray(data1)) {
                       let missing1;
                       if (data1.code === void 0 && (missing1 = "code") || data1.message === void 0 && (missing1 = "message") || data1.retryable === void 0 && (missing1 = "retryable") || data1.details === void 0 && (missing1 = "details")) {
-                        validate85.errors = [{ instancePath: instancePath + "/error", schemaPath: "#/$defs/GatewayErrorBodyV2/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                        validate88.errors = [{ instancePath: instancePath + "/error", schemaPath: "#/$defs/GatewayErrorBodyV2/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                         return false;
                       } else {
                         const _errs7 = errors;
                         for (const key1 in data1) {
                           if (!(key1 === "code" || key1 === "details" || key1 === "message" || key1 === "retryable")) {
-                            validate85.errors = [{ instancePath: instancePath + "/error", schemaPath: "#/$defs/GatewayErrorBodyV2/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
+                            validate88.errors = [{ instancePath: instancePath + "/error", schemaPath: "#/$defs/GatewayErrorBodyV2/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
                             return false;
                             break;
                           }
@@ -26948,11 +26948,11 @@ var require_responses_validator = __commonJS({
                             if (errors === _errs8) {
                               if (typeof data2 === "string") {
                                 if (!pattern4.test(data2)) {
-                                  validate85.errors = [{ instancePath: instancePath + "/error/code", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/code/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                  validate88.errors = [{ instancePath: instancePath + "/error/code", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/code/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                   return false;
                                 }
                               } else {
-                                validate85.errors = [{ instancePath: instancePath + "/error/code", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/code/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                validate88.errors = [{ instancePath: instancePath + "/error/code", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/code/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                 return false;
                               }
                             }
@@ -26965,7 +26965,7 @@ var require_responses_validator = __commonJS({
                               let data3 = data1.details;
                               const _errs10 = errors;
                               if (!(data3 && typeof data3 == "object" && !Array.isArray(data3))) {
-                                validate85.errors = [{ instancePath: instancePath + "/error/details", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/details/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                validate88.errors = [{ instancePath: instancePath + "/error/details", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/details/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                 return false;
                               }
                               var valid2 = _errs10 === errors;
@@ -26979,11 +26979,11 @@ var require_responses_validator = __commonJS({
                                 if (errors === _errs12) {
                                   if (typeof data4 === "string") {
                                     if (!pattern4.test(data4)) {
-                                      validate85.errors = [{ instancePath: instancePath + "/error/message", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/message/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                      validate88.errors = [{ instancePath: instancePath + "/error/message", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/message/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                       return false;
                                     }
                                   } else {
-                                    validate85.errors = [{ instancePath: instancePath + "/error/message", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/message/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                    validate88.errors = [{ instancePath: instancePath + "/error/message", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/message/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                     return false;
                                   }
                                 }
@@ -26995,7 +26995,7 @@ var require_responses_validator = __commonJS({
                                 if (data1.retryable !== void 0) {
                                   const _errs14 = errors;
                                   if (typeof data1.retryable !== "boolean") {
-                                    validate85.errors = [{ instancePath: instancePath + "/error/retryable", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/retryable/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                                    validate88.errors = [{ instancePath: instancePath + "/error/retryable", schemaPath: "#/$defs/GatewayErrorBodyV2/properties/retryable/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                     return false;
                                   }
                                   var valid2 = _errs14 === errors;
@@ -27008,7 +27008,7 @@ var require_responses_validator = __commonJS({
                         }
                       }
                     } else {
-                      validate85.errors = [{ instancePath: instancePath + "/error", schemaPath: "#/$defs/GatewayErrorBodyV2/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                      validate88.errors = [{ instancePath: instancePath + "/error", schemaPath: "#/$defs/GatewayErrorBodyV2/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                       return false;
                     }
                   }
@@ -27023,11 +27023,11 @@ var require_responses_validator = __commonJS({
                     if (errors === _errs16) {
                       if (typeof data6 === "string") {
                         if (!pattern4.test(data6)) {
-                          validate85.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                          validate88.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                           return false;
                         }
                       } else {
-                        validate85.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                        validate88.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                         return false;
                       }
                     }
@@ -27039,7 +27039,7 @@ var require_responses_validator = __commonJS({
                     if (data.ok !== void 0) {
                       const _errs18 = errors;
                       if (false !== data.ok) {
-                        validate85.errors = [{ instancePath: instancePath + "/ok", schemaPath: "#/properties/ok/const", keyword: "const", params: { allowedValue: false }, message: "must be equal to constant" }];
+                        validate88.errors = [{ instancePath: instancePath + "/ok", schemaPath: "#/properties/ok/const", keyword: "const", params: { allowedValue: false }, message: "must be equal to constant" }];
                         return false;
                       }
                       var valid0 = _errs18 === errors;
@@ -27050,7 +27050,7 @@ var require_responses_validator = __commonJS({
                       if (data.receipt_path !== void 0) {
                         const _errs19 = errors;
                         if (data.receipt_path !== null) {
-                          validate85.errors = [{ instancePath: instancePath + "/receipt_path", schemaPath: "#/properties/receipt_path/type", keyword: "type", params: { type: "null" }, message: "must be null" }];
+                          validate88.errors = [{ instancePath: instancePath + "/receipt_path", schemaPath: "#/properties/receipt_path/type", keyword: "type", params: { type: "null" }, message: "must be null" }];
                           return false;
                         }
                         var valid0 = _errs19 === errors;
@@ -27061,7 +27061,7 @@ var require_responses_validator = __commonJS({
                         if (data.replayed !== void 0) {
                           const _errs21 = errors;
                           if (typeof data.replayed !== "boolean") {
-                            validate85.errors = [{ instancePath: instancePath + "/replayed", schemaPath: "#/properties/replayed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                            validate88.errors = [{ instancePath: instancePath + "/replayed", schemaPath: "#/properties/replayed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                             return false;
                           }
                           var valid0 = _errs21 === errors;
@@ -27075,11 +27075,11 @@ var require_responses_validator = __commonJS({
                             if (errors === _errs23) {
                               if (typeof data10 === "string") {
                                 if (!pattern4.test(data10)) {
-                                  validate85.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                  validate88.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                   return false;
                                 }
                               } else {
-                                validate85.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                validate88.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                 return false;
                               }
                             }
@@ -27092,7 +27092,7 @@ var require_responses_validator = __commonJS({
                               let data11 = data.result;
                               const _errs25 = errors;
                               if (!(data11 && typeof data11 == "object" && !Array.isArray(data11))) {
-                                validate85.errors = [{ instancePath: instancePath + "/result", schemaPath: "#/properties/result/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                validate88.errors = [{ instancePath: instancePath + "/result", schemaPath: "#/properties/result/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                 return false;
                               }
                               var valid0 = _errs25 === errors;
@@ -27103,7 +27103,7 @@ var require_responses_validator = __commonJS({
                               if (data.schema_version !== void 0) {
                                 const _errs27 = errors;
                                 if (2 !== data.schema_version) {
-                                  validate85.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" }];
+                                  validate88.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" }];
                                   return false;
                                 }
                                 var valid0 = _errs27 === errors;
@@ -27114,7 +27114,7 @@ var require_responses_validator = __commonJS({
                                 if (data.snapshot_after !== void 0) {
                                   const _errs28 = errors;
                                   if (data.snapshot_after !== null) {
-                                    validate85.errors = [{ instancePath: instancePath + "/snapshot_after", schemaPath: "#/properties/snapshot_after/type", keyword: "type", params: { type: "null" }, message: "must be null" }];
+                                    validate88.errors = [{ instancePath: instancePath + "/snapshot_after", schemaPath: "#/properties/snapshot_after/type", keyword: "type", params: { type: "null" }, message: "must be null" }];
                                     return false;
                                   }
                                   var valid0 = _errs28 === errors;
@@ -27125,7 +27125,7 @@ var require_responses_validator = __commonJS({
                                   if (data.transaction_id !== void 0) {
                                     const _errs30 = errors;
                                     if (data.transaction_id !== null) {
-                                      validate85.errors = [{ instancePath: instancePath + "/transaction_id", schemaPath: "#/properties/transaction_id/type", keyword: "type", params: { type: "null" }, message: "must be null" }];
+                                      validate88.errors = [{ instancePath: instancePath + "/transaction_id", schemaPath: "#/properties/transaction_id/type", keyword: "type", params: { type: "null" }, message: "must be null" }];
                                       return false;
                                     }
                                     var valid0 = _errs30 === errors;
@@ -27145,21 +27145,21 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate85.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate88.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate85.errors = vErrors;
+      validate88.errors = vErrors;
       return errors === 0;
     }
-    validate85.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateGatewayRequestV2 = validate86;
+    validate88.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateGatewayRequestV2 = validate89;
     var schema65 = { "additionalProperties": false, "properties": { "approval": { "$ref": "#/$defs/GatewayApprovalV2" }, "capability": { "pattern": "\\S", "type": "string" }, "channel": { "enum": ["ui", "codex", "operator", "system-task"] }, "expected_revisions": { "additionalProperties": { "minimum": 0, "type": "integer" }, "propertyNames": { "pattern": "\\S", "type": "string" }, "type": "object" }, "expected_snapshot": { "pattern": "^sha256:[a-f0-9]{64}$", "type": "string" }, "idempotency_key": { "pattern": "\\S", "type": "string" }, "payload": { "type": "object" }, "request_id": { "pattern": "\\S", "type": "string" }, "schema_version": { "const": 2 } }, "required": ["schema_version", "request_id", "idempotency_key", "capability", "channel", "expected_snapshot", "expected_revisions", "approval", "payload"], "type": "object" };
     var schema66 = { "additionalProperties": false, "properties": { "kind": { "enum": ["direct-user-gesture", "approved-delivery", "operator-approval"] }, "subject_sha256": { "pattern": "^sha256:[a-f0-9]{64}$", "type": "string" } }, "required": ["kind", "subject_sha256"], "type": "object" };
-    function validate86(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate89(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate86.evaluated;
+      const evaluated0 = validate89.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -27170,13 +27170,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.schema_version === void 0 && (missing0 = "schema_version") || data.request_id === void 0 && (missing0 = "request_id") || data.idempotency_key === void 0 && (missing0 = "idempotency_key") || data.capability === void 0 && (missing0 = "capability") || data.channel === void 0 && (missing0 = "channel") || data.expected_snapshot === void 0 && (missing0 = "expected_snapshot") || data.expected_revisions === void 0 && (missing0 = "expected_revisions") || data.approval === void 0 && (missing0 = "approval") || data.payload === void 0 && (missing0 = "payload")) {
-            validate86.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate89.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             const _errs1 = errors;
             for (const key0 in data) {
               if (!func13.call(schema65.properties, key0)) {
-                validate86.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                validate89.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
                 return false;
                 break;
               }
@@ -27190,13 +27190,13 @@ var require_responses_validator = __commonJS({
                   if (data0 && typeof data0 == "object" && !Array.isArray(data0)) {
                     let missing1;
                     if (data0.kind === void 0 && (missing1 = "kind") || data0.subject_sha256 === void 0 && (missing1 = "subject_sha256")) {
-                      validate86.errors = [{ instancePath: instancePath + "/approval", schemaPath: "#/$defs/GatewayApprovalV2/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                      validate89.errors = [{ instancePath: instancePath + "/approval", schemaPath: "#/$defs/GatewayApprovalV2/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                       return false;
                     } else {
                       const _errs5 = errors;
                       for (const key1 in data0) {
                         if (!(key1 === "kind" || key1 === "subject_sha256")) {
-                          validate86.errors = [{ instancePath: instancePath + "/approval", schemaPath: "#/$defs/GatewayApprovalV2/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
+                          validate89.errors = [{ instancePath: instancePath + "/approval", schemaPath: "#/$defs/GatewayApprovalV2/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
                           return false;
                           break;
                         }
@@ -27206,7 +27206,7 @@ var require_responses_validator = __commonJS({
                           let data1 = data0.kind;
                           const _errs6 = errors;
                           if (!(data1 === "direct-user-gesture" || data1 === "approved-delivery" || data1 === "operator-approval")) {
-                            validate86.errors = [{ instancePath: instancePath + "/approval/kind", schemaPath: "#/$defs/GatewayApprovalV2/properties/kind/enum", keyword: "enum", params: { allowedValues: schema66.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
+                            validate89.errors = [{ instancePath: instancePath + "/approval/kind", schemaPath: "#/$defs/GatewayApprovalV2/properties/kind/enum", keyword: "enum", params: { allowedValues: schema66.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
                             return false;
                           }
                           var valid2 = _errs6 === errors;
@@ -27220,11 +27220,11 @@ var require_responses_validator = __commonJS({
                             if (errors === _errs7) {
                               if (typeof data2 === "string") {
                                 if (!pattern10.test(data2)) {
-                                  validate86.errors = [{ instancePath: instancePath + "/approval/subject_sha256", schemaPath: "#/$defs/GatewayApprovalV2/properties/subject_sha256/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                                  validate89.errors = [{ instancePath: instancePath + "/approval/subject_sha256", schemaPath: "#/$defs/GatewayApprovalV2/properties/subject_sha256/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                                   return false;
                                 }
                               } else {
-                                validate86.errors = [{ instancePath: instancePath + "/approval/subject_sha256", schemaPath: "#/$defs/GatewayApprovalV2/properties/subject_sha256/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                validate89.errors = [{ instancePath: instancePath + "/approval/subject_sha256", schemaPath: "#/$defs/GatewayApprovalV2/properties/subject_sha256/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                 return false;
                               }
                             }
@@ -27236,7 +27236,7 @@ var require_responses_validator = __commonJS({
                       }
                     }
                   } else {
-                    validate86.errors = [{ instancePath: instancePath + "/approval", schemaPath: "#/$defs/GatewayApprovalV2/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                    validate89.errors = [{ instancePath: instancePath + "/approval", schemaPath: "#/$defs/GatewayApprovalV2/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                     return false;
                   }
                 }
@@ -27251,11 +27251,11 @@ var require_responses_validator = __commonJS({
                   if (errors === _errs9) {
                     if (typeof data3 === "string") {
                       if (!pattern4.test(data3)) {
-                        validate86.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                        validate89.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                         return false;
                       }
                     } else {
-                      validate86.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                      validate89.errors = [{ instancePath: instancePath + "/capability", schemaPath: "#/properties/capability/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                       return false;
                     }
                   }
@@ -27268,7 +27268,7 @@ var require_responses_validator = __commonJS({
                     let data4 = data.channel;
                     const _errs11 = errors;
                     if (!(data4 === "ui" || data4 === "codex" || data4 === "operator" || data4 === "system-task")) {
-                      validate86.errors = [{ instancePath: instancePath + "/channel", schemaPath: "#/properties/channel/enum", keyword: "enum", params: { allowedValues: schema65.properties.channel.enum }, message: "must be equal to one of the allowed values" }];
+                      validate89.errors = [{ instancePath: instancePath + "/channel", schemaPath: "#/properties/channel/enum", keyword: "enum", params: { allowedValues: schema65.properties.channel.enum }, message: "must be equal to one of the allowed values" }];
                       return false;
                     }
                     var valid0 = _errs11 === errors;
@@ -27313,7 +27313,7 @@ var require_responses_validator = __commonJS({
                                 vErrors.push(err2);
                               }
                               errors++;
-                              validate86.errors = vErrors;
+                              validate89.errors = vErrors;
                               return false;
                               break;
                             }
@@ -27323,13 +27323,13 @@ var require_responses_validator = __commonJS({
                               let data6 = data5[key3];
                               const _errs17 = errors;
                               if (!(typeof data6 == "number" && (!(data6 % 1) && !isNaN(data6)) && isFinite(data6))) {
-                                validate86.errors = [{ instancePath: instancePath + "/expected_revisions/" + key3.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/properties/expected_revisions/additionalProperties/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                                validate89.errors = [{ instancePath: instancePath + "/expected_revisions/" + key3.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/properties/expected_revisions/additionalProperties/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                 return false;
                               }
                               if (errors === _errs17) {
                                 if (typeof data6 == "number" && isFinite(data6)) {
                                   if (data6 < 0 || isNaN(data6)) {
-                                    validate86.errors = [{ instancePath: instancePath + "/expected_revisions/" + key3.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/properties/expected_revisions/additionalProperties/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
+                                    validate89.errors = [{ instancePath: instancePath + "/expected_revisions/" + key3.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/properties/expected_revisions/additionalProperties/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
                                     return false;
                                   }
                                 }
@@ -27341,7 +27341,7 @@ var require_responses_validator = __commonJS({
                             }
                           }
                         } else {
-                          validate86.errors = [{ instancePath: instancePath + "/expected_revisions", schemaPath: "#/properties/expected_revisions/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                          validate89.errors = [{ instancePath: instancePath + "/expected_revisions", schemaPath: "#/properties/expected_revisions/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                           return false;
                         }
                       }
@@ -27356,11 +27356,11 @@ var require_responses_validator = __commonJS({
                         if (errors === _errs19) {
                           if (typeof data7 === "string") {
                             if (!pattern10.test(data7)) {
-                              validate86.errors = [{ instancePath: instancePath + "/expected_snapshot", schemaPath: "#/properties/expected_snapshot/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                              validate89.errors = [{ instancePath: instancePath + "/expected_snapshot", schemaPath: "#/properties/expected_snapshot/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                               return false;
                             }
                           } else {
-                            validate86.errors = [{ instancePath: instancePath + "/expected_snapshot", schemaPath: "#/properties/expected_snapshot/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                            validate89.errors = [{ instancePath: instancePath + "/expected_snapshot", schemaPath: "#/properties/expected_snapshot/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                             return false;
                           }
                         }
@@ -27375,11 +27375,11 @@ var require_responses_validator = __commonJS({
                           if (errors === _errs21) {
                             if (typeof data8 === "string") {
                               if (!pattern4.test(data8)) {
-                                validate86.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                validate89.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                 return false;
                               }
                             } else {
-                              validate86.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                              validate89.errors = [{ instancePath: instancePath + "/idempotency_key", schemaPath: "#/properties/idempotency_key/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                               return false;
                             }
                           }
@@ -27392,7 +27392,7 @@ var require_responses_validator = __commonJS({
                             let data9 = data.payload;
                             const _errs23 = errors;
                             if (!(data9 && typeof data9 == "object" && !Array.isArray(data9))) {
-                              validate86.errors = [{ instancePath: instancePath + "/payload", schemaPath: "#/properties/payload/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                              validate89.errors = [{ instancePath: instancePath + "/payload", schemaPath: "#/properties/payload/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                               return false;
                             }
                             var valid0 = _errs23 === errors;
@@ -27406,11 +27406,11 @@ var require_responses_validator = __commonJS({
                               if (errors === _errs25) {
                                 if (typeof data10 === "string") {
                                   if (!pattern4.test(data10)) {
-                                    validate86.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                    validate89.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                     return false;
                                   }
                                 } else {
-                                  validate86.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                  validate89.errors = [{ instancePath: instancePath + "/request_id", schemaPath: "#/properties/request_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                   return false;
                                 }
                               }
@@ -27422,7 +27422,7 @@ var require_responses_validator = __commonJS({
                               if (data.schema_version !== void 0) {
                                 const _errs27 = errors;
                                 if (2 !== data.schema_version) {
-                                  validate86.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" }];
+                                  validate89.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" }];
                                   return false;
                                 }
                                 var valid0 = _errs27 === errors;
@@ -27440,20 +27440,20 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate86.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate89.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate86.errors = vErrors;
+      validate89.errors = vErrors;
       return errors === 0;
     }
-    validate86.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateMaterialSpanWire = validate87;
+    validate89.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateMaterialSpanWire = validate90;
     var schema67 = { "properties": { "analysis_refs": {}, "availability": { "enum": ["local-observed", "local-unavailable", "remote-unobserved", "unavailable"] }, "contract": { "const": "material-span-v1" }, "locator": {}, "module_id": { "minLength": 1, "type": "string" }, "route_id": { "minLength": 1, "type": "string" }, "schema_version": { "const": 1 }, "snapshot_id": { "pattern": "^sha256:[a-f0-9]{64}$", "type": "string" }, "source_id": {}, "spans": { "items": { "$ref": "#/$defs/MaterialSpanFileWire" }, "type": "array" }, "unit_id": { "minLength": 1, "type": "string" }, "url": {} }, "required": ["contract", "schema_version", "snapshot_id", "unit_id", "module_id", "route_id", "availability", "spans"], "type": "object" };
-    function validate87(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate90(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate87.evaluated;
+      const evaluated0 = validate90.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -27464,14 +27464,14 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.contract === void 0 && (missing0 = "contract") || data.schema_version === void 0 && (missing0 = "schema_version") || data.snapshot_id === void 0 && (missing0 = "snapshot_id") || data.unit_id === void 0 && (missing0 = "unit_id") || data.module_id === void 0 && (missing0 = "module_id") || data.route_id === void 0 && (missing0 = "route_id") || data.availability === void 0 && (missing0 = "availability") || data.spans === void 0 && (missing0 = "spans")) {
-            validate87.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate90.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             if (data.availability !== void 0) {
               let data0 = data.availability;
               const _errs1 = errors;
               if (!(data0 === "local-observed" || data0 === "local-unavailable" || data0 === "remote-unobserved" || data0 === "unavailable")) {
-                validate87.errors = [{ instancePath: instancePath + "/availability", schemaPath: "#/properties/availability/enum", keyword: "enum", params: { allowedValues: schema67.properties.availability.enum }, message: "must be equal to one of the allowed values" }];
+                validate90.errors = [{ instancePath: instancePath + "/availability", schemaPath: "#/properties/availability/enum", keyword: "enum", params: { allowedValues: schema67.properties.availability.enum }, message: "must be equal to one of the allowed values" }];
                 return false;
               }
               var valid0 = _errs1 === errors;
@@ -27482,7 +27482,7 @@ var require_responses_validator = __commonJS({
               if (data.contract !== void 0) {
                 const _errs2 = errors;
                 if ("material-span-v1" !== data.contract) {
-                  validate87.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "material-span-v1" }, message: "must be equal to constant" }];
+                  validate90.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "material-span-v1" }, message: "must be equal to constant" }];
                   return false;
                 }
                 var valid0 = _errs2 === errors;
@@ -27496,11 +27496,11 @@ var require_responses_validator = __commonJS({
                   if (errors === _errs3) {
                     if (typeof data2 === "string") {
                       if (func1(data2) < 1) {
-                        validate87.errors = [{ instancePath: instancePath + "/module_id", schemaPath: "#/properties/module_id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                        validate90.errors = [{ instancePath: instancePath + "/module_id", schemaPath: "#/properties/module_id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                         return false;
                       }
                     } else {
-                      validate87.errors = [{ instancePath: instancePath + "/module_id", schemaPath: "#/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                      validate90.errors = [{ instancePath: instancePath + "/module_id", schemaPath: "#/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                       return false;
                     }
                   }
@@ -27515,11 +27515,11 @@ var require_responses_validator = __commonJS({
                     if (errors === _errs5) {
                       if (typeof data3 === "string") {
                         if (func1(data3) < 1) {
-                          validate87.errors = [{ instancePath: instancePath + "/route_id", schemaPath: "#/properties/route_id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                          validate90.errors = [{ instancePath: instancePath + "/route_id", schemaPath: "#/properties/route_id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                           return false;
                         }
                       } else {
-                        validate87.errors = [{ instancePath: instancePath + "/route_id", schemaPath: "#/properties/route_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                        validate90.errors = [{ instancePath: instancePath + "/route_id", schemaPath: "#/properties/route_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                         return false;
                       }
                     }
@@ -27531,7 +27531,7 @@ var require_responses_validator = __commonJS({
                     if (data.schema_version !== void 0) {
                       const _errs7 = errors;
                       if (1 !== data.schema_version) {
-                        validate87.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
+                        validate90.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
                         return false;
                       }
                       var valid0 = _errs7 === errors;
@@ -27545,11 +27545,11 @@ var require_responses_validator = __commonJS({
                         if (errors === _errs8) {
                           if (typeof data5 === "string") {
                             if (!pattern10.test(data5)) {
-                              validate87.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                              validate90.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                               return false;
                             }
                           } else {
-                            validate87.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                            validate90.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                             return false;
                           }
                         }
@@ -27573,7 +27573,7 @@ var require_responses_validator = __commonJS({
                                   if (data7 && typeof data7 == "object" && !Array.isArray(data7)) {
                                     let missing1;
                                     if (data7.material_uri === void 0 && (missing1 = "material_uri") || data7.file_sha256 === void 0 && (missing1 = "file_sha256") || data7.extraction === void 0 && (missing1 = "extraction")) {
-                                      validate87.errors = [{ instancePath: instancePath + "/spans/" + i0, schemaPath: "#/$defs/MaterialSpanFileWire/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                                      validate90.errors = [{ instancePath: instancePath + "/spans/" + i0, schemaPath: "#/$defs/MaterialSpanFileWire/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                                       return false;
                                     } else {
                                       if (data7.extraction !== void 0) {
@@ -27582,11 +27582,11 @@ var require_responses_validator = __commonJS({
                                         if (errors === _errs15) {
                                           if (typeof data8 === "string") {
                                             if (func1(data8) < 1) {
-                                              validate87.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/extraction", schemaPath: "#/$defs/MaterialSpanFileWire/properties/extraction/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                              validate90.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/extraction", schemaPath: "#/$defs/MaterialSpanFileWire/properties/extraction/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                               return false;
                                             }
                                           } else {
-                                            validate87.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/extraction", schemaPath: "#/$defs/MaterialSpanFileWire/properties/extraction/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            validate90.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/extraction", schemaPath: "#/$defs/MaterialSpanFileWire/properties/extraction/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                             return false;
                                           }
                                         }
@@ -27601,11 +27601,11 @@ var require_responses_validator = __commonJS({
                                           if (errors === _errs17) {
                                             if (typeof data9 === "string") {
                                               if (func1(data9) < 1) {
-                                                validate87.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/file_sha256", schemaPath: "#/$defs/MaterialSpanFileWire/properties/file_sha256/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                validate90.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/file_sha256", schemaPath: "#/$defs/MaterialSpanFileWire/properties/file_sha256/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                                 return false;
                                               }
                                             } else {
-                                              validate87.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/file_sha256", schemaPath: "#/$defs/MaterialSpanFileWire/properties/file_sha256/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate90.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/file_sha256", schemaPath: "#/$defs/MaterialSpanFileWire/properties/file_sha256/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
                                             }
                                           }
@@ -27620,11 +27620,11 @@ var require_responses_validator = __commonJS({
                                             if (errors === _errs19) {
                                               if (typeof data10 === "string") {
                                                 if (func1(data10) < 1) {
-                                                  validate87.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/material_uri", schemaPath: "#/$defs/MaterialSpanFileWire/properties/material_uri/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                  validate90.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/material_uri", schemaPath: "#/$defs/MaterialSpanFileWire/properties/material_uri/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                                   return false;
                                                 }
                                               } else {
-                                                validate87.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/material_uri", schemaPath: "#/$defs/MaterialSpanFileWire/properties/material_uri/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                validate90.errors = [{ instancePath: instancePath + "/spans/" + i0 + "/material_uri", schemaPath: "#/$defs/MaterialSpanFileWire/properties/material_uri/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                 return false;
                                               }
                                             }
@@ -27636,7 +27636,7 @@ var require_responses_validator = __commonJS({
                                       }
                                     }
                                   } else {
-                                    validate87.errors = [{ instancePath: instancePath + "/spans/" + i0, schemaPath: "#/$defs/MaterialSpanFileWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                    validate90.errors = [{ instancePath: instancePath + "/spans/" + i0, schemaPath: "#/$defs/MaterialSpanFileWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                     return false;
                                   }
                                 }
@@ -27646,7 +27646,7 @@ var require_responses_validator = __commonJS({
                                 }
                               }
                             } else {
-                              validate87.errors = [{ instancePath: instancePath + "/spans", schemaPath: "#/properties/spans/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                              validate90.errors = [{ instancePath: instancePath + "/spans", schemaPath: "#/properties/spans/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                               return false;
                             }
                           }
@@ -27661,11 +27661,11 @@ var require_responses_validator = __commonJS({
                             if (errors === _errs21) {
                               if (typeof data11 === "string") {
                                 if (func1(data11) < 1) {
-                                  validate87.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                  validate90.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                   return false;
                                 }
                               } else {
-                                validate87.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                validate90.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                 return false;
                               }
                             }
@@ -27682,15 +27682,15 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate87.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate90.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate87.errors = vErrors;
+      validate90.errors = vErrors;
       return errors === 0;
     }
-    validate87.evaluated = { "props": { "analysis_refs": true, "availability": true, "contract": true, "locator": true, "module_id": true, "route_id": true, "schema_version": true, "snapshot_id": true, "source_id": true, "spans": true, "unit_id": true, "url": true }, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateAbilityBriefWire = validate88;
+    validate90.evaluated = { "props": { "analysis_refs": true, "availability": true, "contract": true, "locator": true, "module_id": true, "route_id": true, "schema_version": true, "snapshot_id": true, "source_id": true, "spans": true, "unit_id": true, "url": true }, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateAbilityBriefWire = validate91;
     var schema76 = { "properties": { "carries": { "pattern": "\\S", "type": "string" }, "changes": { "pattern": "\\S", "type": "string" }, "conditions": { "items": { "type": "string" }, "type": "array" }, "created_at": { "pattern": "\\S", "type": "string" }, "from": { "pattern": "\\S", "type": "string" }, "id": { "pattern": "\\S", "type": "string" }, "kind": { "enum": ["equivalence", "extension", "connection"] }, "source_ref": { "pattern": "\\S", "type": "string" }, "to": { "pattern": "\\S", "type": "string" } }, "required": ["id", "from", "to", "carries", "changes", "source_ref", "created_at", "kind"], "type": "object" };
     var schema70 = { "properties": { "concept_ids": { "items": { "type": "string" }, "type": "array" }, "evidence": { "items": { "$ref": "#/$defs/AbilityEvidenceWire" }, "type": "array" }, "id": { "pattern": "\\S", "type": "string" }, "lifecycle": { "enum": ["active", "retired"] }, "module_ids": { "items": { "type": "string" }, "type": "array" }, "preparation_routes": { "items": { "$ref": "#/$defs/AbilityRouteWire" }, "type": "array" }, "reason_codes": { "items": { "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "reasons": { "items": { "type": "string" }, "type": "array" }, "state": { "enum": ["supported", "nearby", "uncertain", "unmapped"] }, "title": { "pattern": "\\S", "type": "string" }, "transfer": { "items": { "$ref": "#/$defs/AbilityTransferWire" }, "type": "array" } }, "required": ["id", "title", "state", "reasons", "concept_ids"], "type": "object" };
     var schema71 = { "properties": { "activity": {}, "assistance": {}, "claim": {}, "conditions": { "items": { "type": "string" }, "type": "array" }, "conditions_not_met": { "items": { "type": "string" }, "type": "array" }, "confirmation_ref": {}, "evidence_tags": { "items": { "type": "string" }, "type": "array" }, "id": { "pattern": "\\S", "type": "string" }, "origin": {}, "result": { "enum": ["correct", "incorrect", "partial", "abandoned"] }, "supersedes": {}, "timestamp": {}, "work_ref": { "pattern": "\\S", "type": "string" } }, "required": ["id", "work_ref", "result"], "type": "object" };
@@ -28550,10 +28550,10 @@ var require_responses_validator = __commonJS({
       return errors === 0;
     }
     validate64.evaluated = { "props": { "carries": true, "changes": true, "conditions": true, "from": true, "kind": true, "review": true, "source": true, "source_freshness": true, "source_sha256": true, "to": true }, "dynamicProps": false, "dynamicItems": false };
-    function validate88(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate91(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate88.evaluated;
+      const evaluated0 = validate91.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -28576,7 +28576,7 @@ var require_responses_validator = __commonJS({
       }
       var valid0 = _errs2 === errors;
       if (valid0) {
-        validate88.errors = [{ instancePath, schemaPath: "#/not", keyword: "not", params: {}, message: "must NOT be valid" }];
+        validate91.errors = [{ instancePath, schemaPath: "#/not", keyword: "not", params: {}, message: "must NOT be valid" }];
         return false;
       } else {
         errors = _errs1;
@@ -28592,7 +28592,7 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing1;
           if (data.contract === void 0 && (missing1 = "contract") || data.schema_version === void 0 && (missing1 = "schema_version") || data.snapshot_id === void 0 && (missing1 = "snapshot_id") || data.total === void 0 && (missing1 = "total")) {
-            validate88.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+            validate91.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
             return false;
           } else {
             if (data.abilities !== void 0) {
@@ -28614,7 +28614,7 @@ var require_responses_validator = __commonJS({
                     }
                   }
                 } else {
-                  validate88.errors = [{ instancePath: instancePath + "/abilities", schemaPath: "#/properties/abilities/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                  validate91.errors = [{ instancePath: instancePath + "/abilities", schemaPath: "#/properties/abilities/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                   return false;
                 }
               }
@@ -28642,7 +28642,7 @@ var require_responses_validator = __commonJS({
                       }
                     }
                   } else {
-                    validate88.errors = [{ instancePath: instancePath + "/bridges", schemaPath: "#/properties/bridges/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                    validate91.errors = [{ instancePath: instancePath + "/bridges", schemaPath: "#/properties/bridges/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                     return false;
                   }
                 }
@@ -28666,7 +28666,7 @@ var require_responses_validator = __commonJS({
                           if (data5 && typeof data5 == "object" && !Array.isArray(data5)) {
                             let missing2;
                             if (data5.id === void 0 && (missing2 = "id") || data5.from === void 0 && (missing2 = "from") || data5.to === void 0 && (missing2 = "to") || data5.carries === void 0 && (missing2 = "carries") || data5.changes === void 0 && (missing2 = "changes") || data5.source_ref === void 0 && (missing2 = "source_ref") || data5.created_at === void 0 && (missing2 = "created_at") || data5.kind === void 0 && (missing2 = "kind")) {
-                              validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2, schemaPath: "#/$defs/AbilityCandidateWire/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
+                              validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2, schemaPath: "#/$defs/AbilityCandidateWire/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
                               return false;
                             } else {
                               if (data5.carries !== void 0) {
@@ -28675,11 +28675,11 @@ var require_responses_validator = __commonJS({
                                 if (errors === _errs14) {
                                   if (typeof data6 === "string") {
                                     if (!pattern4.test(data6)) {
-                                      validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/carries", schemaPath: "#/$defs/AbilityCandidateWire/properties/carries/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                      validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/carries", schemaPath: "#/$defs/AbilityCandidateWire/properties/carries/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                       return false;
                                     }
                                   } else {
-                                    validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/carries", schemaPath: "#/$defs/AbilityCandidateWire/properties/carries/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                    validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/carries", schemaPath: "#/$defs/AbilityCandidateWire/properties/carries/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                     return false;
                                   }
                                 }
@@ -28694,11 +28694,11 @@ var require_responses_validator = __commonJS({
                                   if (errors === _errs16) {
                                     if (typeof data7 === "string") {
                                       if (!pattern4.test(data7)) {
-                                        validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/changes", schemaPath: "#/$defs/AbilityCandidateWire/properties/changes/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                        validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/changes", schemaPath: "#/$defs/AbilityCandidateWire/properties/changes/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                         return false;
                                       }
                                     } else {
-                                      validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/changes", schemaPath: "#/$defs/AbilityCandidateWire/properties/changes/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                      validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/changes", schemaPath: "#/$defs/AbilityCandidateWire/properties/changes/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                       return false;
                                     }
                                   }
@@ -28717,7 +28717,7 @@ var require_responses_validator = __commonJS({
                                         for (let i3 = 0; i3 < len3; i3++) {
                                           const _errs20 = errors;
                                           if (typeof data8[i3] !== "string") {
-                                            validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/conditions/" + i3, schemaPath: "#/$defs/AbilityCandidateWire/properties/conditions/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/conditions/" + i3, schemaPath: "#/$defs/AbilityCandidateWire/properties/conditions/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                             return false;
                                           }
                                           var valid7 = _errs20 === errors;
@@ -28726,7 +28726,7 @@ var require_responses_validator = __commonJS({
                                           }
                                         }
                                       } else {
-                                        validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/conditions", schemaPath: "#/$defs/AbilityCandidateWire/properties/conditions/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                        validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/conditions", schemaPath: "#/$defs/AbilityCandidateWire/properties/conditions/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                         return false;
                                       }
                                     }
@@ -28741,11 +28741,11 @@ var require_responses_validator = __commonJS({
                                       if (errors === _errs22) {
                                         if (typeof data10 === "string") {
                                           if (!pattern4.test(data10)) {
-                                            validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/created_at", schemaPath: "#/$defs/AbilityCandidateWire/properties/created_at/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                            validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/created_at", schemaPath: "#/$defs/AbilityCandidateWire/properties/created_at/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                             return false;
                                           }
                                         } else {
-                                          validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/created_at", schemaPath: "#/$defs/AbilityCandidateWire/properties/created_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                          validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/created_at", schemaPath: "#/$defs/AbilityCandidateWire/properties/created_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                           return false;
                                         }
                                       }
@@ -28760,11 +28760,11 @@ var require_responses_validator = __commonJS({
                                         if (errors === _errs24) {
                                           if (typeof data11 === "string") {
                                             if (!pattern4.test(data11)) {
-                                              validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/from", schemaPath: "#/$defs/AbilityCandidateWire/properties/from/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                              validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/from", schemaPath: "#/$defs/AbilityCandidateWire/properties/from/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                               return false;
                                             }
                                           } else {
-                                            validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/from", schemaPath: "#/$defs/AbilityCandidateWire/properties/from/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/from", schemaPath: "#/$defs/AbilityCandidateWire/properties/from/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                             return false;
                                           }
                                         }
@@ -28779,11 +28779,11 @@ var require_responses_validator = __commonJS({
                                           if (errors === _errs26) {
                                             if (typeof data12 === "string") {
                                               if (!pattern4.test(data12)) {
-                                                validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/id", schemaPath: "#/$defs/AbilityCandidateWire/properties/id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/id", schemaPath: "#/$defs/AbilityCandidateWire/properties/id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                 return false;
                                               }
                                             } else {
-                                              validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/id", schemaPath: "#/$defs/AbilityCandidateWire/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/id", schemaPath: "#/$defs/AbilityCandidateWire/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
                                             }
                                           }
@@ -28796,7 +28796,7 @@ var require_responses_validator = __commonJS({
                                             let data13 = data5.kind;
                                             const _errs28 = errors;
                                             if (!(data13 === "equivalence" || data13 === "extension" || data13 === "connection")) {
-                                              validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/kind", schemaPath: "#/$defs/AbilityCandidateWire/properties/kind/enum", keyword: "enum", params: { allowedValues: schema76.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
+                                              validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/kind", schemaPath: "#/$defs/AbilityCandidateWire/properties/kind/enum", keyword: "enum", params: { allowedValues: schema76.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
                                               return false;
                                             }
                                             var valid6 = _errs28 === errors;
@@ -28810,11 +28810,11 @@ var require_responses_validator = __commonJS({
                                               if (errors === _errs29) {
                                                 if (typeof data14 === "string") {
                                                   if (!pattern4.test(data14)) {
-                                                    validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/source_ref", schemaPath: "#/$defs/AbilityCandidateWire/properties/source_ref/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                    validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/source_ref", schemaPath: "#/$defs/AbilityCandidateWire/properties/source_ref/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                     return false;
                                                   }
                                                 } else {
-                                                  validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/source_ref", schemaPath: "#/$defs/AbilityCandidateWire/properties/source_ref/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                  validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/source_ref", schemaPath: "#/$defs/AbilityCandidateWire/properties/source_ref/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                   return false;
                                                 }
                                               }
@@ -28829,11 +28829,11 @@ var require_responses_validator = __commonJS({
                                                 if (errors === _errs31) {
                                                   if (typeof data15 === "string") {
                                                     if (!pattern4.test(data15)) {
-                                                      validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/to", schemaPath: "#/$defs/AbilityCandidateWire/properties/to/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                      validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/to", schemaPath: "#/$defs/AbilityCandidateWire/properties/to/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                       return false;
                                                     }
                                                   } else {
-                                                    validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/to", schemaPath: "#/$defs/AbilityCandidateWire/properties/to/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                    validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2 + "/to", schemaPath: "#/$defs/AbilityCandidateWire/properties/to/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                     return false;
                                                   }
                                                 }
@@ -28851,7 +28851,7 @@ var require_responses_validator = __commonJS({
                               }
                             }
                           } else {
-                            validate88.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2, schemaPath: "#/$defs/AbilityCandidateWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                            validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i2, schemaPath: "#/$defs/AbilityCandidateWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                             return false;
                           }
                         }
@@ -28861,7 +28861,7 @@ var require_responses_validator = __commonJS({
                         }
                       }
                     } else {
-                      validate88.errors = [{ instancePath: instancePath + "/candidate_connections", schemaPath: "#/properties/candidate_connections/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                      validate91.errors = [{ instancePath: instancePath + "/candidate_connections", schemaPath: "#/properties/candidate_connections/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                       return false;
                     }
                   }
@@ -28873,7 +28873,7 @@ var require_responses_validator = __commonJS({
                   if (data.contract !== void 0) {
                     const _errs33 = errors;
                     if ("ability-context-v1" !== data.contract) {
-                      validate88.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "ability-context-v1" }, message: "must be equal to constant" }];
+                      validate91.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "ability-context-v1" }, message: "must be equal to constant" }];
                       return false;
                     }
                     var valid1 = _errs33 === errors;
@@ -28884,7 +28884,7 @@ var require_responses_validator = __commonJS({
                     if (data.schema_version !== void 0) {
                       const _errs34 = errors;
                       if (1 !== data.schema_version) {
-                        validate88.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
+                        validate91.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
                         return false;
                       }
                       var valid1 = _errs34 === errors;
@@ -28898,11 +28898,11 @@ var require_responses_validator = __commonJS({
                         if (errors === _errs35) {
                           if (typeof data18 === "string") {
                             if (!pattern10.test(data18)) {
-                              validate88.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                              validate91.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                               return false;
                             }
                           } else {
-                            validate88.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                            validate91.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                             return false;
                           }
                         }
@@ -28915,13 +28915,13 @@ var require_responses_validator = __commonJS({
                           let data19 = data.total;
                           const _errs37 = errors;
                           if (!(typeof data19 == "number" && (!(data19 % 1) && !isNaN(data19)) && isFinite(data19))) {
-                            validate88.errors = [{ instancePath: instancePath + "/total", schemaPath: "#/properties/total/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                            validate91.errors = [{ instancePath: instancePath + "/total", schemaPath: "#/properties/total/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                             return false;
                           }
                           if (errors === _errs37) {
                             if (typeof data19 == "number" && isFinite(data19)) {
                               if (data19 < 0 || isNaN(data19)) {
-                                validate88.errors = [{ instancePath: instancePath + "/total", schemaPath: "#/properties/total/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
+                                validate91.errors = [{ instancePath: instancePath + "/total", schemaPath: "#/properties/total/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
                                 return false;
                               }
                             }
@@ -28938,15 +28938,15 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate88.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate91.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate88.errors = vErrors;
+      validate91.errors = vErrors;
       return errors === 0;
     }
-    validate88.evaluated = { "props": { "abilities": true, "bridges": true, "candidate_connection_count": true, "candidate_connections": true, "contract": true, "schema_version": true, "snapshot_id": true, "total": true, "truncated": true }, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateAbilityFocusWire = validate91;
+    validate91.evaluated = { "props": { "abilities": true, "bridges": true, "candidate_connection_count": true, "candidate_connections": true, "contract": true, "schema_version": true, "snapshot_id": true, "total": true, "truncated": true }, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateAbilityFocusWire = validate94;
     var schema78 = { "properties": { "claim": { "pattern": "\\S", "type": "string" }, "concept_ids": { "items": { "type": "string" }, "type": "array" }, "conditions": { "items": { "type": "string" }, "type": "array" }, "evidence": { "items": { "$ref": "#/$defs/AbilityEvidenceWire" }, "type": "array" }, "evidence_spec": { "items": { "type": "string" }, "type": "array" }, "id": { "pattern": "\\S", "type": "string" }, "lifecycle": { "enum": ["active", "retired"] }, "module_ids": { "items": { "type": "string" }, "type": "array" }, "preparation_routes": { "items": { "$ref": "#/$defs/AbilityRouteWire" }, "type": "array" }, "reason_codes": { "items": { "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "reasons": { "items": { "type": "string" }, "type": "array" }, "review": { "$ref": "#/$defs/AbilityReviewWire" }, "source": {}, "state": { "enum": ["supported", "nearby", "uncertain", "unmapped"] }, "title": { "pattern": "\\S", "type": "string" }, "transfer": { "items": { "$ref": "#/$defs/AbilityTransferWire" }, "type": "array" } }, "required": ["id", "title", "state", "reasons", "concept_ids", "claim", "conditions", "evidence_spec", "review"], "type": "object" };
     function validate68(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
@@ -29712,10 +29712,10 @@ var require_responses_validator = __commonJS({
       return errors === 0;
     }
     validate68.evaluated = { "props": { "claim": true, "concept_ids": true, "conditions": true, "evidence": true, "evidence_spec": true, "id": true, "lifecycle": true, "module_ids": true, "preparation_routes": true, "reason_codes": true, "reasons": true, "review": true, "source": true, "state": true, "title": true, "transfer": true }, "dynamicProps": false, "dynamicItems": false };
-    function validate91(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate94(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate91.evaluated;
+      const evaluated0 = validate94.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -29726,7 +29726,7 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.contract === void 0 && (missing0 = "contract") || data.schema_version === void 0 && (missing0 = "schema_version") || data.snapshot_id === void 0 && (missing0 = "snapshot_id") || data.focus === void 0 && (missing0 = "focus") || data.ability === void 0 && (missing0 = "ability")) {
-            validate91.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate94.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             if (data.ability !== void 0) {
@@ -29759,7 +29759,7 @@ var require_responses_validator = __commonJS({
                       }
                     }
                   } else {
-                    validate91.errors = [{ instancePath: instancePath + "/bridges", schemaPath: "#/properties/bridges/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                    validate94.errors = [{ instancePath: instancePath + "/bridges", schemaPath: "#/properties/bridges/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                     return false;
                   }
                 }
@@ -29783,7 +29783,7 @@ var require_responses_validator = __commonJS({
                           if (data4 && typeof data4 == "object" && !Array.isArray(data4)) {
                             let missing1;
                             if (data4.id === void 0 && (missing1 = "id") || data4.from === void 0 && (missing1 = "from") || data4.to === void 0 && (missing1 = "to") || data4.carries === void 0 && (missing1 = "carries") || data4.changes === void 0 && (missing1 = "changes") || data4.source_ref === void 0 && (missing1 = "source_ref") || data4.created_at === void 0 && (missing1 = "created_at") || data4.kind === void 0 && (missing1 = "kind")) {
-                              validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1, schemaPath: "#/$defs/AbilityCandidateWire/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                              validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1, schemaPath: "#/$defs/AbilityCandidateWire/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                               return false;
                             } else {
                               if (data4.carries !== void 0) {
@@ -29792,11 +29792,11 @@ var require_responses_validator = __commonJS({
                                 if (errors === _errs10) {
                                   if (typeof data5 === "string") {
                                     if (!pattern4.test(data5)) {
-                                      validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/carries", schemaPath: "#/$defs/AbilityCandidateWire/properties/carries/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                      validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/carries", schemaPath: "#/$defs/AbilityCandidateWire/properties/carries/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                       return false;
                                     }
                                   } else {
-                                    validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/carries", schemaPath: "#/$defs/AbilityCandidateWire/properties/carries/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                    validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/carries", schemaPath: "#/$defs/AbilityCandidateWire/properties/carries/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                     return false;
                                   }
                                 }
@@ -29811,11 +29811,11 @@ var require_responses_validator = __commonJS({
                                   if (errors === _errs12) {
                                     if (typeof data6 === "string") {
                                       if (!pattern4.test(data6)) {
-                                        validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/changes", schemaPath: "#/$defs/AbilityCandidateWire/properties/changes/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                        validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/changes", schemaPath: "#/$defs/AbilityCandidateWire/properties/changes/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                         return false;
                                       }
                                     } else {
-                                      validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/changes", schemaPath: "#/$defs/AbilityCandidateWire/properties/changes/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                      validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/changes", schemaPath: "#/$defs/AbilityCandidateWire/properties/changes/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                       return false;
                                     }
                                   }
@@ -29834,7 +29834,7 @@ var require_responses_validator = __commonJS({
                                         for (let i2 = 0; i2 < len2; i2++) {
                                           const _errs16 = errors;
                                           if (typeof data7[i2] !== "string") {
-                                            validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/conditions/" + i2, schemaPath: "#/$defs/AbilityCandidateWire/properties/conditions/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/conditions/" + i2, schemaPath: "#/$defs/AbilityCandidateWire/properties/conditions/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                             return false;
                                           }
                                           var valid5 = _errs16 === errors;
@@ -29843,7 +29843,7 @@ var require_responses_validator = __commonJS({
                                           }
                                         }
                                       } else {
-                                        validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/conditions", schemaPath: "#/$defs/AbilityCandidateWire/properties/conditions/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                        validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/conditions", schemaPath: "#/$defs/AbilityCandidateWire/properties/conditions/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                         return false;
                                       }
                                     }
@@ -29858,11 +29858,11 @@ var require_responses_validator = __commonJS({
                                       if (errors === _errs18) {
                                         if (typeof data9 === "string") {
                                           if (!pattern4.test(data9)) {
-                                            validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/created_at", schemaPath: "#/$defs/AbilityCandidateWire/properties/created_at/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                            validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/created_at", schemaPath: "#/$defs/AbilityCandidateWire/properties/created_at/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                             return false;
                                           }
                                         } else {
-                                          validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/created_at", schemaPath: "#/$defs/AbilityCandidateWire/properties/created_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                          validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/created_at", schemaPath: "#/$defs/AbilityCandidateWire/properties/created_at/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                           return false;
                                         }
                                       }
@@ -29877,11 +29877,11 @@ var require_responses_validator = __commonJS({
                                         if (errors === _errs20) {
                                           if (typeof data10 === "string") {
                                             if (!pattern4.test(data10)) {
-                                              validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/from", schemaPath: "#/$defs/AbilityCandidateWire/properties/from/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                              validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/from", schemaPath: "#/$defs/AbilityCandidateWire/properties/from/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                               return false;
                                             }
                                           } else {
-                                            validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/from", schemaPath: "#/$defs/AbilityCandidateWire/properties/from/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/from", schemaPath: "#/$defs/AbilityCandidateWire/properties/from/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                             return false;
                                           }
                                         }
@@ -29896,11 +29896,11 @@ var require_responses_validator = __commonJS({
                                           if (errors === _errs22) {
                                             if (typeof data11 === "string") {
                                               if (!pattern4.test(data11)) {
-                                                validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/id", schemaPath: "#/$defs/AbilityCandidateWire/properties/id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/id", schemaPath: "#/$defs/AbilityCandidateWire/properties/id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                 return false;
                                               }
                                             } else {
-                                              validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/id", schemaPath: "#/$defs/AbilityCandidateWire/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/id", schemaPath: "#/$defs/AbilityCandidateWire/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
                                             }
                                           }
@@ -29913,7 +29913,7 @@ var require_responses_validator = __commonJS({
                                             let data12 = data4.kind;
                                             const _errs24 = errors;
                                             if (!(data12 === "equivalence" || data12 === "extension" || data12 === "connection")) {
-                                              validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/kind", schemaPath: "#/$defs/AbilityCandidateWire/properties/kind/enum", keyword: "enum", params: { allowedValues: schema76.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
+                                              validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/kind", schemaPath: "#/$defs/AbilityCandidateWire/properties/kind/enum", keyword: "enum", params: { allowedValues: schema76.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
                                               return false;
                                             }
                                             var valid4 = _errs24 === errors;
@@ -29927,11 +29927,11 @@ var require_responses_validator = __commonJS({
                                               if (errors === _errs25) {
                                                 if (typeof data13 === "string") {
                                                   if (!pattern4.test(data13)) {
-                                                    validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/source_ref", schemaPath: "#/$defs/AbilityCandidateWire/properties/source_ref/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                    validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/source_ref", schemaPath: "#/$defs/AbilityCandidateWire/properties/source_ref/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                     return false;
                                                   }
                                                 } else {
-                                                  validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/source_ref", schemaPath: "#/$defs/AbilityCandidateWire/properties/source_ref/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                  validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/source_ref", schemaPath: "#/$defs/AbilityCandidateWire/properties/source_ref/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                   return false;
                                                 }
                                               }
@@ -29946,11 +29946,11 @@ var require_responses_validator = __commonJS({
                                                 if (errors === _errs27) {
                                                   if (typeof data14 === "string") {
                                                     if (!pattern4.test(data14)) {
-                                                      validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/to", schemaPath: "#/$defs/AbilityCandidateWire/properties/to/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                      validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/to", schemaPath: "#/$defs/AbilityCandidateWire/properties/to/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                       return false;
                                                     }
                                                   } else {
-                                                    validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/to", schemaPath: "#/$defs/AbilityCandidateWire/properties/to/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                    validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1 + "/to", schemaPath: "#/$defs/AbilityCandidateWire/properties/to/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                     return false;
                                                   }
                                                 }
@@ -29968,7 +29968,7 @@ var require_responses_validator = __commonJS({
                               }
                             }
                           } else {
-                            validate91.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1, schemaPath: "#/$defs/AbilityCandidateWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                            validate94.errors = [{ instancePath: instancePath + "/candidate_connections/" + i1, schemaPath: "#/$defs/AbilityCandidateWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                             return false;
                           }
                         }
@@ -29978,7 +29978,7 @@ var require_responses_validator = __commonJS({
                         }
                       }
                     } else {
-                      validate91.errors = [{ instancePath: instancePath + "/candidate_connections", schemaPath: "#/properties/candidate_connections/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                      validate94.errors = [{ instancePath: instancePath + "/candidate_connections", schemaPath: "#/properties/candidate_connections/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                       return false;
                     }
                   }
@@ -29990,7 +29990,7 @@ var require_responses_validator = __commonJS({
                   if (data.contract !== void 0) {
                     const _errs29 = errors;
                     if ("ability-context-v1" !== data.contract) {
-                      validate91.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "ability-context-v1" }, message: "must be equal to constant" }];
+                      validate94.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "ability-context-v1" }, message: "must be equal to constant" }];
                       return false;
                     }
                     var valid0 = _errs29 === errors;
@@ -30013,7 +30013,7 @@ var require_responses_validator = __commonJS({
                               if (data17 && typeof data17 == "object" && !Array.isArray(data17)) {
                                 let missing2;
                                 if (data17.module_id === void 0 && (missing2 = "module_id") || data17.unit_id === void 0 && (missing2 = "unit_id") || data17.stage_id === void 0 && (missing2 = "stage_id")) {
-                                  validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3, schemaPath: "#/$defs/AbilityEncounterWire/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
+                                  validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3, schemaPath: "#/$defs/AbilityEncounterWire/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
                                   return false;
                                 } else {
                                   if (data17.materials !== void 0) {
@@ -30027,7 +30027,7 @@ var require_responses_validator = __commonJS({
                                           let data19 = data18[i4];
                                           const _errs37 = errors;
                                           if (!(data19 && typeof data19 == "object" && !Array.isArray(data19))) {
-                                            validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/materials/" + i4, schemaPath: "#/$defs/AbilityEncounterWire/properties/materials/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                            validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/materials/" + i4, schemaPath: "#/$defs/AbilityEncounterWire/properties/materials/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                             return false;
                                           }
                                           var valid9 = _errs37 === errors;
@@ -30036,7 +30036,7 @@ var require_responses_validator = __commonJS({
                                           }
                                         }
                                       } else {
-                                        validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/materials", schemaPath: "#/$defs/AbilityEncounterWire/properties/materials/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                        validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/materials", schemaPath: "#/$defs/AbilityEncounterWire/properties/materials/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                         return false;
                                       }
                                     }
@@ -30051,11 +30051,11 @@ var require_responses_validator = __commonJS({
                                       if (errors === _errs39) {
                                         if (typeof data20 === "string") {
                                           if (!pattern4.test(data20)) {
-                                            validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/module_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/module_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                            validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/module_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/module_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                             return false;
                                           }
                                         } else {
-                                          validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/module_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                          validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/module_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                           return false;
                                         }
                                       }
@@ -30070,11 +30070,11 @@ var require_responses_validator = __commonJS({
                                         if (errors === _errs41) {
                                           if (typeof data21 === "string") {
                                             if (!pattern4.test(data21)) {
-                                              validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/stage_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/stage_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                              validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/stage_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/stage_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                               return false;
                                             }
                                           } else {
-                                            validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/stage_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/stage_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/stage_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/stage_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                             return false;
                                           }
                                         }
@@ -30089,11 +30089,11 @@ var require_responses_validator = __commonJS({
                                           if (errors === _errs43) {
                                             if (typeof data22 === "string") {
                                               if (!pattern4.test(data22)) {
-                                                validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/unit_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/unit_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/unit_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/unit_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                 return false;
                                               }
                                             } else {
-                                              validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/unit_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3 + "/unit_id", schemaPath: "#/$defs/AbilityEncounterWire/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
                                             }
                                           }
@@ -30106,7 +30106,7 @@ var require_responses_validator = __commonJS({
                                   }
                                 }
                               } else {
-                                validate91.errors = [{ instancePath: instancePath + "/encounters/" + i3, schemaPath: "#/$defs/AbilityEncounterWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                validate94.errors = [{ instancePath: instancePath + "/encounters/" + i3, schemaPath: "#/$defs/AbilityEncounterWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                 return false;
                               }
                             }
@@ -30116,7 +30116,7 @@ var require_responses_validator = __commonJS({
                             }
                           }
                         } else {
-                          validate91.errors = [{ instancePath: instancePath + "/encounters", schemaPath: "#/properties/encounters/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                          validate94.errors = [{ instancePath: instancePath + "/encounters", schemaPath: "#/properties/encounters/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                           return false;
                         }
                       }
@@ -30131,11 +30131,11 @@ var require_responses_validator = __commonJS({
                         if (errors === _errs45) {
                           if (typeof data23 === "string") {
                             if (!pattern4.test(data23)) {
-                              validate91.errors = [{ instancePath: instancePath + "/focus", schemaPath: "#/properties/focus/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                              validate94.errors = [{ instancePath: instancePath + "/focus", schemaPath: "#/properties/focus/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                               return false;
                             }
                           } else {
-                            validate91.errors = [{ instancePath: instancePath + "/focus", schemaPath: "#/properties/focus/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                            validate94.errors = [{ instancePath: instancePath + "/focus", schemaPath: "#/properties/focus/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                             return false;
                           }
                         }
@@ -30159,7 +30159,7 @@ var require_responses_validator = __commonJS({
                                   if (data25 && typeof data25 == "object" && !Array.isArray(data25)) {
                                     let missing3;
                                     if (data25.module_id === void 0 && (missing3 = "module_id") || data25.unit_id === void 0 && (missing3 = "unit_id") || data25.stage_id === void 0 && (missing3 = "stage_id") || data25.ability_ids === void 0 && (missing3 = "ability_ids")) {
-                                      validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5, schemaPath: "#/$defs/AbilityRelatedEncounterWire/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
+                                      validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5, schemaPath: "#/$defs/AbilityRelatedEncounterWire/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
                                       return false;
                                     } else {
                                       if (data25.ability_ids !== void 0) {
@@ -30172,7 +30172,7 @@ var require_responses_validator = __commonJS({
                                             for (let i6 = 0; i6 < len6; i6++) {
                                               const _errs54 = errors;
                                               if (typeof data26[i6] !== "string") {
-                                                validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/ability_ids/" + i6, schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/ability_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/ability_ids/" + i6, schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/ability_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                 return false;
                                               }
                                               var valid13 = _errs54 === errors;
@@ -30181,7 +30181,7 @@ var require_responses_validator = __commonJS({
                                               }
                                             }
                                           } else {
-                                            validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/ability_ids", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/ability_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                            validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/ability_ids", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/ability_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                             return false;
                                           }
                                         }
@@ -30196,11 +30196,11 @@ var require_responses_validator = __commonJS({
                                           if (errors === _errs56) {
                                             if (typeof data28 === "string") {
                                               if (!pattern4.test(data28)) {
-                                                validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/module_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/module_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/module_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/module_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                 return false;
                                               }
                                             } else {
-                                              validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/module_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/module_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
                                             }
                                           }
@@ -30219,7 +30219,7 @@ var require_responses_validator = __commonJS({
                                                 for (let i7 = 0; i7 < len7; i7++) {
                                                   const _errs60 = errors;
                                                   if (typeof data29[i7] !== "string") {
-                                                    validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/route_ids/" + i7, schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/route_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                    validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/route_ids/" + i7, schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/route_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                     return false;
                                                   }
                                                   var valid14 = _errs60 === errors;
@@ -30228,7 +30228,7 @@ var require_responses_validator = __commonJS({
                                                   }
                                                 }
                                               } else {
-                                                validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/route_ids", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/route_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                                validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/route_ids", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/route_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                                 return false;
                                               }
                                             }
@@ -30243,11 +30243,11 @@ var require_responses_validator = __commonJS({
                                               if (errors === _errs62) {
                                                 if (typeof data31 === "string") {
                                                   if (!pattern4.test(data31)) {
-                                                    validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/stage_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/stage_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                    validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/stage_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/stage_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                     return false;
                                                   }
                                                 } else {
-                                                  validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/stage_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/stage_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                  validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/stage_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/stage_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                   return false;
                                                 }
                                               }
@@ -30262,11 +30262,11 @@ var require_responses_validator = __commonJS({
                                                 if (errors === _errs64) {
                                                   if (typeof data32 === "string") {
                                                     if (!pattern4.test(data32)) {
-                                                      validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/unit_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/unit_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                                                      validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/unit_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/unit_id/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                                                       return false;
                                                     }
                                                   } else {
-                                                    validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/unit_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                    validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5 + "/unit_id", schemaPath: "#/$defs/AbilityRelatedEncounterWire/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                     return false;
                                                   }
                                                 }
@@ -30280,7 +30280,7 @@ var require_responses_validator = __commonJS({
                                       }
                                     }
                                   } else {
-                                    validate91.errors = [{ instancePath: instancePath + "/related_encounters/" + i5, schemaPath: "#/$defs/AbilityRelatedEncounterWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                    validate94.errors = [{ instancePath: instancePath + "/related_encounters/" + i5, schemaPath: "#/$defs/AbilityRelatedEncounterWire/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                     return false;
                                   }
                                 }
@@ -30290,7 +30290,7 @@ var require_responses_validator = __commonJS({
                                 }
                               }
                             } else {
-                              validate91.errors = [{ instancePath: instancePath + "/related_encounters", schemaPath: "#/properties/related_encounters/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                              validate94.errors = [{ instancePath: instancePath + "/related_encounters", schemaPath: "#/properties/related_encounters/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                               return false;
                             }
                           }
@@ -30302,7 +30302,7 @@ var require_responses_validator = __commonJS({
                           if (data.schema_version !== void 0) {
                             const _errs66 = errors;
                             if (1 !== data.schema_version) {
-                              validate91.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
+                              validate94.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
                               return false;
                             }
                             var valid0 = _errs66 === errors;
@@ -30320,7 +30320,7 @@ var require_responses_validator = __commonJS({
                                   for (let i8 = 0; i8 < len8; i8++) {
                                     const _errs69 = errors;
                                     if (typeof data34[i8] !== "string") {
-                                      validate91.errors = [{ instancePath: instancePath + "/shared_concept_candidates/" + i8, schemaPath: "#/properties/shared_concept_candidates/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                      validate94.errors = [{ instancePath: instancePath + "/shared_concept_candidates/" + i8, schemaPath: "#/properties/shared_concept_candidates/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                       return false;
                                     }
                                     var valid15 = _errs69 === errors;
@@ -30329,7 +30329,7 @@ var require_responses_validator = __commonJS({
                                     }
                                   }
                                 } else {
-                                  validate91.errors = [{ instancePath: instancePath + "/shared_concept_candidates", schemaPath: "#/properties/shared_concept_candidates/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                  validate94.errors = [{ instancePath: instancePath + "/shared_concept_candidates", schemaPath: "#/properties/shared_concept_candidates/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                   return false;
                                 }
                               }
@@ -30344,11 +30344,11 @@ var require_responses_validator = __commonJS({
                                 if (errors === _errs71) {
                                   if (typeof data36 === "string") {
                                     if (!pattern10.test(data36)) {
-                                      validate91.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                                      validate94.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                                       return false;
                                     }
                                   } else {
-                                    validate91.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                    validate94.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                     return false;
                                   }
                                 }
@@ -30367,19 +30367,19 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate91.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate94.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate91.errors = vErrors;
+      validate94.errors = vErrors;
       return errors === 0;
     }
-    validate91.evaluated = { "props": { "ability": true, "bridges": true, "candidate_connections": true, "contract": true, "encounters": true, "focus": true, "related_encounters": true, "related_encounters_total": true, "schema_version": true, "shared_concept_candidates": true, "snapshot_id": true }, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateAbilityUnmappedWire = validate94;
-    function validate94(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    validate94.evaluated = { "props": { "ability": true, "bridges": true, "candidate_connections": true, "contract": true, "encounters": true, "focus": true, "related_encounters": true, "related_encounters_total": true, "schema_version": true, "shared_concept_candidates": true, "snapshot_id": true }, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateAbilityUnmappedWire = validate97;
+    function validate97(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate94.evaluated;
+      const evaluated0 = validate97.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -30402,7 +30402,7 @@ var require_responses_validator = __commonJS({
       }
       var valid0 = _errs2 === errors;
       if (valid0) {
-        validate94.errors = [{ instancePath, schemaPath: "#/not", keyword: "not", params: {}, message: "must NOT be valid" }];
+        validate97.errors = [{ instancePath, schemaPath: "#/not", keyword: "not", params: {}, message: "must NOT be valid" }];
         return false;
       } else {
         errors = _errs1;
@@ -30418,13 +30418,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing1;
           if (data.contract === void 0 && (missing1 = "contract") || data.schema_version === void 0 && (missing1 = "schema_version") || data.snapshot_id === void 0 && (missing1 = "snapshot_id") || data.focus === void 0 && (missing1 = "focus") || data.state === void 0 && (missing1 = "state") || data.reason === void 0 && (missing1 = "reason")) {
-            validate94.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+            validate97.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
             return false;
           } else {
             if (data.contract !== void 0) {
               const _errs3 = errors;
               if ("ability-context-v1" !== data.contract) {
-                validate94.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "ability-context-v1" }, message: "must be equal to constant" }];
+                validate97.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "ability-context-v1" }, message: "must be equal to constant" }];
                 return false;
               }
               var valid1 = _errs3 === errors;
@@ -30438,11 +30438,11 @@ var require_responses_validator = __commonJS({
                 if (errors === _errs4) {
                   if (typeof data1 === "string") {
                     if (!pattern4.test(data1)) {
-                      validate94.errors = [{ instancePath: instancePath + "/focus", schemaPath: "#/properties/focus/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                      validate97.errors = [{ instancePath: instancePath + "/focus", schemaPath: "#/properties/focus/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                       return false;
                     }
                   } else {
-                    validate94.errors = [{ instancePath: instancePath + "/focus", schemaPath: "#/properties/focus/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                    validate97.errors = [{ instancePath: instancePath + "/focus", schemaPath: "#/properties/focus/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                     return false;
                   }
                 }
@@ -30457,11 +30457,11 @@ var require_responses_validator = __commonJS({
                   if (errors === _errs6) {
                     if (typeof data2 === "string") {
                       if (!pattern4.test(data2)) {
-                        validate94.errors = [{ instancePath: instancePath + "/reason", schemaPath: "#/properties/reason/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
+                        validate97.errors = [{ instancePath: instancePath + "/reason", schemaPath: "#/properties/reason/pattern", keyword: "pattern", params: { pattern: "\\S" }, message: 'must match pattern "\\S"' }];
                         return false;
                       }
                     } else {
-                      validate94.errors = [{ instancePath: instancePath + "/reason", schemaPath: "#/properties/reason/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                      validate97.errors = [{ instancePath: instancePath + "/reason", schemaPath: "#/properties/reason/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                       return false;
                     }
                   }
@@ -30473,7 +30473,7 @@ var require_responses_validator = __commonJS({
                   if (data.schema_version !== void 0) {
                     const _errs8 = errors;
                     if (1 !== data.schema_version) {
-                      validate94.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
+                      validate97.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
                       return false;
                     }
                     var valid1 = _errs8 === errors;
@@ -30487,11 +30487,11 @@ var require_responses_validator = __commonJS({
                       if (errors === _errs9) {
                         if (typeof data4 === "string") {
                           if (!pattern10.test(data4)) {
-                            validate94.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                            validate97.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
                             return false;
                           }
                         } else {
-                          validate94.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                          validate97.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                           return false;
                         }
                       }
@@ -30503,7 +30503,7 @@ var require_responses_validator = __commonJS({
                       if (data.state !== void 0) {
                         const _errs11 = errors;
                         if ("unmapped" !== data.state) {
-                          validate94.errors = [{ instancePath: instancePath + "/state", schemaPath: "#/properties/state/const", keyword: "const", params: { allowedValue: "unmapped" }, message: "must be equal to constant" }];
+                          validate97.errors = [{ instancePath: instancePath + "/state", schemaPath: "#/properties/state/const", keyword: "const", params: { allowedValue: "unmapped" }, message: "must be equal to constant" }];
                           return false;
                         }
                         var valid1 = _errs11 === errors;
@@ -30517,20 +30517,20 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate94.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate97.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate94.errors = vErrors;
+      validate97.errors = vErrors;
       return errors === 0;
     }
-    validate94.evaluated = { "props": { "contract": true, "focus": true, "reason": true, "schema_version": true, "snapshot_id": true, "state": true }, "dynamicProps": false, "dynamicItems": false };
-    exports2.validateProjectionSettlementWire = validate95;
+    validate97.evaluated = { "props": { "contract": true, "focus": true, "reason": true, "schema_version": true, "snapshot_id": true, "state": true }, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateProjectionSettlementWire = validate98;
     var schema87 = { "additionalProperties": false, "properties": { "current_snapshot_id": { "type": ["string", "null"] }, "reason": { "type": "string" }, "settled": { "type": "boolean" }, "write_completed": { "type": "boolean" } }, "required": ["write_completed", "current_snapshot_id", "settled", "reason"], "type": "object" };
-    function validate95(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+    function validate98(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
       let vErrors = null;
       let errors = 0;
-      const evaluated0 = validate95.evaluated;
+      const evaluated0 = validate98.evaluated;
       if (evaluated0.dynamicProps) {
         evaluated0.props = void 0;
       }
@@ -30541,13 +30541,13 @@ var require_responses_validator = __commonJS({
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
           if (data.write_completed === void 0 && (missing0 = "write_completed") || data.current_snapshot_id === void 0 && (missing0 = "current_snapshot_id") || data.settled === void 0 && (missing0 = "settled") || data.reason === void 0 && (missing0 = "reason")) {
-            validate95.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            validate98.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
             const _errs1 = errors;
             for (const key0 in data) {
               if (!(key0 === "current_snapshot_id" || key0 === "reason" || key0 === "settled" || key0 === "write_completed")) {
-                validate95.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                validate98.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
                 return false;
                 break;
               }
@@ -30557,7 +30557,7 @@ var require_responses_validator = __commonJS({
                 let data0 = data.current_snapshot_id;
                 const _errs2 = errors;
                 if (typeof data0 !== "string" && data0 !== null) {
-                  validate95.errors = [{ instancePath: instancePath + "/current_snapshot_id", schemaPath: "#/properties/current_snapshot_id/type", keyword: "type", params: { type: schema87.properties.current_snapshot_id.type }, message: "must be string,null" }];
+                  validate98.errors = [{ instancePath: instancePath + "/current_snapshot_id", schemaPath: "#/properties/current_snapshot_id/type", keyword: "type", params: { type: schema87.properties.current_snapshot_id.type }, message: "must be string,null" }];
                   return false;
                 }
                 var valid0 = _errs2 === errors;
@@ -30568,7 +30568,7 @@ var require_responses_validator = __commonJS({
                 if (data.reason !== void 0) {
                   const _errs4 = errors;
                   if (typeof data.reason !== "string") {
-                    validate95.errors = [{ instancePath: instancePath + "/reason", schemaPath: "#/properties/reason/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                    validate98.errors = [{ instancePath: instancePath + "/reason", schemaPath: "#/properties/reason/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                     return false;
                   }
                   var valid0 = _errs4 === errors;
@@ -30579,7 +30579,7 @@ var require_responses_validator = __commonJS({
                   if (data.settled !== void 0) {
                     const _errs6 = errors;
                     if (typeof data.settled !== "boolean") {
-                      validate95.errors = [{ instancePath: instancePath + "/settled", schemaPath: "#/properties/settled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                      validate98.errors = [{ instancePath: instancePath + "/settled", schemaPath: "#/properties/settled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                       return false;
                     }
                     var valid0 = _errs6 === errors;
@@ -30590,7 +30590,7 @@ var require_responses_validator = __commonJS({
                     if (data.write_completed !== void 0) {
                       const _errs8 = errors;
                       if (typeof data.write_completed !== "boolean") {
-                        validate95.errors = [{ instancePath: instancePath + "/write_completed", schemaPath: "#/properties/write_completed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                        validate98.errors = [{ instancePath: instancePath + "/write_completed", schemaPath: "#/properties/write_completed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                         return false;
                       }
                       var valid0 = _errs8 === errors;
@@ -30603,14 +30603,401 @@ var require_responses_validator = __commonJS({
             }
           }
         } else {
-          validate95.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          validate98.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
           return false;
         }
       }
-      validate95.errors = vErrors;
+      validate98.errors = vErrors;
       return errors === 0;
     }
-    validate95.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    validate98.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+    exports2.validatePracticeContextWire = validate99;
+    var schema89 = { "additionalProperties": false, "properties": { "checked": { "type": "boolean" }, "concept_ids": { "items": { "type": "string" }, "type": "array" }, "content_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "ineligibility": { "items": { "type": "string" }, "type": "array" }, "item_id": { "type": "string" }, "kind": { "enum": ["flashcard", "worked"], "type": "string" }, "label": { "type": "string" }, "prompt": { "type": "string" }, "status": { "enum": ["unverified", "cross-checked", "source-matched", "confirmed", "disputed"], "type": "string" }, "stored_row": { "description": "the exact sidecar row, for the verification gesture's expected-old guard", "type": ["object", "null"] } }, "required": ["item_id", "label", "kind", "prompt", "status", "checked", "content_sha256", "concept_ids", "ineligibility", "stored_row"], "type": "object" };
+    var pattern136 = new RegExp("^[0-9a-f]{64}$", "u");
+    function validate99(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+      ;
+      let vErrors = null;
+      let errors = 0;
+      const evaluated0 = validate99.evaluated;
+      if (evaluated0.dynamicProps) {
+        evaluated0.props = void 0;
+      }
+      if (evaluated0.dynamicItems) {
+        evaluated0.items = void 0;
+      }
+      if (errors === 0) {
+        if (data && typeof data == "object" && !Array.isArray(data)) {
+          let missing0;
+          if (data.schema_version === void 0 && (missing0 = "schema_version") || data.snapshot_id === void 0 && (missing0 = "snapshot_id") || data.contract === void 0 && (missing0 = "contract") || data.note_id === void 0 && (missing0 = "note_id") || data.note_revision === void 0 && (missing0 = "note_revision") || data.practice_index_revision === void 0 && (missing0 = "practice_index_revision") || data.diagnostics === void 0 && (missing0 = "diagnostics") || data.items === void 0 && (missing0 = "items")) {
+            validate99.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            return false;
+          } else {
+            const _errs1 = errors;
+            for (const key0 in data) {
+              if (!(key0 === "contract" || key0 === "diagnostics" || key0 === "items" || key0 === "note_id" || key0 === "note_revision" || key0 === "practice_index_revision" || key0 === "schema_version" || key0 === "snapshot_id")) {
+                validate99.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                return false;
+                break;
+              }
+            }
+            if (_errs1 === errors) {
+              if (data.contract !== void 0) {
+                const _errs2 = errors;
+                if ("practice-context-v1" !== data.contract) {
+                  validate99.errors = [{ instancePath: instancePath + "/contract", schemaPath: "#/properties/contract/const", keyword: "const", params: { allowedValue: "practice-context-v1" }, message: "must be equal to constant" }];
+                  return false;
+                }
+                var valid0 = _errs2 === errors;
+              } else {
+                var valid0 = true;
+              }
+              if (valid0) {
+                if (data.diagnostics !== void 0) {
+                  let data1 = data.diagnostics;
+                  const _errs3 = errors;
+                  if (errors === _errs3) {
+                    if (Array.isArray(data1)) {
+                      var valid1 = true;
+                      const len0 = data1.length;
+                      for (let i0 = 0; i0 < len0; i0++) {
+                        const _errs5 = errors;
+                        if (typeof data1[i0] !== "string") {
+                          validate99.errors = [{ instancePath: instancePath + "/diagnostics/" + i0, schemaPath: "#/properties/diagnostics/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                          return false;
+                        }
+                        var valid1 = _errs5 === errors;
+                        if (!valid1) {
+                          break;
+                        }
+                      }
+                    } else {
+                      validate99.errors = [{ instancePath: instancePath + "/diagnostics", schemaPath: "#/properties/diagnostics/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                      return false;
+                    }
+                  }
+                  var valid0 = _errs3 === errors;
+                } else {
+                  var valid0 = true;
+                }
+                if (valid0) {
+                  if (data.items !== void 0) {
+                    let data3 = data.items;
+                    const _errs7 = errors;
+                    if (errors === _errs7) {
+                      if (Array.isArray(data3)) {
+                        var valid2 = true;
+                        const len1 = data3.length;
+                        for (let i1 = 0; i1 < len1; i1++) {
+                          let data4 = data3[i1];
+                          const _errs9 = errors;
+                          const _errs10 = errors;
+                          if (errors === _errs10) {
+                            if (data4 && typeof data4 == "object" && !Array.isArray(data4)) {
+                              let missing1;
+                              if (data4.item_id === void 0 && (missing1 = "item_id") || data4.label === void 0 && (missing1 = "label") || data4.kind === void 0 && (missing1 = "kind") || data4.prompt === void 0 && (missing1 = "prompt") || data4.status === void 0 && (missing1 = "status") || data4.checked === void 0 && (missing1 = "checked") || data4.content_sha256 === void 0 && (missing1 = "content_sha256") || data4.concept_ids === void 0 && (missing1 = "concept_ids") || data4.ineligibility === void 0 && (missing1 = "ineligibility") || data4.stored_row === void 0 && (missing1 = "stored_row")) {
+                                validate99.errors = [{ instancePath: instancePath + "/items/" + i1, schemaPath: "#/$defs/item/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
+                                return false;
+                              } else {
+                                const _errs12 = errors;
+                                for (const key1 in data4) {
+                                  if (!func13.call(schema89.properties, key1)) {
+                                    validate99.errors = [{ instancePath: instancePath + "/items/" + i1, schemaPath: "#/$defs/item/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
+                                    return false;
+                                    break;
+                                  }
+                                }
+                                if (_errs12 === errors) {
+                                  if (data4.checked !== void 0) {
+                                    const _errs13 = errors;
+                                    if (typeof data4.checked !== "boolean") {
+                                      validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/checked", schemaPath: "#/$defs/item/properties/checked/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                                      return false;
+                                    }
+                                    var valid4 = _errs13 === errors;
+                                  } else {
+                                    var valid4 = true;
+                                  }
+                                  if (valid4) {
+                                    if (data4.concept_ids !== void 0) {
+                                      let data6 = data4.concept_ids;
+                                      const _errs15 = errors;
+                                      if (errors === _errs15) {
+                                        if (Array.isArray(data6)) {
+                                          var valid5 = true;
+                                          const len2 = data6.length;
+                                          for (let i2 = 0; i2 < len2; i2++) {
+                                            const _errs17 = errors;
+                                            if (typeof data6[i2] !== "string") {
+                                              validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/concept_ids/" + i2, schemaPath: "#/$defs/item/properties/concept_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              return false;
+                                            }
+                                            var valid5 = _errs17 === errors;
+                                            if (!valid5) {
+                                              break;
+                                            }
+                                          }
+                                        } else {
+                                          validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/concept_ids", schemaPath: "#/$defs/item/properties/concept_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                          return false;
+                                        }
+                                      }
+                                      var valid4 = _errs15 === errors;
+                                    } else {
+                                      var valid4 = true;
+                                    }
+                                    if (valid4) {
+                                      if (data4.content_sha256 !== void 0) {
+                                        let data8 = data4.content_sha256;
+                                        const _errs19 = errors;
+                                        if (errors === _errs19) {
+                                          if (typeof data8 === "string") {
+                                            if (!pattern136.test(data8)) {
+                                              validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/content_sha256", schemaPath: "#/$defs/item/properties/content_sha256/pattern", keyword: "pattern", params: { pattern: "^[0-9a-f]{64}$" }, message: 'must match pattern "^[0-9a-f]{64}$"' }];
+                                              return false;
+                                            }
+                                          } else {
+                                            validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/content_sha256", schemaPath: "#/$defs/item/properties/content_sha256/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            return false;
+                                          }
+                                        }
+                                        var valid4 = _errs19 === errors;
+                                      } else {
+                                        var valid4 = true;
+                                      }
+                                      if (valid4) {
+                                        if (data4.ineligibility !== void 0) {
+                                          let data9 = data4.ineligibility;
+                                          const _errs21 = errors;
+                                          if (errors === _errs21) {
+                                            if (Array.isArray(data9)) {
+                                              var valid6 = true;
+                                              const len3 = data9.length;
+                                              for (let i3 = 0; i3 < len3; i3++) {
+                                                const _errs23 = errors;
+                                                if (typeof data9[i3] !== "string") {
+                                                  validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/ineligibility/" + i3, schemaPath: "#/$defs/item/properties/ineligibility/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                  return false;
+                                                }
+                                                var valid6 = _errs23 === errors;
+                                                if (!valid6) {
+                                                  break;
+                                                }
+                                              }
+                                            } else {
+                                              validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/ineligibility", schemaPath: "#/$defs/item/properties/ineligibility/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                              return false;
+                                            }
+                                          }
+                                          var valid4 = _errs21 === errors;
+                                        } else {
+                                          var valid4 = true;
+                                        }
+                                        if (valid4) {
+                                          if (data4.item_id !== void 0) {
+                                            const _errs25 = errors;
+                                            if (typeof data4.item_id !== "string") {
+                                              validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/item_id", schemaPath: "#/$defs/item/properties/item_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              return false;
+                                            }
+                                            var valid4 = _errs25 === errors;
+                                          } else {
+                                            var valid4 = true;
+                                          }
+                                          if (valid4) {
+                                            if (data4.kind !== void 0) {
+                                              let data12 = data4.kind;
+                                              const _errs27 = errors;
+                                              if (typeof data12 !== "string") {
+                                                validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/kind", schemaPath: "#/$defs/item/properties/kind/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                return false;
+                                              }
+                                              if (!(data12 === "flashcard" || data12 === "worked")) {
+                                                validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/kind", schemaPath: "#/$defs/item/properties/kind/enum", keyword: "enum", params: { allowedValues: schema89.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
+                                                return false;
+                                              }
+                                              var valid4 = _errs27 === errors;
+                                            } else {
+                                              var valid4 = true;
+                                            }
+                                            if (valid4) {
+                                              if (data4.label !== void 0) {
+                                                const _errs29 = errors;
+                                                if (typeof data4.label !== "string") {
+                                                  validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/label", schemaPath: "#/$defs/item/properties/label/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                  return false;
+                                                }
+                                                var valid4 = _errs29 === errors;
+                                              } else {
+                                                var valid4 = true;
+                                              }
+                                              if (valid4) {
+                                                if (data4.prompt !== void 0) {
+                                                  const _errs31 = errors;
+                                                  if (typeof data4.prompt !== "string") {
+                                                    validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/prompt", schemaPath: "#/$defs/item/properties/prompt/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                    return false;
+                                                  }
+                                                  var valid4 = _errs31 === errors;
+                                                } else {
+                                                  var valid4 = true;
+                                                }
+                                                if (valid4) {
+                                                  if (data4.status !== void 0) {
+                                                    let data15 = data4.status;
+                                                    const _errs33 = errors;
+                                                    if (typeof data15 !== "string") {
+                                                      validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/status", schemaPath: "#/$defs/item/properties/status/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                      return false;
+                                                    }
+                                                    if (!(data15 === "unverified" || data15 === "cross-checked" || data15 === "source-matched" || data15 === "confirmed" || data15 === "disputed")) {
+                                                      validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/status", schemaPath: "#/$defs/item/properties/status/enum", keyword: "enum", params: { allowedValues: schema89.properties.status.enum }, message: "must be equal to one of the allowed values" }];
+                                                      return false;
+                                                    }
+                                                    var valid4 = _errs33 === errors;
+                                                  } else {
+                                                    var valid4 = true;
+                                                  }
+                                                  if (valid4) {
+                                                    if (data4.stored_row !== void 0) {
+                                                      let data16 = data4.stored_row;
+                                                      const _errs35 = errors;
+                                                      if (!(data16 && typeof data16 == "object" && !Array.isArray(data16)) && data16 !== null) {
+                                                        validate99.errors = [{ instancePath: instancePath + "/items/" + i1 + "/stored_row", schemaPath: "#/$defs/item/properties/stored_row/type", keyword: "type", params: { type: schema89.properties.stored_row.type }, message: "must be object,null" }];
+                                                        return false;
+                                                      }
+                                                      var valid4 = _errs35 === errors;
+                                                    } else {
+                                                      var valid4 = true;
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            } else {
+                              validate99.errors = [{ instancePath: instancePath + "/items/" + i1, schemaPath: "#/$defs/item/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                              return false;
+                            }
+                          }
+                          var valid2 = _errs9 === errors;
+                          if (!valid2) {
+                            break;
+                          }
+                        }
+                      } else {
+                        validate99.errors = [{ instancePath: instancePath + "/items", schemaPath: "#/properties/items/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                        return false;
+                      }
+                    }
+                    var valid0 = _errs7 === errors;
+                  } else {
+                    var valid0 = true;
+                  }
+                  if (valid0) {
+                    if (data.note_id !== void 0) {
+                      const _errs37 = errors;
+                      if (typeof data.note_id !== "string") {
+                        validate99.errors = [{ instancePath: instancePath + "/note_id", schemaPath: "#/properties/note_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                        return false;
+                      }
+                      var valid0 = _errs37 === errors;
+                    } else {
+                      var valid0 = true;
+                    }
+                    if (valid0) {
+                      if (data.note_revision !== void 0) {
+                        let data18 = data.note_revision;
+                        const _errs39 = errors;
+                        if (!(typeof data18 == "number" && (!(data18 % 1) && !isNaN(data18)) && isFinite(data18))) {
+                          validate99.errors = [{ instancePath: instancePath + "/note_revision", schemaPath: "#/properties/note_revision/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                          return false;
+                        }
+                        if (errors === _errs39) {
+                          if (typeof data18 == "number" && isFinite(data18)) {
+                            if (data18 < 0 || isNaN(data18)) {
+                              validate99.errors = [{ instancePath: instancePath + "/note_revision", schemaPath: "#/properties/note_revision/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
+                              return false;
+                            }
+                          }
+                        }
+                        var valid0 = _errs39 === errors;
+                      } else {
+                        var valid0 = true;
+                      }
+                      if (valid0) {
+                        if (data.practice_index_revision !== void 0) {
+                          let data19 = data.practice_index_revision;
+                          const _errs41 = errors;
+                          if (!(typeof data19 == "number" && (!(data19 % 1) && !isNaN(data19)) && isFinite(data19))) {
+                            validate99.errors = [{ instancePath: instancePath + "/practice_index_revision", schemaPath: "#/properties/practice_index_revision/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                            return false;
+                          }
+                          if (errors === _errs41) {
+                            if (typeof data19 == "number" && isFinite(data19)) {
+                              if (data19 < 0 || isNaN(data19)) {
+                                validate99.errors = [{ instancePath: instancePath + "/practice_index_revision", schemaPath: "#/properties/practice_index_revision/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
+                                return false;
+                              }
+                            }
+                          }
+                          var valid0 = _errs41 === errors;
+                        } else {
+                          var valid0 = true;
+                        }
+                        if (valid0) {
+                          if (data.schema_version !== void 0) {
+                            const _errs43 = errors;
+                            if (1 !== data.schema_version) {
+                              validate99.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
+                              return false;
+                            }
+                            var valid0 = _errs43 === errors;
+                          } else {
+                            var valid0 = true;
+                          }
+                          if (valid0) {
+                            if (data.snapshot_id !== void 0) {
+                              let data21 = data.snapshot_id;
+                              const _errs44 = errors;
+                              if (errors === _errs44) {
+                                if (typeof data21 === "string") {
+                                  if (!pattern10.test(data21)) {
+                                    validate99.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/pattern", keyword: "pattern", params: { pattern: "^sha256:[a-f0-9]{64}$" }, message: 'must match pattern "^sha256:[a-f0-9]{64}$"' }];
+                                    return false;
+                                  }
+                                } else {
+                                  validate99.errors = [{ instancePath: instancePath + "/snapshot_id", schemaPath: "#/properties/snapshot_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                  return false;
+                                }
+                              }
+                              var valid0 = _errs44 === errors;
+                            } else {
+                              var valid0 = true;
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          validate99.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          return false;
+        }
+      }
+      validate99.errors = vErrors;
+      return errors === 0;
+    }
+    validate99.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
   }
 });
 
@@ -30621,7 +31008,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian30 = require("obsidian");
+var import_obsidian31 = require("obsidian");
 var fs5 = __toESM(require("node:fs"));
 var nodePath5 = __toESM(require("node:path"));
 
@@ -30961,7 +31348,7 @@ function enableButtonGroupKeyboardNavigation(group2, orientation = "horizontal")
     const forward = event.key === "End" || horizontal && event.key === "ArrowRight" || vertical && event.key === "ArrowDown";
     if (!backward && !forward) return;
     const controls = typeof group2.querySelectorAll === "function" ? Array.from(group2.querySelectorAll("button")).filter(
-      (control) => !control.disabled && control.getAttribute("aria-hidden") !== "true"
+      (control2) => !control2.disabled && control2.getAttribute("aria-hidden") !== "true"
     ) : [];
     if (!controls.length) return;
     const current = controls.indexOf(event.target);
@@ -31080,15 +31467,15 @@ function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
   enableButtonGroupKeyboardNavigation(row3);
   for (const [value, label] of tabs) {
     const count4 = countOf ? countOf(value) : 0;
-    const control = button(
+    const control2 = button(
       row3,
       count4 ? `${label} ${count4}` : label,
       () => choose(value),
       "quiet"
     );
-    control.addClass("los-filter-tab");
-    control.toggleClass("is-active", value === active);
-    control.setAttrs({ "aria-pressed": String(value === active), "data-los-tab": value });
+    control2.addClass("los-filter-tab");
+    control2.toggleClass("is-active", value === active);
+    control2.setAttrs({ "aria-pressed": String(value === active), "data-los-tab": value });
   }
   return row3;
 }
@@ -31401,10 +31788,10 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
       await this.plugin.persistSettings();
     }));
     new import_obsidian2.Setting(root).setName("Validate and rebuild").setDesc("Run the canonical core projection pipeline.").addButton(
-      (control) => control.setButtonText("Rebuild").setCta().onClick(() => this.plugin.generate())
+      (control2) => control2.setButtonText("Rebuild").setCta().onClick(() => this.plugin.generate())
     );
     new import_obsidian2.Setting(root).setName("Diagnostics").setDesc("Contract versions, projection freshness, interpreter.").addButton(
-      (control) => control.setButtonText("Open").onClick(() => this.plugin.nav.openDiagnostics())
+      (control2) => control2.setButtonText("Open").onClick(() => this.plugin.nav.openDiagnostics())
     );
     root.createEl("h3", { text: "About LearningOS" });
     root.createEl("p", { cls: "los-muted", text: OWNERSHIP_STATEMENT });
@@ -31476,41 +31863,6 @@ var SessionEndModal = class extends import_obsidian2.Modal {
     this.contentEl.empty();
   }
 };
-
-// src/infrastructure/resource-target.ts
-function isFileShapedPath(value) {
-  if (typeof value !== "string") return false;
-  const path = value.trim().split(/[?#]/, 1)[0] ?? "";
-  const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
-  return /^[^./][^/]*\.[^./]+$/.test(name);
-}
-function isDirectMaterialFileTarget(record7) {
-  return record7.material_exists === true && isFileShapedPath(record7.material_path);
-}
-var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
-function pageDestination(record7) {
-  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
-  if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
-  const locator = typeof record7.locator === "string" ? record7.locator : "";
-  const match = QUALIFIED_PAGES.exec(locator);
-  if (!match) return null;
-  const first = Number(match[1]);
-  const last = match[2] ? Number(match[2]) : null;
-  if (!Number.isInteger(first) || first < 1) return null;
-  if (last !== null && (!Number.isInteger(last) || last <= first)) {
-    return { page: first, label: `physical page ${first}` };
-  }
-  return {
-    page: first,
-    label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
-  };
-}
-function hasDirectResourceTarget(record7) {
-  if (isDirectMaterialFileTarget(record7)) return true;
-  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
-  if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
-  return safeWebUrl(record7.url) !== null;
-}
 
 // src/sorting.ts
 var collator = new Intl.Collator("en", {
@@ -32147,8 +32499,9 @@ function filterConcepts(graph, query, filters) {
 var RELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*--[A-Za-z0-9._-]+--[A-Za-z0-9][A-Za-z0-9._-]*$/;
 var DIGEST = /^[0-9a-f]{64}$/;
 function parseEvidenceParams(params) {
-  const keys = Object.keys(params).filter((key) => params[key] !== "");
-  if (keys.some((key) => key !== "relation" && key !== "ordinal")) {
+  const action = params.action;
+  const keys = Object.keys(params);
+  if (action !== void 0 && action !== EVIDENCE_PROTOCOL_ACTION || keys.some((key) => key !== "relation" && key !== "ordinal" && key !== "action")) {
     return { error: "Evidence link refused: unexpected parameters." };
   }
   const relationId = params.relation ?? "";
@@ -32185,11 +32538,6 @@ function openEvidenceBinding(ports, relationId, ordinal) {
   }
   const { binding } = resolved;
   const destination = { page: binding.page, label: `physical page ${binding.page}` };
-  const source = ports.store.get(binding.source_id);
-  if (source && isDirectMaterialFileTarget(source)) {
-    void ports.openMaterialPath(String(source.material_path), destination);
-    return true;
-  }
   void ports.openMaterialPath(`materials/${binding.material_relpath}`, destination);
   return true;
 }
@@ -32310,6 +32658,176 @@ function asAtlasDepth(value) {
 }
 function asAbilityLayout(value) {
   return value === "list" ? "list" : "plane";
+}
+
+// src/features/atlas/practice.ts
+var METHODS = [
+  ["source-matched", "official-source", "Match an official answer"],
+  ["cross-checked", "independent-solve", "Compare an independent solution"],
+  ["confirmed", "explicit-review", "Confirm the answer after review"],
+  ["disputed", "explicit-review", "Mark the answer disputed"],
+  ["unverified", "explicit-review", "Mark the answer unverified"]
+];
+var SHA256 = /^[a-f0-9]{64}$/;
+function control(parent, name, tag2) {
+  const label = parent.createEl("label", { cls: "los-atlas-practice-field" });
+  label.createSpan({ text: name });
+  return label.createEl(tag2);
+}
+function renderVerification(parent, plugin, note2, context, item, done) {
+  const fields = parent.createDiv({ cls: "los-atlas-practice-fields" });
+  button(fields, "Open note to review answer", () => plugin.nav.openRecord(note2), "quiet");
+  const method = control(fields, "Verification method", "select");
+  method.createEl("option", { text: "Choose a method", attr: { value: "" } });
+  for (const [status, , title2] of METHODS) {
+    method.createEl("option", { text: title2, attr: { value: status } });
+  }
+  const reviewer = control(fields, "Reviewer ID", "input");
+  const artifact = control(fields, "Review artifact SHA-256", "input");
+  const comparisonFields = fields.createDiv({ cls: "los-atlas-practice-fields" });
+  comparisonFields.hidden = true;
+  const comparison = control(comparisonFields, "Independent comparison SHA-256", "input");
+  const official = fields.createDiv({ cls: "los-atlas-practice-fields" });
+  official.hidden = true;
+  const source = control(official, "Primary evidence source", "select");
+  source.createEl("option", { text: "Choose a linked source", attr: { value: "" } });
+  for (const id of asStrings(note2.sources)) {
+    const record7 = plugin.store.get(id);
+    if (record7?.type !== "source") continue;
+    source.createEl("option", { text: asLabel(record7, id), attr: { value: id } });
+  }
+  const path = control(official, "PDF path relative to materials", "input");
+  const digest = control(official, "PDF SHA-256", "input");
+  const page2 = control(official, "Physical PDF page", "input");
+  page2.setAttrs({ type: "number", min: "1", step: "1" });
+  const quote = control(official, "Evidence excerpt", "input");
+  quote.setAttribute("maxlength", "240");
+  method.addEventListener("change", () => {
+    official.hidden = method.value !== "source-matched";
+    comparisonFields.hidden = method.value !== "cross-checked";
+  });
+  source.addEventListener("change", () => {
+    const pathHint = asString(plugin.store.get(source.value)?.material_path);
+    path.value = pathHint?.startsWith("materials/") ? pathHint.slice("materials/".length) : "";
+    digest.value = "";
+    page2.value = "";
+    quote.value = "";
+  });
+  const feedback = parent.createEl("p", { cls: "los-micro", attr: { role: "status" } });
+  const review2 = parent.createDiv({ cls: "los-atlas-practice-fields" });
+  const preview = button(fields, "Preview verification", () => {
+    const selection = METHODS.find(([status]) => status === method.value);
+    if (!selection || !reviewer.value.trim() || !SHA256.test(artifact.value.trim())) {
+      feedback.setText("Choose a method and enter the reviewer ID and review artifact SHA-256.");
+      return;
+    }
+    const [new_status, proofMethod] = selection;
+    const pageNumber = Number(page2.value);
+    const excerpt = quote.value.trim();
+    if (new_status === "source-matched" && (!source.value || !path.value.trim() || !SHA256.test(digest.value.trim()) || !Number.isSafeInteger(pageNumber) || pageNumber < 1 || !excerpt || excerpt.length > 240)) {
+      feedback.setText("Select a source and enter the PDF path, SHA-256, physical page and excerpt.");
+      return;
+    }
+    if (new_status === "cross-checked" && !SHA256.test(comparison.value.trim())) {
+      feedback.setText("Enter the SHA-256 of the reviewed independent comparison.");
+      return;
+    }
+    const record7 = {
+      item_id: item.item_id,
+      expected_old: item.stored_row,
+      new_status,
+      method: proofMethod,
+      concept_ids: item.concept_ids,
+      artifact_sha256: artifact.value.trim(),
+      reviewer_id: reviewer.value.trim(),
+      ...new_status === "source-matched" ? {
+        source_binding: {
+          source_id: source.value,
+          material_relpath: path.value.trim(),
+          file_sha256: digest.value.trim(),
+          page: pageNumber,
+          quote: excerpt
+        }
+      } : {},
+      ...new_status === "cross-checked" ? { comparison_sha256: comparison.value.trim() } : {}
+    };
+    feedback.setText("");
+    fields.hidden = true;
+    review2.empty();
+    const { expected_old: previous, ...proposed } = record7;
+    review2.createEl("p", {
+      text: `Record one verification for ${item.item_id} (${item.kind}). Stored status: ${previous?.status ?? "unverified"}.`
+    });
+    review2.createEl("pre", { text: JSON.stringify(proposed, null, 2) });
+    const edit = button(review2, "Edit verification", () => {
+      review2.empty();
+      fields.hidden = false;
+      preview.focus();
+    }, "quiet");
+    const confirm = button(review2, "Confirm and record", async () => {
+      if (confirm.disabled) return;
+      confirm.disabled = true;
+      edit.disabled = true;
+      feedback.setText("Recording verification\u2026");
+      try {
+        await plugin.mutate(() => plugin.gateway.recordPracticeVerification(record7, context));
+      } catch (error) {
+        feedback.setText(errorMessage(error));
+        confirm.disabled = false;
+        edit.disabled = false;
+        return;
+      }
+      await done();
+    }, "cta");
+    confirm.focus();
+  }, "quiet");
+}
+function renderPracticeReview(parent, plugin, note2) {
+  const noteId = asString(note2.id);
+  if (!noteId || note2.role !== "exercise-bank" && note2.role !== "mock-exam") return;
+  const result = parent.createDiv({ cls: "los-atlas-practice-results", attr: { "aria-live": "polite" } });
+  const load = async (recorded = false) => {
+    loadButton.disabled = true;
+    result.empty();
+    result.createEl("p", { cls: "los-micro", text: recorded ? "Verification recorded. Refreshing items\u2026" : "Loading practice items\u2026" });
+    try {
+      const snapshot = plugin.store.snapshotId;
+      if (!snapshot || plugin.store.stale) throw new Error("Rebuild the current views before reviewing practice.");
+      const context = await plugin.gateway.practiceContext(noteId, snapshot);
+      if (plugin.store.snapshotId !== snapshot || plugin.store.stale) throw new Error("The LearningOS snapshot changed. Reload practice items.");
+      result.empty();
+      if (recorded) result.createEl("p", { cls: "los-micro", text: "Verification recorded." });
+      for (const diagnostic2 of context.diagnostics) result.createEl("p", { cls: "los-micro", text: diagnostic2 });
+      if (!context.items.length && !context.diagnostics.length) {
+        result.createEl("p", { cls: "los-micro", text: "No supported practice items in this note." });
+      }
+      for (const item of context.items) {
+        const row3 = result.createDiv({ cls: "los-atlas-practice-item" });
+        row3.createEl("strong", { text: `${item.item_id} \xB7 ${item.kind} \xB7 ${item.status}` });
+        for (const reason of item.ineligibility) row3.createEl("p", { cls: "los-micro", text: reason });
+        if (context.diagnostics.length) continue;
+        let rendered = false;
+        const toggle = button(row3, "Record verification", () => {
+          form.hidden = !form.hidden;
+          toggle.setAttribute("aria-expanded", String(!form.hidden));
+          if (!form.hidden && !rendered) {
+            rendered = true;
+            renderVerification(form, plugin, note2, context, item, () => load(true));
+            form.querySelectorAll?.("select")[0]?.focus();
+          }
+        }, "quiet");
+        toggle.setAttribute("aria-expanded", "false");
+        const form = row3.createDiv({ cls: "los-atlas-practice-form" });
+        form.hidden = true;
+      }
+    } catch (error) {
+      result.empty();
+      result.createEl("p", { text: `${recorded ? "Verification recorded. " : ""}${errorMessage(error)}` });
+    } finally {
+      loadButton.disabled = false;
+    }
+  };
+  const loadButton = button(parent, "Load practice items", () => load(), "tertiary");
 }
 
 // src/features/atlas/domain-model.ts
@@ -32472,6 +32990,7 @@ function renderNoteInspector(parent, host, index, note2, outsideFilter, redraw) 
     host.domains.selectedNote = null;
     redraw(asText(note2.id) ?? "");
   }, "tertiary");
+  renderPracticeReview(panel, host.plugin, note2);
   const ids = asStrings(note2.concepts);
   const concepts = panel.createDiv({ cls: "los-domain-note-concepts" });
   concepts.createEl("h4", { text: `Linked concepts \xB7 ${ids.length}` });
@@ -32622,8 +33141,8 @@ function renderResults(results, host, index) {
       renderResults(results, host, index);
     });
     if (focusNote) {
-      const choice = Array.from(results.querySelectorAll("button")).find((control) => control.getAttribute("data-los-tab") === focusNote);
-      (choice ?? Array.from(results.querySelectorAll("button")).find((control) => control.getAttribute("data-los-tab") === state.selected))?.focus({ preventScroll: true });
+      const choice = Array.from(results.querySelectorAll("button")).find((control2) => control2.getAttribute("data-los-tab") === focusNote);
+      (choice ?? Array.from(results.querySelectorAll("button")).find((control2) => control2.getAttribute("data-los-tab") === state.selected))?.focus({ preventScroll: true });
     }
   };
   const domainMatches = (domain2) => matches(state.query, [domain2.id, domain2.title]);
@@ -33531,12 +34050,12 @@ function textArea(parent, label, value, placeholder = "", hint = "") {
 }
 function select(parent, label, options, value, hint = "") {
   const { wrap, id } = field(parent, label, hint);
-  const control = wrap.createEl("select", { cls: "los-ability-form-select", attr: { id } });
+  const control2 = wrap.createEl("select", { cls: "los-ability-form-select", attr: { id } });
   for (const [optionValue, optionLabel] of options) {
-    control.createEl("option", { text: optionLabel, attr: { value: optionValue } });
+    control2.createEl("option", { text: optionLabel, attr: { value: optionValue } });
   }
-  control.value = value;
-  return control;
+  control2.value = value;
+  return control2;
 }
 function now() {
   return (/* @__PURE__ */ new Date()).toISOString();
@@ -33675,9 +34194,9 @@ var AbilityClaimDraftModal = class extends import_obsidian3.Modal {
       claim.value = composedClaim(collect(), definition2);
     };
     refreshClaim();
-    for (const control of [result, assistance, ...conditionBoxes.values()]) {
-      control.addEventListener("change", refreshClaim);
-      control.addEventListener("input", refreshClaim);
+    for (const control2 of [result, assistance, ...conditionBoxes.values()]) {
+      control2.addEventListener("change", refreshClaim);
+      control2.addEventListener("input", refreshClaim);
     }
     claim.addEventListener("input", () => {
       claimEdited = true;
@@ -35015,7 +35534,7 @@ function renderBridgeInspector(surface, host, plane, bridge2) {
     const container = surface.parentElement;
     host.bridgeKey = null;
     host.render();
-    if (container) Array.from(container.querySelectorAll("button")).find((control) => control.getAttribute("data-bridge") === key)?.focus({ preventScroll: true });
+    if (container) Array.from(container.querySelectorAll("button")).find((control2) => control2.getAttribute("data-bridge") === key)?.focus({ preventScroll: true });
   }, "tertiary");
 }
 function renderList(root, host, plane, brief, selected) {
@@ -35160,7 +35679,7 @@ var AbilitiesView = class extends import_obsidian4.ItemView {
 };
 
 // src/views/atlas-view.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/features/atlas/narrative.ts
 function plural2(count4, singular, many = `${singular}s`) {
@@ -35377,26 +35896,26 @@ function renderPath(parent, host, graph, focusId) {
   path.layers.forEach((layer, index) => {
     for (const concept of layer) {
       const item = steps.createEl("li", { cls: "los-atlas-path-step" });
-      const control = item.createEl("button", {
+      const control2 = item.createEl("button", {
         cls: "los-atlas-path-step-button is-clickable",
         attr: { type: "button" }
       });
-      control.toggleClass("is-focus", concept.id === focusId);
+      control2.toggleClass("is-focus", concept.id === focusId);
       const inspected = host.concepts.inspections?.get(focusId) ?? focusId;
-      control.toggleClass("is-selected", concept.id === inspected);
-      control.setAttrs({
+      control2.toggleClass("is-selected", concept.id === inspected);
+      control2.setAttrs({
         "aria-pressed": String(concept.id === inspected),
         "aria-label": `Step ${index + 1}: inspect ${concept.label}`,
         "data-row-key": `concept:${concept.id}`
       });
-      control.setAttribute("data-atlas-concept", concept.id);
-      control.createDiv({ cls: "los-atlas-node-title", text: concept.label });
+      control2.setAttribute("data-atlas-concept", concept.id);
+      control2.createDiv({ cls: "los-atlas-node-title", text: concept.label });
       const incoming = path.edges.find((edge) => edge.dependentId === concept.id && edge.prerequisiteId !== concept.id);
-      control.createDiv({
+      control2.createDiv({
         cls: "los-micro",
         text: incoming ? `evidence: ${incoming.evidenceState}` : "the concept itself"
       });
-      control.addEventListener("click", () => {
+      control2.addEventListener("click", () => {
         host.inspectorOrigin = `concept:${concept.id}`;
         host.focusInspector = true;
         inspectConcept(host, focusId, concept.id);
@@ -35653,7 +36172,7 @@ function renderEndpoint(parent, host, graph, draft, end) {
     text: end === "from" ? "Subject" : "Object"
   });
   const chosen = draft[end];
-  const control = button(
+  const control2 = button(
     field2,
     chosen ? conceptLabel(graph, chosen) : "Choose a concept",
     () => {
@@ -35663,8 +36182,8 @@ function renderEndpoint(parent, host, graph, draft, end) {
     },
     "quiet"
   );
-  control.addClass("los-atlas-editor-endpoint-button");
-  control.setAttrs({ "aria-expanded": String(draft.picking === end) });
+  control2.addClass("los-atlas-editor-endpoint-button");
+  control2.setAttrs({ "aria-expanded": String(draft.picking === end) });
   if (draft.picking !== end) return;
   const picker = field2.createDiv({ cls: "los-atlas-editor-picker" });
   const input = picker.createEl("input", {
@@ -35724,15 +36243,15 @@ function renderRelationEditor(parent, host, graph, draft) {
   group2.setAttrs({ role: "group", "aria-label": "Relationship type" });
   enableButtonGroupKeyboardNavigation(group2, "horizontal");
   for (const type of RELATION_TYPES) {
-    const control = button(group2, relationPhrase(type), () => {
+    const control2 = button(group2, relationPhrase(type), () => {
       draft.type = type;
       draft.error = null;
       host.render();
     }, "quiet");
-    control.addClass("los-atlas-editor-type");
-    control.toggleClass("is-active", draft.type === type);
-    control.toggleClass("is-strict", relationLayer(type) === "strict");
-    control.setAttrs({ "aria-pressed": String(draft.type === type) });
+    control2.addClass("los-atlas-editor-type");
+    control2.toggleClass("is-active", draft.type === type);
+    control2.toggleClass("is-strict", relationLayer(type) === "strict");
+    control2.setAttrs({ "aria-pressed": String(draft.type === type) });
   }
   renderEndpoint(ends, host, graph, draft, "to");
   const swap = button(ends, "Swap ends", () => {
@@ -36027,7 +36546,7 @@ function renderQuestionNote(parent, host, questions, absenceText) {
     openButton.addEventListener("click", () => host.plugin.openVaultPath(question.path));
     const actions = row3.createDiv({ cls: "los-actions" });
     const resolving = question.state === "open";
-    const control = button(
+    const control2 = button(
       actions,
       resolving ? "Mark my question answered" : "Ask it again",
       () => {
@@ -36035,8 +36554,8 @@ function renderQuestionNote(parent, host, questions, absenceText) {
       },
       "quiet"
     );
-    control.addClass("los-atlas-question-action");
-    control.setAttrs({
+    control2.addClass("los-atlas-question-action");
+    control2.setAttrs({
       "aria-label": resolving ? `Mark \u201C${question.title}\u201D answered` : `Reopen \u201C${question.title}\u201D`
     });
   }
@@ -36081,7 +36600,11 @@ function renderPractice(parent, host, conceptId) {
   }
   const list3 = parent.createDiv({ cls: "los-atlas-records" });
   enableButtonGroupKeyboardNavigation(list3, "vertical");
-  for (const note2 of practice) renderLinkedNote(list3, host, note2);
+  for (const note2 of practice) {
+    const entry = list3.createDiv();
+    renderLinkedNote(entry, host, note2);
+    renderPracticeReview(entry, host.plugin, note2);
+  }
   parent.createDiv({
     cls: "los-micro",
     text: "Practice links back to the source note. No answer text, key or mastery score is shown here."
@@ -36110,18 +36633,18 @@ function renderPathSection(parent, host, graph, conceptId) {
   for (const layer of path.layers) {
     for (const concept of layer) {
       const item = steps.createEl("li", { cls: "los-atlas-path-step" });
-      const control = item.createEl("button", {
+      const control2 = item.createEl("button", {
         cls: "los-atlas-path-step-button is-clickable",
         attr: { type: "button" },
         text: concept.label
       });
-      control.setAttribute("data-row-key", `concept:${concept.id}`);
+      control2.setAttribute("data-row-key", `concept:${concept.id}`);
       const incoming = path.edges.find((edge) => edge.dependentId === concept.id);
       item.createDiv({
         cls: "los-micro",
         text: incoming ? `evidence: ${incoming.evidenceState}` : "the concept itself"
       });
-      control.addEventListener("click", () => {
+      control2.addEventListener("click", () => {
         host.inspectorOrigin = `concept:${concept.id}`;
         host.focusInspector = true;
         host.go({ concept: concept.id });
@@ -36218,12 +36741,12 @@ function renderRelationInspector(panel, host, graph, edge) {
   const endpoint = (term, conceptId) => {
     const row3 = facts.createDiv({ cls: "los-atlas-fact" });
     row3.createDiv({ cls: "los-micro", text: term });
-    const control = button(row3, conceptLabel(graph, conceptId), () => {
+    const control2 = button(row3, conceptLabel(graph, conceptId), () => {
       host.inspectorOrigin = `concept:${conceptId}`;
       host.focusInspector = true;
       host.go({ concept: conceptId });
     }, "quiet");
-    control.setAttribute("data-row-key", `concept:${conceptId}`);
+    control2.setAttribute("data-row-key", `concept:${conceptId}`);
   };
   endpoint("From", edge.from);
   fact2("Type", `${relationPhrase(edge.type)} (${edge.type})`);
@@ -36389,6 +36912,9 @@ function renderInspector2(parent, host, graph, view) {
   });
 }
 
+// src/features/atlas/board-controller.ts
+var import_node_crypto = require("node:crypto");
+
 // src/features/atlas/board-merge.ts
 var RESERVED_PREFIXES = ["los-concept-", "los-rel-", "los-evidence-", "los-scope-", "los-group-"];
 function isReserved(id) {
@@ -36423,14 +36949,21 @@ function mergeBoards(previousManagedIds, working, nextTemplate) {
   }
   const previous = new Set(previousManagedIds);
   const templateSet = new Set(templateNodeIds);
+  if ((/* @__PURE__ */ new Set([...templateNodeIds, ...templateEdgeIds])).size !== templateNodeIds.length + templateEdgeIds.length || (/* @__PURE__ */ new Set([...workingNodeIds, ...workingEdgeIds])).size !== workingNodeIds.length + workingEdgeIds.length) {
+    return { ok: false, reason: "Board node and edge ids overlap." };
+  }
+  if (templateEdges.some((edge) => typeof edge.fromNode !== "string" || typeof edge.toNode !== "string" || !templateSet.has(edge.fromNode) || !templateSet.has(edge.toNode))) {
+    return { ok: false, reason: "Board template contains an edge with a missing endpoint." };
+  }
+  const incoming = /* @__PURE__ */ new Set([...templateNodeIds, ...templateEdgeIds]);
+  for (const id of [...workingNodeIds, ...workingEdgeIds]) {
+    if (isReserved(id) && !previous.has(id) && !incoming.has(id)) {
+      return { ok: false, reason: `Board contains an unknown reserved object: ${id}.` };
+    }
+  }
   for (const node of [...workingNodes, ...templateNodes]) {
     if (!validGeometry(node)) {
       return { ok: false, reason: `Board object ${String(node.id)} has invalid geometry.` };
-    }
-  }
-  for (const id of workingNodeIds) {
-    if (isReserved(id) && !previous.has(id) && !templateSet.has(id)) {
-      return { ok: false, reason: `Board contains an unknown reserved object: ${id}.` };
     }
   }
   const workingById = new Map(workingNodes.map((node) => [node.id, node]));
@@ -36504,8 +37037,8 @@ function parseBoard(text4) {
   try {
     const value = JSON.parse(text4);
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-    if (value.nodes !== void 0 && !Array.isArray(value.nodes)) return null;
-    if (value.edges !== void 0 && !Array.isArray(value.edges)) return null;
+    const objects = (items) => Array.isArray(items) && items.every((item) => item && typeof item === "object" && !Array.isArray(item));
+    if (!objects(value.nodes) || !objects(value.edges)) return null;
     return value;
   } catch {
     return null;
@@ -36520,7 +37053,7 @@ function sidecarFor(templateSha256, managedIds) {
 function parseSidecar(text4) {
   try {
     const value = JSON.parse(text4);
-    if (!value || value.schema_version !== 1 || typeof value.template_sha256 !== "string" || !Array.isArray(value.managed_ids)) return null;
+    if (!value || value.schema_version !== 1 || typeof value.template_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(value.template_sha256) || !Array.isArray(value.managed_ids) || !value.managed_ids.every((id) => typeof id === "string" && isReserved(id)) || new Set(value.managed_ids).size !== value.managed_ids.length) return null;
     return value;
   } catch {
     return null;
@@ -36546,6 +37079,19 @@ function sidecarPath(entry) {
 function advancedBoardAvailable(settingEnabled, pluginEnabled) {
   return settingEnabled && pluginEnabled;
 }
+var SCOPE_KINDS = /* @__PURE__ */ new Set(["semester", "module", "lecture", "exam"]);
+var SCOPE_ID = /^[a-z0-9][a-z0-9._-]*$/;
+function validPaths(entry) {
+  if (!SCOPE_KINDS.has(entry.kind) || !SCOPE_ID.test(entry.id)) return false;
+  const suffix = `${entry.kind}/${entry.id}.canvas`;
+  return entry.template_path === `generated/atlas/templates/${suffix}` && entry.working_path === `boards/atlas/${suffix}`;
+}
+function verifiedTemplate(entry, text4) {
+  if (text4 === null || (0, import_node_crypto.createHash)("sha256").update(new TextEncoder().encode(text4)).digest("hex") !== entry.sha256) return null;
+  const template = parseBoard(text4);
+  if (!template || !mergeBoards([], {}, template).ok) return null;
+  return template;
+}
 var BoardController = class {
   constructor(port) {
     this.port = port;
@@ -36559,33 +37105,75 @@ var BoardController = class {
   openBoard(entry, templateText) {
     return this.enqueue(() => this.openBoardNow(entry, templateText));
   }
-  refreshBoard(entry, templateText, previewText) {
-    return this.enqueue(() => this.refreshBoardNow(entry, templateText, previewText));
+  previewRefresh(entry) {
+    return this.enqueue(async () => {
+      if (!validPaths(entry)) return { ok: false, reason: "Board paths do not match the selected scope." };
+      if (await this.port.managedCanvasOpen()) {
+        return { ok: false, reason: "Close all managed Atlas boards before refreshing, and leave the Atlas pane open." };
+      }
+      const [templateText, workingText, ownershipText] = await Promise.all([
+        this.port.read(entry.template_path),
+        this.port.read(entry.working_path),
+        this.port.read(sidecarPath(entry))
+      ]);
+      const template = verifiedTemplate(entry, templateText);
+      const working = workingText === null ? null : parseBoard(workingText);
+      const ownership = ownershipText === null ? null : parseSidecar(ownershipText);
+      if (!template || !working || !ownership || templateText === null || workingText === null || ownershipText === null) {
+        return { ok: false, reason: "The board, template or ownership record is unavailable. Rebuild views and inspect the files." };
+      }
+      const merge = mergeBoards(ownership.managed_ids, working, template);
+      if (!merge.ok) return merge;
+      const before = new Map([...working.nodes ?? [], ...working.edges ?? []].map((object) => [object.id, object]));
+      const after = new Map([...merge.canvas.nodes ?? [], ...merge.canvas.edges ?? []].map((object) => [object.id, object]));
+      const changes = [];
+      for (const id of /* @__PURE__ */ new Set([...ownership.managed_ids, ...merge.managedIds])) {
+        if (!before.has(id) && after.has(id)) changes.push(`Add ${id}`);
+        else if (!after.has(id) && before.has(id)) changes.push(`Remove ${id}`);
+        else if (JSON.stringify(before.get(id)) !== JSON.stringify(after.get(id))) changes.push(`Update ${id}`);
+      }
+      return { ok: true, workingText, templateText, ownershipText, changes };
+    });
+  }
+  refreshBoard(entry, templateText, previewText, ownershipText) {
+    return this.enqueue(() => this.refreshBoardNow(entry, templateText, previewText, ownershipText));
   }
   async openBoardNow(entry, templateText) {
+    if (!validPaths(entry)) return { ok: false, reason: "Board paths do not match the selected scope." };
     const existing = await this.port.read(entry.working_path);
     if (existing !== null) {
       await this.port.openLeaf(entry.working_path);
       return { ok: true, action: "opened" };
     }
-    const template = parseBoard(templateText);
-    if (!template) return { ok: false, reason: "Board template is unavailable." };
+    const template = verifiedTemplate(entry, templateText);
+    if (!template || templateText === null) {
+      return { ok: false, reason: "Board template is unavailable or changed. Rebuild views and try again." };
+    }
+    if (await this.port.read(sidecarPath(entry)) !== null) {
+      return { ok: false, reason: "The board is absent but its ownership record exists. Restore the board before opening it." };
+    }
     await this.port.create(entry.working_path, templateText);
     const managed = [...template.nodes ?? [], ...template.edges ?? []].map((node) => String(node.id));
     await this.port.create(sidecarPath(entry), JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n");
     await this.port.openLeaf(entry.working_path);
     return { ok: true, action: "created" };
   }
-  async refreshBoardNow(entry, templateText, previewText) {
-    if (await this.port.managedCanvasOpen([entry.working_path])) {
+  async refreshBoardNow(entry, templateText, previewText, ownershipText) {
+    if (!validPaths(entry)) return { ok: false, reason: "Board paths do not match the selected scope." };
+    if (await this.port.managedCanvasOpen()) {
       return {
         ok: false,
-        reason: "Close the board before refreshing it, and leave the Atlas pane open."
+        reason: "Close all managed Atlas boards before refreshing, and leave the Atlas pane open."
       };
     }
-    const template = parseBoard(templateText);
-    if (!template) return { ok: false, reason: "Board template is unavailable." };
+    const template = verifiedTemplate(entry, templateText);
+    if (!template || templateText === null) {
+      return { ok: false, reason: "Board template is unavailable or changed. Rebuild views and try again." };
+    }
     const sidecarText = await this.port.read(sidecarPath(entry));
+    if (ownershipText !== void 0 && sidecarText !== ownershipText) {
+      return { ok: false, reason: "Board ownership changed since the preview. Review it again." };
+    }
     const sidecar = sidecarText ? parseSidecar(sidecarText) : null;
     if (!sidecar) {
       return {
@@ -36614,7 +37202,8 @@ var BoardController = class {
       return serializeBoard(merged.canvas);
     });
     if (!wrote) return { ok: false, reason: failure ?? "Board refresh was refused." };
-    await this.port.process(sidecarPath(entry), () => JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n");
+    const settled = await this.port.process(sidecarPath(entry), (latest) => latest === sidecarText ? JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n" : null);
+    if (!settled) return { ok: false, reason: "Board merged but ownership changed. Review both files before refreshing again." };
     return { ok: true, action: "refreshed" };
   }
   /**
@@ -36624,10 +37213,13 @@ var BoardController = class {
    */
   useEditableChild(parent, child) {
     return this.enqueue(async () => {
-      if (await this.port.managedCanvasOpen([parent.working_path])) {
+      if (!validPaths(parent) || !validPaths(child) || child.parent_kind !== parent.kind || child.parent_id !== parent.id) {
+        return { ok: false, reason: "The selected board is not a child of that parent." };
+      }
+      if (await this.port.managedCanvasOpen()) {
         return {
           ok: false,
-          reason: "Close the board before changing its portal target, and leave the Atlas pane open."
+          reason: "Close all managed Atlas boards before changing a portal target."
         };
       }
       if (await this.port.read(child.working_path) === null) {
@@ -36843,10 +37435,10 @@ function renderConceptRail(parent, host, graph) {
   }, "quiet");
   rail.createDiv({ cls: "los-atlas-group-head los-micro", text: "Domains" });
   for (const place of conceptPlaces(host, graph)) {
-    const control = button(rail, place.title, () => chooseDomain(host, place.id), "quiet");
-    control.addClass("los-atlas-place");
-    control.setAttrs({ "data-domain": place.id, "aria-pressed": String(host.concepts.domain === place.id) });
-    control.createSpan({ cls: "los-micro", text: plural2(place.concepts.size, "concept") });
+    const control2 = button(rail, place.title, () => chooseDomain(host, place.id), "quiet");
+    control2.addClass("los-atlas-place");
+    control2.setAttrs({ "data-domain": place.id, "aria-pressed": String(host.concepts.domain === place.id) });
+    control2.createSpan({ cls: "los-micro", text: plural2(place.concepts.size, "concept") });
   }
   enableButtonGroupKeyboardNavigation(rail, "vertical");
 }
@@ -37166,7 +37758,7 @@ function renderQuestionRow(parent, host, graph, question) {
 function renderConnectAction(parent, host, focusId) {
   if (host.editor) return;
   const actions = parent.createDiv({ cls: "los-actions los-atlas-connect" });
-  const control = button(
+  const control2 = button(
     actions,
     focusId ? "Connect this concept" : "Connect concepts",
     () => {
@@ -37175,7 +37767,7 @@ function renderConnectAction(parent, host, focusId) {
     },
     "quiet"
   );
-  control.addClass("los-atlas-connect-action");
+  control2.addClass("los-atlas-connect-action");
 }
 function renderBoardControls(root, host) {
   const catalog = host.boardCatalog();
@@ -37197,9 +37789,7 @@ function renderBoardControls(root, host) {
     host.state.module,
     host.plugin.store.currentSemester()
   );
-  if (host.state.module && desired?.kind === "module") {
-    host.boardScope = `${desired.kind}/${desired.id}`;
-  } else if (!host.boardScope && desired) {
+  if (!host.boardScope && desired) {
     host.boardScope = `${desired.kind}/${desired.id}`;
   }
   select2.value = host.boardScope ?? "";
@@ -37218,18 +37808,18 @@ function renderBoardControls(root, host) {
   }, "quiet");
   open.disabled = !selected;
   refresh.disabled = !selected;
-  const advanced = button(
-    row3,
-    "Advanced board",
-    () => {
-      if (selected) void host.openAtlasBoard(selected, true);
-    },
-    "quiet"
-  );
-  advanced.disabled = !selected;
-  advanced.setAttrs({
-    title: host.plugin.settings.atlasAdvancedCanvas ? "Open this board with Advanced Canvas portals" : "Needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin"
-  });
+  if (host.plugin.settings.atlasAdvancedCanvas) {
+    const advanced = button(
+      row3,
+      "Advanced board",
+      () => {
+        if (selected) void host.openAtlasBoard(selected, true);
+      },
+      "quiet"
+    );
+    advanced.disabled = !selected;
+    advanced.setAttrs({ title: "Open this board with the installed Advanced Canvas plugin" });
+  }
   if (selected?.parent_kind && host.plugin.settings.atlasAdvancedCanvas) {
     button(
       row3,
@@ -37531,6 +38121,14 @@ function renderAtlasView(root, host) {
 
 // src/infrastructure/atlas-board-vault.ts
 var import_obsidian5 = require("obsidian");
+var controllers = /* @__PURE__ */ new WeakMap();
+function atlasBoardController(app) {
+  const existing = controllers.get(app);
+  if (existing) return existing;
+  const controller = new BoardController(new AtlasBoardVault(app));
+  controllers.set(app, controller);
+  return controller;
+}
 var AtlasBoardVault = class {
   constructor(app) {
     this.app = app;
@@ -37553,14 +38151,19 @@ var AtlasBoardVault = class {
   async process(path, fn) {
     const file = this.file(path);
     if (!file) return false;
-    let wrote = false;
-    await this.app.vault.process(file, (latest) => {
-      const next = fn(latest);
-      if (next === null) return latest;
-      wrote = true;
-      return next;
-    });
-    return wrote;
+    const unchanged = new Error("No board edit to write");
+    let accepted = false;
+    try {
+      await this.app.vault.process(file, (latest) => {
+        const next = fn(latest);
+        accepted = next !== null;
+        if (next === null || next === latest) throw unchanged;
+        return next;
+      });
+    } catch (error) {
+      if (error !== unchanged) throw error;
+    }
+    return accepted;
   }
   async openLeaf(path) {
     const file = this.file(path);
@@ -37568,15 +38171,26 @@ var AtlasBoardVault = class {
       new import_obsidian5.Notice(`Board not found: ${path}`);
       return;
     }
-    const leaf = this.app.workspace.getLeaf(true);
-    await leaf.openFile(file);
+    const existing = this.leafFor(path);
+    if (existing) {
+      await this.app.workspace.revealLeaf(existing);
+      return;
+    }
+    await this.app.workspace.getLeaf(true).openFile(file);
   }
-  async managedCanvasOpen(workingPaths) {
+  leafFor(path) {
+    let match;
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      const view = leaf.view;
+      if (view?.file?.path === path) match = leaf;
+    });
+    return match;
+  }
+  async managedCanvasOpen() {
     let open = false;
     this.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
-      const path = view?.file?.path;
-      if (path && workingPaths.includes(path)) open = true;
+      if (view?.file?.path.startsWith("boards/atlas/") && view.file.path.endsWith(".canvas")) open = true;
     });
     return open;
   }
@@ -37831,6 +38445,41 @@ function renderToday(view, root) {
       item
     );
   }
+}
+
+// src/infrastructure/resource-target.ts
+function isFileShapedPath(value) {
+  if (typeof value !== "string") return false;
+  const path = value.trim().split(/[?#]/, 1)[0] ?? "";
+  const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
+  return /^[^./][^/]*\.[^./]+$/.test(name);
+}
+function isDirectMaterialFileTarget(record7) {
+  return record7.material_exists === true && isFileShapedPath(record7.material_path);
+}
+var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
+function pageDestination(record7) {
+  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
+  if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
+  const locator = typeof record7.locator === "string" ? record7.locator : "";
+  const match = QUALIFIED_PAGES.exec(locator);
+  if (!match) return null;
+  const first = Number(match[1]);
+  const last = match[2] ? Number(match[2]) : null;
+  if (!Number.isInteger(first) || first < 1) return null;
+  if (last !== null && (!Number.isInteger(last) || last <= first)) {
+    return { page: first, label: `physical page ${first}` };
+  }
+  return {
+    page: first,
+    label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
+  };
+}
+function hasDirectResourceTarget(record7) {
+  if (isDirectMaterialFileTarget(record7)) return true;
+  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
+  if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
+  return safeWebUrl(record7.url) !== null;
 }
 
 // src/features/stage-resources.ts
@@ -38429,10 +39078,10 @@ function deskHead(parent, crumbs, view) {
   const { leaf, plugin: { router } } = view;
   const history = location.createDiv({ cls: "sd-history", attr: { role: "group", "aria-label": "Navigation history" } });
   for (const [direction, label, glyph] of [["back", "Back", "chevron-left"], ["forward", "Forward", "chevron-right"]]) {
-    const control = history.createEl("button", { cls: "sd-history-button", attr: { type: "button", "aria-label": label } });
-    control.disabled = !router.paneHistoryAvailable(leaf, direction);
-    icon(control.createSpan(), glyph);
-    control.addEventListener("click", () => {
+    const control2 = history.createEl("button", { cls: "sd-history-button", attr: { type: "button", "aria-label": label } });
+    control2.disabled = !router.paneHistoryAvailable(leaf, direction);
+    icon(control2.createSpan(), glyph);
+    control2.addEventListener("click", () => {
       void router.movePaneHistory(leaf, direction);
     });
   }
@@ -38458,10 +39107,10 @@ function deskRow(parent, cls, label, open) {
   return row3;
 }
 var controlLabelId = 0;
-function labelControl(control, label) {
+function labelControl(control2, label) {
   const id = `sd-control-label-${++controlLabelId}`;
-  control.createSpan({ cls: "los-sr-only", text: label, attr: { id } });
-  control.setAttr("aria-labelledby", id);
+  control2.createSpan({ cls: "los-sr-only", text: label, attr: { id } });
+  control2.setAttr("aria-labelledby", id);
 }
 function chevron(parent, name = "chevron-right") {
   return icon(parent.createSpan({ cls: "sd-chevron" }), name);
@@ -38948,13 +39597,13 @@ function renderModuleDetail(view, root) {
   });
   enableButtonGroupKeyboardNavigation(tabs);
   for (const [key, label] of MODULE_TABS) {
-    const control = button(
+    const control2 = button(
       tabs,
       label,
       () => view.selectTab(key),
       key === tab ? "cta" : "quiet"
     );
-    control.setAttrs({
+    control2.setAttrs({
       "aria-pressed": String(key === tab)
     });
   }
@@ -39084,7 +39733,7 @@ function renderUnits(view, root, module2) {
       "aria-pressed": String(!view.componentId)
     });
     for (const component of module2.components) {
-      const control = button(
+      const control2 = button(
         tabs,
         component.title,
         () => view.selectComponent(
@@ -39092,7 +39741,7 @@ function renderUnits(view, root, module2) {
         ),
         view.componentId === component.id ? "row" : "quiet"
       );
-      control.setAttrs({
+      control2.setAttrs({
         "aria-pressed": String(
           view.componentId === component.id
         )
@@ -39472,12 +40121,12 @@ function group(parent, label, options, active, choose) {
   const buttons = wrap.createDiv({ cls: "los-design-switch-options", attr: { role: "group", "aria-label": label } });
   enableButtonGroupKeyboardNavigation(buttons);
   for (const [id, text4] of options) {
-    const control = buttons.createEl("button", {
+    const control2 = buttons.createEl("button", {
       cls: `los-design-switch-option is-clickable${id === active ? " is-active" : ""}`,
       text: text4,
       attr: { type: "button", "aria-pressed": String(id === active), "data-los-design": id }
     });
-    control.addEventListener("click", () => {
+    control2.addEventListener("click", () => {
       if (id !== active) void choose(id);
     });
   }
@@ -39939,9 +40588,9 @@ function renderAvailability(parent, availability, route2, deps, placement) {
   line.createSpan({ cls: "los-micro", text: availability.detail });
   if (availability.kind === "local" && route2) {
     const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, route2.routeId, placement));
-    const control = button(line, state?.status === "ready" ? "Inspect again" : "Inspect span", () => inspect(deps, route2.routeId, placement), "tertiary");
-    control.addClass("los-span-trigger");
-    control.disabled = state?.status === "loading";
+    const control2 = button(line, state?.status === "ready" ? "Inspect again" : "Inspect span", () => inspect(deps, route2.routeId, placement), "tertiary");
+    control2.addClass("los-span-trigger");
+    control2.disabled = state?.status === "loading";
   } else if (availability.kind === "local" && !route2) {
     line.createSpan({ cls: "los-micro", text: "No single registered route, so its span cannot be inspected." });
   }
@@ -41462,17 +42111,17 @@ var MaterialComparisonModal = class extends import_obsidian10.Modal {
   railButton(parent, key, label) {
     const count4 = this.count(key);
     const active = this.group === key;
-    const control = parent.createEl("button", {
+    const control2 = parent.createEl("button", {
       cls: `los-compare-group is-clickable${active ? " is-selected" : ""}${count4 ? "" : " is-empty"}`,
       attr: { type: "button", "aria-pressed": String(active), "data-compare-group": key }
     });
-    this.railControls.set(key, control);
-    control.createSpan({ cls: "los-compare-group-title", text: label });
-    control.createSpan({
+    this.railControls.set(key, control2);
+    control2.createSpan({ cls: "los-compare-group-title", text: label });
+    control2.createSpan({
       cls: "los-compare-group-count",
       text: `${count4} ${key === "lecture" || key === "course" ? count4 === 1 ? "route" : "routes" : count4 === 1 ? "material" : "materials"}`
     });
-    control.addEventListener("click", () => {
+    control2.addEventListener("click", () => {
       this.group = key;
       this.query = "";
       for (const [itemKey, item] of this.railControls) {
@@ -43693,10 +44342,10 @@ function commandBar(root, crumbs, view) {
   const { leaf, plugin: { router } } = view;
   const history = location.createDiv({ cls: "focus-history", attr: { role: "group", "aria-label": "Navigation history" } });
   for (const [direction, label, glyph] of [["back", "Back", "chevron-left"], ["forward", "Forward", "chevron-right"]]) {
-    const control = history.createEl("button", { cls: "focus-history-btn", attr: { type: "button", "aria-label": label } });
-    control.disabled = !router.paneHistoryAvailable(leaf, direction);
-    icon(control.createSpan({ attr: { "aria-hidden": "true" } }), glyph);
-    control.addEventListener("click", () => {
+    const control2 = history.createEl("button", { cls: "focus-history-btn", attr: { type: "button", "aria-label": label } });
+    control2.disabled = !router.paneHistoryAvailable(leaf, direction);
+    icon(control2.createSpan({ attr: { "aria-hidden": "true" } }), glyph);
+    control2.addEventListener("click", () => {
       void router.movePaneHistory(leaf, direction);
     });
   }
@@ -44181,7 +44830,7 @@ function renderFocusNav(view) {
   search.addEventListener("click", () => plugin.nav.openGlobalSearch());
   const item = (parent, glyph, label, key, go, count4 = 0) => {
     const current = plugin.activeNav === key || key === "modules" && plugin.activeNav === "learn";
-    const control = parent.createEl("button", {
+    const control2 = parent.createEl("button", {
       cls: `focus-nav-item is-clickable${current ? " is-active" : ""}`,
       attr: {
         type: "button",
@@ -44189,10 +44838,10 @@ function renderFocusNav(view) {
         "aria-label": count4 ? `${label}, ${count4} waiting` : label
       }
     });
-    icon(control.createSpan({ cls: "focus-nav-icon", attr: { "aria-hidden": "true" } }), glyph);
-    control.createSpan({ text: label });
-    if (count4) control.createSpan({ cls: "focus-nav-count", text: String(count4) });
-    control.addEventListener("click", () => go());
+    icon(control2.createSpan({ cls: "focus-nav-icon", attr: { "aria-hidden": "true" } }), glyph);
+    control2.createSpan({ text: label });
+    if (count4) control2.createSpan({ cls: "focus-nav-count", text: String(count4) });
+    control2.addEventListener("click", () => go());
   };
   const primary = root.createDiv({ cls: "focus-nav-primary", attr: { role: "navigation", "aria-label": "Main destinations" } });
   enableButtonGroupKeyboardNavigation(primary, "vertical");
@@ -44279,16 +44928,16 @@ function renderMaterialFilters(parent, facets, filters, changed, actionHeading =
   const select2 = (title2, key, values) => {
     const field2 = fields.createEl("label", { cls: "los-material-filter-field" });
     field2.createSpan({ text: title2 });
-    const control = field2.createEl("select", { attr: { "aria-label": title2 } });
-    control.createEl("option", { text: key === "medium" ? "All media" : key === "access" ? "All access" : "All purposes / actions", attr: { value: "" } });
-    for (const [value, text4] of values) control.createEl("option", { text: text4, attr: { value } });
-    control.value = filters[key];
-    control.addEventListener("change", () => {
-      filters[key] = control.value;
+    const control2 = field2.createEl("select", { attr: { "aria-label": title2 } });
+    control2.createEl("option", { text: key === "medium" ? "All media" : key === "access" ? "All access" : "All purposes / actions", attr: { value: "" } });
+    for (const [value, text4] of values) control2.createEl("option", { text: text4, attr: { value } });
+    control2.value = filters[key];
+    control2.addEventListener("change", () => {
+      filters[key] = control2.value;
       updateReset();
       changed();
     });
-    selects.push({ control, key });
+    selects.push({ control: control2, key });
   };
   const unique2 = (values) => [...new Map(values).entries()];
   select2("Medium", "medium", unique2(facets.map((item) => [item.medium, item.mediumLabel])));
@@ -44299,7 +44948,7 @@ function renderMaterialFilters(parent, facets, filters, changed, actionHeading =
   const reset = button(feedback, "Clear filters", () => {
     Object.assign(filters, emptyMaterialFilters());
     search.value = "";
-    for (const { control } of selects) control.value = "";
+    for (const { control: control2 } of selects) control2.value = "";
     updateReset();
     changed();
   }, "quiet");
@@ -45341,9 +45990,53 @@ function drawDesignScreen(plugin, key, host) {
   return screen ? screen(host) !== false : false;
 }
 
+// src/features/atlas/board-preview.ts
+var import_obsidian13 = require("obsidian");
+var BoardRefreshModal = class extends import_obsidian13.Modal {
+  constructor(app, title2, preview, apply) {
+    super(app);
+    this.title = title2;
+    this.preview = preview;
+    this.apply = apply;
+  }
+  cleanup = null;
+  onOpen() {
+    const heading2 = this.contentEl.createEl("h2", {
+      text: `Refresh ${this.title}`,
+      attr: { id: "los-atlas-board-review" }
+    });
+    this.contentEl.createEl("p", {
+      text: "Working positions and authored objects carry through the merge. Only the listed managed objects change."
+    });
+    if (this.preview.changes.length) {
+      const list3 = this.contentEl.createEl("ul");
+      for (const change of this.preview.changes) list3.createEl("li", { text: change });
+    } else {
+      this.contentEl.createEl("p", { text: "The generated content matches the working board." });
+    }
+    const actions = this.contentEl.createDiv({ cls: "los-actions" });
+    const cancel = button(actions, "Cancel", () => this.close(), "quiet");
+    button(actions, "Confirm refresh", () => {
+      this.close();
+      this.apply();
+    }, "cta");
+    this.cleanup = makeModalAccessible(this.contentEl, {
+      close: () => this.close(),
+      hostClass: "los-atlas-board-preview",
+      labelledBy: heading2.getAttribute("id"),
+      initialFocus: () => cancel
+    });
+  }
+  onClose() {
+    this.cleanup?.();
+    this.cleanup = null;
+    this.contentEl.empty();
+  }
+};
+
 // src/views/atlas-view.ts
 var RELATION_REGISTRY = "registry-concept-relations";
-var AtlasView = class extends import_obsidian13.ItemView {
+var AtlasView = class extends import_obsidian14.ItemView {
   plugin;
   concept = null;
   module = null;
@@ -45374,53 +46067,47 @@ var AtlasView = class extends import_obsidian13.ItemView {
   boardCatalog() {
     return this.plugin.store.atlasBoards();
   }
-  boardController() {
-    return new BoardController(new AtlasBoardVault(this.app));
-  }
   async openAtlasBoard(entry, advanced = false) {
     if (advanced) {
       const installed = await this.app.vault.adapter.exists(
         ".obsidian/plugins/advanced-canvas/manifest.json"
       );
       if (!advancedBoardAvailable(this.plugin.settings.atlasAdvancedCanvas, installed)) {
-        new import_obsidian13.Notice("Advanced board needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin.");
+        new import_obsidian14.Notice("Advanced board needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin.");
         return;
       }
     }
     const vault = new AtlasBoardVault(this.app);
     const template = await vault.read(entry.template_path);
-    if (template === null) {
-      new import_obsidian13.Notice("Board unavailable. Rebuild views and try again.");
-      return;
-    }
-    const result = await this.boardController().openBoard(entry, template);
-    if (!result.ok) new import_obsidian13.Notice(result.reason);
+    const result = await atlasBoardController(this.app).openBoard(entry, template);
+    if (!result.ok) new import_obsidian14.Notice(result.reason);
   }
   async usePortalChild(child) {
     const parent = this.boardCatalog().find(
       (entry) => entry.kind === child.parent_kind && entry.id === child.parent_id
     );
     if (!parent) {
-      new import_obsidian13.Notice("This scope has no parent board to point at it.");
+      new import_obsidian14.Notice("This scope has no parent board to point at it.");
       return;
     }
-    const result = await this.boardController().useEditableChild(parent, child);
-    new import_obsidian13.Notice(result.ok ? "Portals on the parent board now open the editable child." : result.reason);
+    const result = await atlasBoardController(this.app).useEditableChild(parent, child);
+    new import_obsidian14.Notice(result.ok ? "Portals on the parent board now open the editable child." : result.reason);
     this.render();
   }
   async refreshAtlasBoard(entry) {
-    const vault = new AtlasBoardVault(this.app);
-    const [template, preview] = [
-      await vault.read(entry.template_path),
-      await vault.read(entry.working_path)
-    ];
-    if (template === null || preview === null) {
-      new import_obsidian13.Notice("Board unavailable. Reopen it and review before refreshing.");
-      return;
+    const controller = atlasBoardController(this.app);
+    try {
+      const preview = await controller.previewRefresh(entry);
+      if (!preview.ok) {
+        new import_obsidian14.Notice(preview.reason);
+        return;
+      }
+      new BoardRefreshModal(this.app, entry.title ?? entry.id, preview, () => {
+        void controller.refreshBoard(entry, preview.templateText, preview.workingText, preview.ownershipText).then((result) => new import_obsidian14.Notice(result.ok ? "Board refreshed." : result.reason)).catch((error) => new import_obsidian14.Notice(errorMessage(error)));
+      }).open();
+    } catch (error) {
+      new import_obsidian14.Notice(errorMessage(error));
     }
-    const result = await this.boardController().refreshBoard(entry, template, preview);
-    new import_obsidian13.Notice(result.ok ? "Board refreshed." : result.reason);
-    this.render();
   }
   tab = "summary";
   semanticOpen = false;
@@ -45436,7 +46123,7 @@ var AtlasView = class extends import_obsidian13.ItemView {
     openEvidenceBinding({
       store: this.plugin.store,
       openMaterialPath: (path, destination) => this.plugin.openMaterialPath(path, destination),
-      notify: (message2) => new import_obsidian13.Notice(message2)
+      notify: (message2) => new import_obsidian14.Notice(message2)
     }, relationId, ordinal);
   }
   /** The exact stored row for one projected edge, via `atlas.context`. */
@@ -45459,7 +46146,7 @@ var AtlasView = class extends import_obsidian13.ItemView {
     void (async () => {
       const exact = await this.exactRow(edge);
       if (!exact && isDecorated(edge)) {
-        new import_obsidian13.Notice("The exact stored connection could not be read, so it was not opened for editing.");
+        new import_obsidian14.Notice("The exact stored connection could not be read, so it was not opened for editing.");
         return;
       }
       this.editor = editDraft(edge, exact ?? void 0);
@@ -45469,7 +46156,7 @@ var AtlasView = class extends import_obsidian13.ItemView {
   async togglePin(edge) {
     const exact = await this.exactRow(edge);
     if (!exact && isDecorated(edge)) {
-      new import_obsidian13.Notice("The exact stored connection could not be read, so nothing was pinned or unpinned.");
+      new import_obsidian14.Notice("The exact stored connection could not be read, so nothing was pinned or unpinned.");
       return;
     }
     const old = exact ?? rowOf(edge);
@@ -45672,6 +46359,7 @@ var AtlasView = class extends import_obsidian13.ItemView {
       this.concept = state.concept;
     }
     if (typeof state.module === "string" || state.module === null) {
+      if (this.module !== state.module) this.boardScope = null;
       this.module = state.module;
     }
     this.lens = asAtlasLens(state.lens);
@@ -45796,11 +46484,11 @@ var AtlasView = class extends import_obsidian13.ItemView {
    */
   async write(action, onRefusal) {
     if (this.mutationPending) {
-      new import_obsidian13.Notice("A LearningOS write is already running.");
+      new import_obsidian14.Notice("A LearningOS write is already running.");
       return false;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian13.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian14.Notice("Queued behind the running LearningOS write.");
     }
     this.mutationPending = true;
     try {
@@ -45810,7 +46498,7 @@ var AtlasView = class extends import_obsidian13.ItemView {
     } catch (error) {
       const message2 = errorMessage(error);
       onRefusal?.(message2);
-      new import_obsidian13.Notice(message2);
+      new import_obsidian14.Notice(message2);
       this.render();
       return false;
     } finally {
@@ -45848,7 +46536,7 @@ var AtlasView = class extends import_obsidian13.ItemView {
 };
 
 // src/views/boundary-view.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/contracts/masters-planning.ts
 var import_responses_validator2 = __toESM(require_responses_validator());
@@ -45893,7 +46581,7 @@ function sourceLists(source) {
     return key ? [MASTER_LIST_LABELS[key] ?? key] : [];
   }))];
 }
-var BoundaryView = class extends import_obsidian14.ItemView {
+var BoundaryView = class extends import_obsidian15.ItemView {
   plugin;
   boundaryId = null;
   mastersDashboard = null;
@@ -46171,10 +46859,10 @@ var BoundaryView = class extends import_obsidian14.ItemView {
 };
 
 // src/views/garden-view.ts
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // src/features/ai-actions/action-button.ts
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const wrap = parent.createDiv({ cls: "los-ai-action-row" });
   const providers = plugin.aiActions.providers();
@@ -46191,7 +46879,7 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const targetId = target.id;
   const launch = button(wrap, "Refine with AI", async () => {
     if (!targetId) {
-      new import_obsidian15.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
+      new import_obsidian16.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
       return;
     }
     launch.setAttr("disabled", "disabled");
@@ -46202,10 +46890,10 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
         provider
       );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
-      new import_obsidian15.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
+      new import_obsidian16.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
       onChanged?.(result);
     } catch (error) {
-      new import_obsidian15.Notice(errorMessage(error));
+      new import_obsidian16.Notice(errorMessage(error));
       launch.removeAttribute?.("disabled");
       launch.setText("Refine with AI");
     }
@@ -46222,7 +46910,7 @@ var GARDEN_FILTERS = [
   ["review-due", "Review due"],
   ["harvest-candidate", "Candidates"]
 ];
-var GardenView = class extends import_obsidian16.ItemView {
+var GardenView = class extends import_obsidian17.ItemView {
   plugin;
   planting = false;
   filter = "all";
@@ -46425,7 +47113,7 @@ var GardenView = class extends import_obsidian16.ItemView {
     const text4 = this.seedText;
     const title2 = this.seedTitle.trim();
     if (!text4.trim()) {
-      new import_obsidian16.Notice(
+      new import_obsidian17.Notice(
         "Write something before adding the seed."
       );
       return;
@@ -46440,9 +47128,9 @@ var GardenView = class extends import_obsidian16.ItemView {
         )
       );
       this.plugin.clearGardenDraft({ title: title2, text: text4 });
-      new import_obsidian16.Notice("Garden seed added.");
+      new import_obsidian17.Notice("Garden seed added.");
     } catch (error) {
-      new import_obsidian16.Notice(errorMessage(error));
+      new import_obsidian17.Notice(errorMessage(error));
     } finally {
       this.planting = false;
       this.render();
@@ -46524,12 +47212,12 @@ var GardenView = class extends import_obsidian16.ItemView {
               await this.plugin.aiActions.applyApprovedDelivery(
                 deliveryId
               );
-              new import_obsidian16.Notice(
+              new import_obsidian17.Notice(
                 "Approved AI delivery applied and projection refreshed."
               );
               this.render();
             } catch (error) {
-              new import_obsidian16.Notice(
+              new import_obsidian17.Notice(
                 errorMessage(error)
               );
             }
@@ -46570,8 +47258,8 @@ var GardenView = class extends import_obsidian16.ItemView {
 };
 
 // src/views/home-view.ts
-var import_obsidian17 = require("obsidian");
-var HomeView = class extends import_obsidian17.ItemView {
+var import_obsidian18 = require("obsidian");
+var HomeView = class extends import_obsidian18.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -47840,13 +48528,13 @@ function renderCollectionSwitch(view, root) {
     id,
     label
   ] of LIBRARY_COLLECTIONS2) {
-    const control = button(
+    const control2 = button(
       switcher,
       label,
       () => view.plugin.nav.openLibraryHome(id),
       view.collection === id ? "cta" : "quiet"
     );
-    control.setAttrs({
+    control2.setAttrs({
       "aria-pressed": String(
         view.collection === id
       )
@@ -49010,13 +49698,13 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
   enableButtonGroupKeyboardNavigation(layouts);
   for (const [id, label] of LAYOUTS2) {
     const active = view.folderLayout === id;
-    const control = button(
+    const control2 = button(
       layouts,
       label,
       () => void view.setFolderLayout(id),
       "quiet"
     );
-    control.setAttribute("aria-pressed", String(active));
+    control2.setAttribute("aria-pressed", String(active));
   }
   const total = folder2.entries.length;
   const count4 = toolbar.createSpan({
@@ -49536,17 +50224,17 @@ function renderSourceBrowser(view, root) {
     dimension,
     label
   ] of SOURCE_FILTER_DIMENSIONS) {
-    const control = facets.createDiv({
+    const control2 = facets.createDiv({
       cls: "los-library-peer-facet"
     });
-    control.createEl(
+    control2.createEl(
       "label",
       {
         cls: "los-library-facet-label",
         text: label
       }
     );
-    const select2 = control.createEl(
+    const select2 = control2.createEl(
       "select",
       {
         cls: "los-library-facet-select",
@@ -49630,7 +50318,7 @@ function renderSourceBrowser(view, root) {
       label
     ] of active) {
       const value = view.filters[dimension];
-      const control = button(
+      const control2 = button(
         activeWrap,
         `${label}: ${view.sourceFilterLabel(
           dimension,
@@ -49642,7 +50330,7 @@ function renderSourceBrowser(view, root) {
         ),
         "quiet"
       );
-      control.addClass(
+      control2.addClass(
         "los-library-filter-chip"
       );
     }
@@ -49732,8 +50420,8 @@ function renderSourceBrowser(view, root) {
 }
 
 // src/views/library-view.ts
-var import_obsidian18 = require("obsidian");
-var LibraryView = class extends import_obsidian18.ItemView {
+var import_obsidian19 = require("obsidian");
+var LibraryView = class extends import_obsidian19.ItemView {
   plugin;
   screen = "home";
   collection = "sources";
@@ -50500,8 +51188,8 @@ function renderGroupList(view, root) {
 }
 
 // src/views/module-view.ts
-var import_obsidian19 = require("obsidian");
-var ModuleView = class extends import_obsidian19.ItemView {
+var import_obsidian20 = require("obsidian");
+var ModuleView = class extends import_obsidian20.ItemView {
   plugin;
   screen;
   groupId;
@@ -50630,8 +51318,8 @@ var ModuleView = class extends import_obsidian19.ItemView {
 };
 
 // src/views/nav-view.ts
-var import_obsidian20 = require("obsidian");
-var NavView = class extends import_obsidian20.ItemView {
+var import_obsidian21 = require("obsidian");
+var NavView = class extends import_obsidian21.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -50694,7 +51382,7 @@ var NavView = class extends import_obsidian20.ItemView {
 };
 
 // src/views/program-view.ts
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 var COORDINATION_HEADINGS = [
   "Priorities",
   "Commitments",
@@ -50717,7 +51405,7 @@ function readProgramSemesters(value) {
   }
   return semesters;
 }
-var ProgramView = class extends import_obsidian21.ItemView {
+var ProgramView = class extends import_obsidian22.ItemView {
   plugin;
   programId = null;
   captureFeedback = "";
@@ -51042,7 +51730,7 @@ var ProgramView = class extends import_obsidian21.ItemView {
       () => {
         const text4 = editor.value.trim();
         if (!text4) {
-          new import_obsidian21.Notice(
+          new import_obsidian22.Notice(
             "Enter some text before capturing."
           );
           editor.focus();
@@ -51124,7 +51812,7 @@ var ProgramView = class extends import_obsidian21.ItemView {
       () => {
         const localPath = localFilePath(picker.files?.[0]);
         if (!localPath) {
-          new import_obsidian21.Notice(
+          new import_obsidian22.Notice(
             "Choose a local file first."
           );
           return;
@@ -51156,7 +51844,7 @@ var ProgramView = class extends import_obsidian21.ItemView {
   }
   async capture(action, clear = null, feedback = "Captured to Inbox. It is awaiting routing.") {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian21.Notice(
+      new import_obsidian22.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -51174,27 +51862,27 @@ var ProgramView = class extends import_obsidian21.ItemView {
       );
       clear?.();
       this.captureFeedback = feedback;
-      new import_obsidian21.Notice(
+      new import_obsidian22.Notice(
         "Captured to the LearningOS inbox."
       );
       this.render();
     } catch (error) {
-      new import_obsidian21.Notice(errorMessage(error));
+      new import_obsidian22.Notice(errorMessage(error));
     }
   }
 };
 
 // src/views/review-view.ts
-var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 var fs3 = __toESM(require("node:fs"));
 var nodePath3 = __toESM(require("node:path"));
 
 // src/features/review/detail.ts
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 
 // src/gateway-client.ts
 var import_responses_validator4 = __toESM(require_responses_validator());
-var import_node_crypto2 = require("node:crypto");
+var import_node_crypto3 = require("node:crypto");
 var import_promises = require("node:fs/promises");
 var import_node_os = require("node:os");
 var import_node_path = require("node:path");
@@ -51251,6 +51939,7 @@ var UI_GESTURE_CAPABILITIES = [
    * "the app needs it" reintroduces the thing the allowlist exists to stop.
    */
   "concept.relations.change",
+  "practice.verification.record",
   "review.apply",
   "review.prepare",
   "unit.map.import",
@@ -52058,11 +52747,11 @@ function projectionSettlement(facts) {
 }
 
 // src/infrastructure/trace-context.ts
-var import_node_crypto = require("node:crypto");
+var import_node_crypto2 = require("node:crypto");
 var TRACE_ID_BYTES = 16;
 var SPAN_ID_BYTES = 8;
 function hex(bytes) {
-  return (0, import_node_crypto.randomBytes)(bytes).toString("hex");
+  return (0, import_node_crypto2.randomBytes)(bytes).toString("hex");
 }
 function newOperationContext(sampled = true) {
   return { traceId: hex(TRACE_ID_BYTES), spanId: hex(SPAN_ID_BYTES), sampled };
@@ -52128,7 +52817,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:8fcf6e4db2fc9aa5933f9b08faa0e972deb40c12f7c20350efccc0a5de6a1038" : "unavailable";
+  return true ? "sha256:b987e2226cd4f96a7ef717bd8f60670c54e0d7aab7f4ec89dacbfd411ef82062" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;
@@ -52224,7 +52913,7 @@ function expandedLocalPath(filePath) {
 }
 async function fileSha256(filePath) {
   const bytes = await (0, import_promises.readFile)(expandedLocalPath(filePath));
-  return `sha256:${(0, import_node_crypto2.createHash)("sha256").update(bytes).digest("hex")}`;
+  return `sha256:${(0, import_node_crypto3.createHash)("sha256").update(bytes).digest("hex")}`;
 }
 function gatewayErrorDetails(value) {
   const response = typeof value === "object" && value !== null ? value : {};
@@ -52949,6 +53638,15 @@ Last response: ${result.error.message}`,
       { expectedRevisions }
     );
   }
+  recordPracticeVerification(record7, context) {
+    return this.capability("practice.verification.record", { record: record7 }, {
+      expectedSnapshot: context.snapshot_id,
+      expectedRevisions: {
+        "registry-practice-index": context.practice_index_revision,
+        [context.note_id]: context.note_revision
+      }
+    });
+  }
   prepareShelving(unitId, expectedRevisions = {}) {
     return this.capability("review.prepare", { unit_id: unitId }, { expectedRevisions });
   }
@@ -53082,6 +53780,19 @@ Last response: ${result.error.message}`,
     args.push("--json");
     return this.call(args);
   }
+  async practiceContext(noteId, expectedSnapshot) {
+    const value = await this.call([
+      "practice-context",
+      noteId,
+      "--expected-snapshot",
+      expectedSnapshot,
+      "--json"
+    ]);
+    if (!(0, import_responses_validator4.validatePracticeContextWire)(value) || value.note_id !== noteId || value.snapshot_id !== expectedSnapshot || value.items.some((item) => item.item_id !== `${noteId}#${item.label}`)) {
+      throw new Error("LearningOS returned a mismatched practice context. Reload and try again.");
+    }
+    return value;
+  }
   /**
    * One exact route's identity, locator and availability. `extract` asks Core
    * for a bounded local excerpt; remote material is never fetched.
@@ -53207,10 +53918,10 @@ async function send(host, action, done) {
   host.render();
   try {
     await host.plugin.mutate(action);
-    new import_obsidian22.Notice(done);
+    new import_obsidian23.Notice(done);
     return true;
   } catch (error) {
-    new import_obsidian22.Notice(errorMessage(error));
+    new import_obsidian23.Notice(errorMessage(error));
     return false;
   } finally {
     host.sending = false;
@@ -53247,7 +53958,7 @@ function editConnection(host, draft) {
   const brief = host.plugin.abilityHorizon.current();
   const from = brief?.abilities.find((row3) => row3.id === draft.fromAbility);
   if (!brief || !from) {
-    new import_obsidian22.Notice("The ability map is not loaded, so this connection cannot be edited yet.");
+    new import_obsidian23.Notice("The ability map is not loaded, so this connection cannot be edited yet.");
     return;
   }
   new AbilityConnectionDraftModal(host.app, {
@@ -53261,7 +53972,7 @@ function editConnection(host, draft) {
 function drop(host, id) {
   host.plugin.discardAbilityDraft(id);
   host.select(null);
-  new import_obsidian22.Notice("Draft dropped. Nothing was recorded.");
+  new import_obsidian23.Notice("Draft dropped. Nothing was recorded.");
 }
 function renderClaimDraft(parent, host, draft) {
   ensureAbility(host, draft.abilityId);
@@ -53345,7 +54056,7 @@ function renderClaimDraft(parent, host, draft) {
   const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
     const current = host.plugin.listAbilityDrafts().find((row22) => row22.id === draft.id);
     if (!current || current.kind !== "claim" || current.updatedAt !== draft.updatedAt) {
-      new import_obsidian22.Notice("The draft changed; review it again before confirming.");
+      new import_obsidian23.Notice("The draft changed; review it again before confirming.");
       host.render();
       return;
     }
@@ -53407,7 +54118,7 @@ function renderConnectionDraft(parent, host, draft) {
   const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
     const current = host.plugin.listAbilityDrafts().find((row3) => row3.id === draft.id);
     if (!current || current.kind !== "connection" || current.updatedAt !== draft.updatedAt) {
-      new import_obsidian22.Notice("The draft changed; review it again before confirming.");
+      new import_obsidian23.Notice("The draft changed; review it again before confirming.");
       host.render();
       return;
     }
@@ -53484,7 +54195,10 @@ function renderCore(parent, host, entry) {
   const target = isRecord(entry.item.target) ? entry.item.target : null;
   const targetId = asString(target?.unit_id) ?? asString(target?.id);
   const record7 = targetId ? host.plugin.store.get(targetId) : null;
-  if (record7) chip(evidence2, record7, (target2) => host.plugin.nav.openRecord(target2));
+  if (record7) {
+    chip(evidence2, record7, (target2) => host.plugin.nav.openRecord(target2));
+    renderPracticeReview(evidence2, host.plugin, record7);
+  }
   const path = asString(target?.path);
   if (path) evidence2.createDiv({ cls: "los-review-pointer-text", text: path });
   const proposals = Array.isArray(target?.proposal_ids) ? target?.proposal_ids.length ?? 0 : 0;
@@ -53538,7 +54252,7 @@ function asOperationDetail(value) {
 }
 
 // src/views/review-view.ts
-var ReviewView = class extends import_obsidian23.ItemView {
+var ReviewView = class extends import_obsidian24.ItemView {
   plugin;
   selectedKey = null;
   sending = false;
@@ -53676,7 +54390,7 @@ var OPERATIONS_FILTERS = [
   ["attention", "Needs attention"],
   ["recoveries", "Recoveries"]
 ];
-var DiagnosticsView = class extends import_obsidian23.ItemView {
+var DiagnosticsView = class extends import_obsidian24.ItemView {
   plugin;
   report = "";
   screen = "health";
@@ -54258,7 +54972,7 @@ Tried: ${resolved.attempted.join(", ")}`;
 };
 
 // src/views/shelving-view.ts
-var import_obsidian24 = require("obsidian");
+var import_obsidian25 = require("obsidian");
 
 // src/features/shelving/proposal.ts
 var SHELVING_ITEM_FIELDS = [
@@ -54407,7 +55121,7 @@ function reconciliationSummary({ kept, changed, added }) {
 // src/views/shelving-view.ts
 var CONTENT_PREVIEW_LINES = 12;
 var PROPOSAL_MOVED = "The proposal changed before your approval was sent. Nothing was written; review the current proposal and approve again.";
-var ShelvingView = class extends import_obsidian24.ItemView {
+var ShelvingView = class extends import_obsidian25.ItemView {
   plugin;
   unitId = null;
   constructor(leaf, plugin) {
@@ -54595,7 +55309,7 @@ var ShelvingView = class extends import_obsidian24.ItemView {
       );
       this.render();
     } catch (error) {
-      new import_obsidian24.Notice(errorMessage(error));
+      new import_obsidian25.Notice(errorMessage(error));
     }
   }
   /**
@@ -54608,14 +55322,14 @@ var ShelvingView = class extends import_obsidian24.ItemView {
    * on it meanwhile is ignored, and a refusal enables it again. A success
    * redraws the screen, and with it a new button.
    */
-  async apply(shown, control) {
-    if (control.disabled) return;
+  async apply(shown, control2) {
+    if (control2.disabled) return;
     const selected = this.currentSelection(shown);
     if (!selected.length) {
-      new import_obsidian24.Notice("Select at least one proposal.");
+      new import_obsidian25.Notice("Select at least one proposal.");
       return;
     }
-    control.disabled = true;
+    control2.disabled = true;
     try {
       await this.plugin.mutate(() => {
         if (this.plugin.store.snapshotId !== shown.snapshotId) throw new Error(PROPOSAL_MOVED);
@@ -54624,8 +55338,8 @@ var ShelvingView = class extends import_obsidian24.ItemView {
       this.plugin.shelvingChoices.forgetApplied(shown.unitId, selected);
       this.render();
     } catch (error) {
-      control.disabled = false;
-      new import_obsidian24.Notice(errorMessage(error));
+      control2.disabled = false;
+      new import_obsidian25.Notice(errorMessage(error));
     }
   }
 };
@@ -54755,8 +55469,8 @@ function renderArtifacts(view, root, unit) {
 }
 
 // src/views/unit-view.ts
-var import_obsidian25 = require("obsidian");
-var UnitView = class extends import_obsidian25.ItemView {
+var import_obsidian26 = require("obsidian");
+var UnitView = class extends import_obsidian26.ItemView {
   plugin;
   unitId;
   stageId;
@@ -54842,13 +55556,13 @@ var UnitView = class extends import_obsidian25.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.mutationPending) {
-      new import_obsidian25.Notice(
+      new import_obsidian26.Notice(
         "A LearningOS write is already running."
       );
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian25.Notice(
+      new import_obsidian26.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -54860,7 +55574,7 @@ var UnitView = class extends import_obsidian25.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian25.Notice(
+      new import_obsidian26.Notice(
         errorMessage3(error)
       );
     } finally {
@@ -54870,7 +55584,7 @@ var UnitView = class extends import_obsidian25.ItemView {
   async selectStage(stageId) {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian25.Notice(
+      new import_obsidian26.Notice(
         "This unit is no longer available."
       );
       return;
@@ -55012,11 +55726,11 @@ function detachApplication(plugin) {
 }
 
 // src/app/navigator.ts
-var import_obsidian27 = require("obsidian");
+var import_obsidian28 = require("obsidian");
 
 // src/app/global-search.ts
-var import_obsidian26 = require("obsidian");
-var GlobalSearchModal = class extends import_obsidian26.Modal {
+var import_obsidian27 = require("obsidian");
+var GlobalSearchModal = class extends import_obsidian27.Modal {
   plugin;
   query;
   filter;
@@ -55467,7 +56181,7 @@ var AppNavigator = class {
    */
   openFullTextSearch() {
     const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian27.Notice("Omnisearch is unavailable; structural Library search still works.");
+    if (!ok) new import_obsidian28.Notice("Omnisearch is unavailable; structural Library search still works.");
   }
 };
 
@@ -55999,8 +56713,8 @@ var ApplicationRouter = class {
 };
 
 // src/app/unit-note-modal.ts
-var import_obsidian28 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian28.Modal {
+var import_obsidian29 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian29.Modal {
   plugin;
   unit;
   studyMap;
@@ -56138,25 +56852,25 @@ var UnitNoteModal = class extends import_obsidian28.Modal {
   async save() {
     const text4 = String(this.editor?.value || "");
     if (!text4.trim()) {
-      new import_obsidian28.Notice("Write a note before saving.");
+      new import_obsidian29.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
     }
     if (this.saving) {
-      new import_obsidian28.Notice("This note is already being saved.");
+      new import_obsidian29.Notice("This note is already being saved.");
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian28.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian29.Notice("Queued behind the running LearningOS write.");
     }
     const unitId = this.unit.id;
     if (!unitId) {
-      new import_obsidian28.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      new import_obsidian29.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
       return;
     }
     const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
-      new import_obsidian28.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      new import_obsidian29.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
     this.saving = true;
@@ -56168,10 +56882,10 @@ var UnitNoteModal = class extends import_obsidian28.Modal {
         filePaths
       }, this.expectedRevisions));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStages, sent);
-      new import_obsidian28.Notice("Learning-session note saved.");
+      new import_obsidian29.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian28.Notice(errorMessage(error));
+      new import_obsidian29.Notice(errorMessage(error));
     } finally {
       this.saving = false;
     }
@@ -56552,7 +57266,7 @@ var AIActionClient = class {
 var import_electron2 = require("electron");
 var fs4 = __toESM(require("node:fs"));
 var nodePath4 = __toESM(require("node:path"));
-var import_obsidian29 = require("obsidian");
+var import_obsidian30 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
   ".cc",
@@ -56633,7 +57347,7 @@ var ResourceOpener = class {
   async openVaultPath(path, destination = null) {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
-      new import_obsidian29.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
     const candidate2 = nodePath4.resolve(this.app.vault.adapter.getBasePath(), target);
@@ -56641,7 +57355,7 @@ var ResourceOpener = class {
       try {
         fs4.realpathSync(candidate2);
       } catch (_) {
-        new import_obsidian29.Notice(`File unavailable: ${target}`);
+        new import_obsidian30.Notice(`File unavailable: ${target}`);
         return void 0;
       }
       const realPath = resolvedWithin(
@@ -56649,13 +57363,13 @@ var ResourceOpener = class {
         candidate2
       );
       if (!realPath) {
-        new import_obsidian29.Notice(`Unsafe vault symlink refused: ${target}`);
+        new import_obsidian30.Notice(`Unsafe vault symlink refused: ${target}`);
         return void 0;
       }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian29.Notice(`File unavailable: ${target}`);
+      new import_obsidian30.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
@@ -56690,16 +57404,16 @@ var ResourceOpener = class {
       try {
         view.setEphemeralState({ page: destination.page });
       } catch (_) {
-        new import_obsidian29.Notice(`Go to ${destination.label}.`);
+        new import_obsidian30.Notice(`Go to ${destination.label}.`);
         return;
       }
-      new import_obsidian29.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
+      new import_obsidian30.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
       return;
     }
     try {
       await leaf.openFile(file, { eState: { page: destination.page } });
     } catch (_) {
-      new import_obsidian29.Notice(`Go to ${destination.label}.`);
+      new import_obsidian30.Notice(`Go to ${destination.label}.`);
       return;
     }
     this.announceDestination(leaf, destination);
@@ -56707,7 +57421,7 @@ var ResourceOpener = class {
   /** Only a viewer that can be positioned is told it landed there. */
   announceDestination(leaf, destination) {
     void leaf;
-    new import_obsidian29.Notice(`Opened \u2014 go to ${destination.label}.`);
+    new import_obsidian30.Notice(`Opened \u2014 go to ${destination.label}.`);
   }
   isCodePath(path) {
     if (!fs4.existsSync(path)) return false;
@@ -56717,19 +57431,19 @@ var ResourceOpener = class {
   async openSystemPath(path, successMessage) {
     const error = await import_electron2.shell.openPath(path);
     if (error) {
-      new import_obsidian29.Notice(`Could not open file: ${error}`);
+      new import_obsidian30.Notice(`Could not open file: ${error}`);
       return false;
     }
-    new import_obsidian29.Notice(successMessage);
+    new import_obsidian30.Notice(successMessage);
     return true;
   }
   async openCodePath(path) {
     try {
       await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
-      new import_obsidian29.Notice("Opened in Visual Studio Code.");
+      new import_obsidian30.Notice("Opened in Visual Studio Code.");
       return true;
     } catch (_) {
-      new import_obsidian29.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      new import_obsidian30.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
@@ -56738,21 +57452,21 @@ var ResourceOpener = class {
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian29.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
     }
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (!path || !fs4.existsSync(path)) {
-      new import_obsidian29.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian29.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openSystemPath(realPath, successMessage);
@@ -56764,12 +57478,12 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(learningRoot, path || "");
     const relative3 = nodePath4.relative(materialsRoot, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian29.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(materialsRoot, fullPath);
     if (!realPath) {
-      new import_obsidian29.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(
@@ -56784,16 +57498,16 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(base, path || "");
     const relative3 = nodePath4.relative(base, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian29.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
     if (!fs4.existsSync(fullPath)) {
-      new import_obsidian29.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(base, fullPath);
     if (!realPath) {
-      new import_obsidian29.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
+      new import_obsidian30.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -56817,29 +57531,29 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian29.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian30.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
       return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
-        new import_obsidian29.Notice("Could not open the link in your browser.");
+        new import_obsidian30.Notice("Could not open the link in your browser.");
         return false;
       });
     }
     if (materialPath.trim()) {
-      new import_obsidian29.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
+      new import_obsidian30.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
     } else if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-      new import_obsidian29.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+      new import_obsidian30.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
     } else if (vaultPath.trim()) {
-      new import_obsidian29.Notice("Choose an exact file from this vault collection.");
+      new import_obsidian30.Notice("Choose an exact file from this vault collection.");
     }
     return false;
   }
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian29.Notice(`Copied ${value}`);
+      new import_obsidian30.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian29.Notice(value);
+      new import_obsidian30.Notice(value);
     }
   }
 };
@@ -57359,7 +58073,7 @@ function settingsCoordinator(vaultRoot) {
 function cloneSettings(settings) {
   return JSON.parse(JSON.stringify(settings));
 }
-var LearningOSUI = class extends import_obsidian30.Plugin {
+var LearningOSUI = class extends import_obsidian31.Plugin {
   lastAiPrompt = "";
   /** Set when startup found an unusable record; the app registers read-only. */
   recoveryBlocked = false;
@@ -57468,7 +58182,7 @@ var LearningOSUI = class extends import_obsidian30.Plugin {
   /** Every Notice the gateway and recovery paths raise goes through here. */
   notify(message2) {
     if (!this.isLifecycleActive()) return;
-    new import_obsidian30.Notice(message2);
+    new import_obsidian31.Notice(message2);
   }
   /**
    * Finish, or refuse to finish, whatever the last session left in flight.
@@ -57619,11 +58333,11 @@ var LearningOSUI = class extends import_obsidian30.Plugin {
    */
   async retryRecoveredWrite() {
     if (!this.recovery.unresolved) {
-      new import_obsidian30.Notice("There is no unresolved Gateway write.");
+      new import_obsidian31.Notice("There is no unresolved Gateway write.");
       return;
     }
     if (this.recovery.state.kind === "malformed") {
-      new import_obsidian30.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
+      new import_obsidian31.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
       return;
     }
     try {
@@ -57634,10 +58348,10 @@ var LearningOSUI = class extends import_obsidian30.Plugin {
         await this.finishConfirmedWrite(confirmation);
       });
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian30.Notice("The recovered Gateway write is settled.");
+      new import_obsidian31.Notice("The recovered Gateway write is settled.");
     } catch (error) {
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian30.Notice(errorMessage4(error));
+      new import_obsidian31.Notice(errorMessage4(error));
     }
   }
   /**
@@ -57769,7 +58483,7 @@ var LearningOSUI = class extends import_obsidian30.Plugin {
     this.gateway.assertLifecycleActive();
     let rebuildError = null;
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian30.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
+      new import_obsidian31.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
       try {
         await this.gateway.call(["generate"], { expectJson: false });
       } catch (error) {
@@ -57813,7 +58527,7 @@ var LearningOSUI = class extends import_obsidian30.Plugin {
       );
     }
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian30.Notice("Recovered the prior write; newer canonical changes are also present.");
+      new import_obsidian31.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed(owner);
     if (owner.envelope.capability === "learner.ability-observation.append" || owner.envelope.capability === "ability.candidate.append") {
@@ -57901,7 +58615,7 @@ var LearningOSUI = class extends import_obsidian30.Plugin {
    * draft stays intact for one deliberate reconciliation and retry.
    */
   async refreshAfterConflict() {
-    new import_obsidian30.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
+    new import_obsidian31.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
   }
@@ -57913,9 +58627,9 @@ var LearningOSUI = class extends import_obsidian30.Plugin {
         await this.gateway.call(["generate"], { expectJson: false });
         await this.reloadStore();
       });
-      new import_obsidian30.Notice("LearningOS projection rebuilt.");
+      new import_obsidian31.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian30.Notice(errorMessage4(error));
+      new import_obsidian31.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
@@ -57929,7 +58643,7 @@ var LearningOSUI = class extends import_obsidian30.Plugin {
       new SessionEndModal(this.app, this, review2).open();
       return review2;
     } catch (error) {
-      new import_obsidian30.Notice(errorMessage4(error));
+      new import_obsidian31.Notice(errorMessage4(error));
       return null;
     }
   }
@@ -57996,7 +58710,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian30.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian31.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }

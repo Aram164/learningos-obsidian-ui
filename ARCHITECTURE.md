@@ -58,10 +58,17 @@ filters, selected records and row limits. Abilities retains camera, fold, bridge
 layer and inspector attention in a leaf-scoped store. None enters the route
 contract or grants learning evidence. `features/abilities/viewport.ts` owns one
 transform for nodes, SVG edges and bands, disposes its listeners on redraw/close,
-and never calls Core. `features/atlas/presentation.ts` bounds the pictured concept
-lanes while the complete authored neighbourhood remains in the named remainder
-and text outline. Read horizons and guarded mutations retain their existing
+and never calls Core. The Atlas's shared list and inspector present authored relations, and native
+Canvas opens the spatial boards. Read horizons and guarded mutations retain their existing
 application and Core owners.
+
+`features/atlas/board-controller.ts` serializes board operations per Obsidian
+app through `infrastructure/atlas-board-vault.ts`. It verifies template bytes
+against the catalog and applies a confirmed preview only while its working
+and ownership bytes still match. `features/atlas/practice.ts` is the shared
+Atlas and note review affordance. `GatewayClient.practiceContext` validates
+the bounded producer response, and `recordPracticeVerification` submits the
+reviewed item through the same recovery-aware write path as other gestures.
 
 ## Dependency rules
 

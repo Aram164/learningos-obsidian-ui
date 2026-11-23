@@ -14,3 +14,4 @@ export function validateAbilityBriefWire(value: unknown): value is Wire.AbilityB
 export function validateAbilityFocusWire(value: unknown): value is Wire.AbilityFocusWire;
 export function validateAbilityUnmappedWire(value: unknown): value is Wire.AbilityUnmappedWire;
 export function validateProjectionSettlementWire(value: unknown): value is Wire.ProjectionSettlementWire;
+export function validatePracticeContextWire(value: unknown): value is Wire.PracticeContextWire;

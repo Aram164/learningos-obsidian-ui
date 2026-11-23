@@ -1,5 +1,5 @@
-import { validateProjectionSettlementWire } from './contracts/generated/responses.validator.cjs';
-import type { ProjectionSettlementWire } from './contracts/generated/responses.types';
+import { validatePracticeContextWire, validateProjectionSettlementWire } from './contracts/generated/responses.validator.cjs';
+import type { PracticeContextWire, ProjectionSettlementWire } from './contracts/generated/responses.types';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
@@ -1055,6 +1055,19 @@ export class GatewayClient {
       { expectedRevisions },
     );
   }
+  recordPracticeVerification(
+    record: Readonly<Record<string, unknown>>,
+    context: PracticeContextWire,
+  ) {
+    return this.capability('practice.verification.record', { record }, {
+      expectedSnapshot: context.snapshot_id,
+      expectedRevisions: {
+        'registry-practice-index': context.practice_index_revision,
+        [context.note_id]: context.note_revision,
+      },
+    });
+  }
+
   prepareShelving(unitId: string,
     expectedRevisions: Readonly<Record<string, number>> = {}) {
     return this.capability('review.prepare', { unit_id: unitId }, { expectedRevisions });
@@ -1203,6 +1216,18 @@ export class GatewayClient {
     if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
     args.push('--json');
     return this.call(args);
+  }
+
+  async practiceContext(noteId: string, expectedSnapshot: string): Promise<PracticeContextWire> {
+    const value: unknown = await this.call([
+      'practice-context', noteId, '--expected-snapshot', expectedSnapshot, '--json',
+    ]);
+    if (!validatePracticeContextWire(value) || value.note_id !== noteId
+        || value.snapshot_id !== expectedSnapshot
+        || value.items.some((item) => item.item_id !== `${noteId}#${item.label}`)) {
+      throw new Error('LearningOS returned a mismatched practice context. Reload and try again.');
+    }
+    return value;
   }
 
   /**

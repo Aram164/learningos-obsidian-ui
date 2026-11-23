@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const { createHash } = require('node:crypto');
 const { createSourceModuleLoader } = require('./source-module-loader');
 
 const root = path.dirname(__dirname);
@@ -74,6 +75,7 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
 // preview; a clean refresh writes merged bytes and advances the sidecar.
 {
   const files = new Map();
+  let open = false;
   const port = {
     read: async (p) => files.get(p) ?? null,
     create: async (p, text) => { files.set(p, text); },
@@ -83,24 +85,47 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
       files.set(p, next); return true;
     },
     openLeaf: async () => {},
-    managedCanvasOpen: async () => false,
+    managedCanvasOpen: async () => open,
   };
+  const text = serializeBoard(template);
   const entry = { kind: 'module', id: 'module-demo', template_path: 'generated/atlas/templates/module/module-demo.canvas',
-    working_path: 'boards/atlas/module/module-demo.canvas', sha256: 'a'.repeat(64) };
+    working_path: 'boards/atlas/module/module-demo.canvas', sha256: createHash('sha256').update(text).digest('hex') };
   (async () => {
     const controller = new BoardController(port);
-    const created = await controller.openBoard(entry, serializeBoard(template));
+    const mismatch = await controller.openBoard(entry, text + ' ');
+    assert.equal(mismatch.ok, false);
+    assert.equal(files.size, 0);
+    const [created, repeated] = await Promise.all([
+      controller.openBoard(entry, text), controller.openBoard(entry, text),
+    ]);
+    assert.equal(repeated.action, 'opened');
+    files.set(entry.template_path, text);
+    assert.equal((await controller.openBoard(entry, null)).action, 'opened');
     assert.equal(created.action, 'created');
     assert.ok(files.has(sidecarPath(entry)));
     const working = parseBoard(files.get(entry.working_path));
     working.nodes[0].x = 42;
     files.set(entry.working_path, serializeBoard(working));
+    open = true;
+    const blocked = await controller.refreshBoard(entry, text, files.get(entry.working_path));
+    assert.equal(blocked.ok, false);
+    assert.match(blocked.reason, /Close all managed Atlas boards/);
+    open = false;
     const stale = await controller.refreshBoard(entry, serializeBoard(template), 'stale-bytes');
     assert.equal(stale.ok, false);
     const refreshed = await controller.refreshBoard(
       entry, serializeBoard(template), files.get(entry.working_path));
     assert.equal(refreshed.ok, true);
     assert.equal(parseBoard(files.get(entry.working_path)).nodes[0].x, 42);
+    const preview = await controller.previewRefresh(entry);
+    assert.equal(preview.ok, true);
+    assert.deepEqual(preview.changes, []);
+    const state = sidecarPath(entry);
+    const originalOwnership = files.get(state);
+    files.set(state, originalOwnership + ' ');
+    assert.match((await controller.refreshBoard(entry, preview.templateText, preview.workingText,
+      preview.ownershipText)).reason, /ownership changed since the preview/);
+    files.set(state, originalOwnership);
     assert.equal(advancedBoardAvailable(true, false), false);
     assert.equal(advancedBoardAvailable(true, true), true);
 

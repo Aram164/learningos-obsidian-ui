@@ -313,9 +313,7 @@ function renderBoardControls(root: HTMLElement, host: AtlasHost): void {
   // No unambiguous scope leaves the explicit "Choose a board" state.
   const desired = defaultBoardEntry(
     catalog, host.state.module, host.plugin.store.currentSemester());
-  if (host.state.module && desired?.kind === 'module') {
-    host.boardScope = `${desired.kind}/${desired.id}`;
-  } else if (!host.boardScope && desired) {
+  if (!host.boardScope && desired) {
     host.boardScope = `${desired.kind}/${desired.id}`;
   }
   select.value = host.boardScope ?? '';
@@ -326,14 +324,12 @@ function renderBoardControls(root: HTMLElement, host: AtlasHost): void {
   const refresh = button(row, 'Refresh board', () => { if (selected) void host.refreshAtlasBoard(selected); }, 'quiet');
   open.disabled = !selected;
   refresh.disabled = !selected;
-  const advanced = button(row, 'Advanced board',
-    () => { if (selected) void host.openAtlasBoard(selected, true); }, 'quiet');
-  advanced.disabled = !selected;
-  advanced.setAttrs({
-    title: host.plugin.settings.atlasAdvancedCanvas
-      ? 'Open this board with Advanced Canvas portals'
-      : 'Needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin',
-  });
+  if (host.plugin.settings.atlasAdvancedCanvas) {
+    const advanced = button(row, 'Advanced board',
+      () => { if (selected) void host.openAtlasBoard(selected, true); }, 'quiet');
+    advanced.disabled = !selected;
+    advanced.setAttrs({ title: 'Open this board with the installed Advanced Canvas plugin' });
+  }
   if (selected?.parent_kind && host.plugin.settings.atlasAdvancedCanvas) {
     button(row, 'Use editable child in portals',
       () => { void host.usePortalChild(selected); }, 'quiet');
