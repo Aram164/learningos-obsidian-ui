@@ -103,6 +103,36 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
     assert.equal(parseBoard(files.get(entry.working_path)).nodes[0].x, 42);
     assert.equal(advancedBoardAvailable(true, false), false);
     assert.equal(advancedBoardAvailable(true, true), true);
+
+    // Step 21: a portal target switched to the editable child survives
+    // refresh with its flag; switching requires the child to exist.
+    const child = { kind: 'lecture', id: 'unit-demo', parent_kind: 'module', parent_id: 'module-demo',
+      template_path: 'generated/atlas/templates/lecture/unit-demo.canvas',
+      working_path: 'boards/atlas/lecture/unit-demo.canvas', sha256: 'b'.repeat(64) };
+    const parentTemplate = structuredClone(template);
+    parentTemplate.nodes.push({ id: 'los-scope-lecture--unit-demo', type: 'file',
+      file: child.template_path, x: 0, y: 400, width: 320, height: 160 });
+    const withChild = mergeBoards([...managed, 'los-scope-lecture--unit-demo'],
+      structuredClone(parentTemplate), parentTemplate);
+    assert.equal(withChild.ok, true);
+    const missing = await controller.useEditableChild(entry, child);
+    assert.equal(missing.ok, false);
+    files.set(child.working_path, serializeBoard(template));
+    files.set(entry.working_path, serializeBoard(parentTemplate));
+    const switched = await controller.useEditableChild(entry, child);
+    assert.equal(switched.ok, true);
+    let board = parseBoard(files.get(entry.working_path));
+    const link = board.nodes.find((n) => n.id === 'los-scope-lecture--unit-demo');
+    assert.equal(link.file, child.working_path);
+    link.portal = true;
+    files.set(entry.working_path, serializeBoard(board));
+    const kept = mergeBoards([...managed, 'los-scope-lecture--unit-demo'],
+      parseBoard(files.get(entry.working_path)), parentTemplate);
+    assert.equal(kept.ok, true);
+    const keptLink = kept.canvas.nodes.find((n) => n.id === 'los-scope-lecture--unit-demo');
+    assert.equal(keptLink.file, child.working_path);
+    assert.equal(keptLink.portal, true);
+
     console.log('Atlas boards OK: merge preservation, refusals, controller lane, portal gate.');
   })().catch((err) => { console.error(err); process.exit(1); });
 }

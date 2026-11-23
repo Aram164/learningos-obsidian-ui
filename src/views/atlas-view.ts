@@ -119,6 +119,20 @@ export class AtlasView extends ItemView implements AtlasHost {
     if (!result.ok) new Notice(result.reason);
   }
 
+  async usePortalChild(child: BoardCatalogEntry): Promise<void> {
+    const parent = this.boardCatalog().find(
+      (entry) => entry.kind === child.parent_kind && entry.id === child.parent_id);
+    if (!parent) {
+      new Notice('This scope has no parent board to point at it.');
+      return;
+    }
+    const result = await this.boardController().useEditableChild(parent, child);
+    new Notice(result.ok
+      ? 'Portals on the parent board now open the editable child.'
+      : result.reason);
+    this.render();
+  }
+
   async refreshAtlasBoard(entry: BoardCatalogEntry): Promise<void> {
     const vault = new AtlasBoardVault(this.app);
     const [template, preview] = [await vault.read(entry.template_path),

@@ -213,6 +213,8 @@ export interface AtlasHost {
   boardCatalog(): readonly import('./board-controller').BoardCatalogEntry[];
   openAtlasBoard(entry: import('./board-controller').BoardCatalogEntry, advanced?: boolean): Promise<void>;
   refreshAtlasBoard(entry: import('./board-controller').BoardCatalogEntry): Promise<void>;
+  /** Point the parent board's link at this editable child (step 21). */
+  usePortalChild(child: import('./board-controller').BoardCatalogEntry): Promise<void>;
 
   /** AND-composed list filters (P4 step 25). View-owned, never route state. */
   filters: AtlasFilters;

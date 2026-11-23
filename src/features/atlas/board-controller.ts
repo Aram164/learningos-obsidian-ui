@@ -52,7 +52,7 @@ export interface BoardVaultPort {
 }
 
 export type BoardResult =
-  | { ok: true; action: 'opened' | 'created' | 'refreshed' }
+  | { ok: true; action: 'opened' | 'created' | 'refreshed' | 'portal-target' }
   | { ok: false; reason: string };
 
 export function sidecarPath(entry: BoardCatalogEntry): string {
@@ -136,5 +136,49 @@ export class BoardController {
     await this.port.process(sidecarPath(entry), () =>
       JSON.stringify(sidecarFor(entry.sha256, managed)) + '\n');
     return { ok: true, action: 'refreshed' };
+  }
+
+  /**
+   * Point a parent board's managed child link at the editable child board
+   * (step 21). The child board must already exist; the same closed-board
+   * guard as refresh applies, and the portal flag is left exactly as found.
+   */
+  useEditableChild(
+    parent: BoardCatalogEntry,
+    child: BoardCatalogEntry,
+  ): Promise<BoardResult> {
+    return this.enqueue(async () => {
+      if (await this.port.managedCanvasOpen([parent.working_path])) {
+        return {
+          ok: false,
+          reason: 'Close the board before changing its portal target, and leave the Atlas pane open.',
+        };
+      }
+      if (await this.port.read(child.working_path) === null) {
+        return { ok: false, reason: 'Create the editable child board first (Open board on the child scope).' };
+      }
+      const childNodeId = `los-scope-${child.kind}--${child.id}`;
+      let failure: string | null = null;
+      const wrote = await this.port.process(parent.working_path, (latest) => {
+        const board = parseBoard(latest);
+        if (!board) { failure = 'Board is malformed; nothing was written.'; return null; }
+        const nodes = (board.nodes ?? []).map((node) => {
+          if (node.id !== childNodeId) return node;
+          if (node.file !== child.template_path && node.file !== child.working_path) {
+            failure = 'The child link no longer points at an accepted target.';
+            return node;
+          }
+          return { ...node, file: child.working_path };
+        });
+        if (failure) return null;
+        if (!nodes.some((node) => node.id === childNodeId)) {
+          failure = 'This board has no link to that child scope.';
+          return null;
+        }
+        return serializeBoard({ ...board, nodes });
+      });
+      if (!wrote) return { ok: false, reason: failure ?? 'Portal target change was refused.' };
+      return { ok: true, action: 'portal-target' };
+    });
   }
 }

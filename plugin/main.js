@@ -36445,8 +36445,13 @@ function mergeBoards(previousManagedIds, working, nextTemplate) {
       node.y = current.y;
       node.width = current.width;
       node.height = current.height;
-      if (template.type === "file" && current.file === template.file && typeof current.portal === "boolean") {
-        node.portal = current.portal;
+      if (template.type === "file" && typeof current.file === "string") {
+        const scopeMatch = /^los-scope-([a-z]+)--(.+)$/.exec(id);
+        const editableTarget = scopeMatch ? `boards/atlas/${scopeMatch[1]}/${scopeMatch[2]}.canvas` : null;
+        if (current.file === template.file || current.file === editableTarget) {
+          node.file = current.file;
+          if (typeof current.portal === "boolean") node.portal = current.portal;
+        }
       }
     }
     merged.set(id, node);
@@ -36611,6 +36616,49 @@ var BoardController = class {
     if (!wrote) return { ok: false, reason: failure ?? "Board refresh was refused." };
     await this.port.process(sidecarPath(entry), () => JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n");
     return { ok: true, action: "refreshed" };
+  }
+  /**
+   * Point a parent board's managed child link at the editable child board
+   * (step 21). The child board must already exist; the same closed-board
+   * guard as refresh applies, and the portal flag is left exactly as found.
+   */
+  useEditableChild(parent, child) {
+    return this.enqueue(async () => {
+      if (await this.port.managedCanvasOpen([parent.working_path])) {
+        return {
+          ok: false,
+          reason: "Close the board before changing its portal target, and leave the Atlas pane open."
+        };
+      }
+      if (await this.port.read(child.working_path) === null) {
+        return { ok: false, reason: "Create the editable child board first (Open board on the child scope)." };
+      }
+      const childNodeId = `los-scope-${child.kind}--${child.id}`;
+      let failure = null;
+      const wrote = await this.port.process(parent.working_path, (latest) => {
+        const board = parseBoard(latest);
+        if (!board) {
+          failure = "Board is malformed; nothing was written.";
+          return null;
+        }
+        const nodes = (board.nodes ?? []).map((node) => {
+          if (node.id !== childNodeId) return node;
+          if (node.file !== child.template_path && node.file !== child.working_path) {
+            failure = "The child link no longer points at an accepted target.";
+            return node;
+          }
+          return { ...node, file: child.working_path };
+        });
+        if (failure) return null;
+        if (!nodes.some((node) => node.id === childNodeId)) {
+          failure = "This board has no link to that child scope.";
+          return null;
+        }
+        return serializeBoard({ ...board, nodes });
+      });
+      if (!wrote) return { ok: false, reason: failure ?? "Portal target change was refused." };
+      return { ok: true, action: "portal-target" };
+    });
   }
 };
 
@@ -37182,6 +37230,16 @@ function renderBoardControls(root, host) {
   advanced.setAttrs({
     title: host.plugin.settings.atlasAdvancedCanvas ? "Open this board with Advanced Canvas portals" : "Needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin"
   });
+  if (selected?.parent_kind && host.plugin.settings.atlasAdvancedCanvas) {
+    button(
+      row3,
+      "Use editable child in portals",
+      () => {
+        void host.usePortalChild(selected);
+      },
+      "quiet"
+    );
+  }
 }
 function renderFilters(parent, host) {
   const wrap = parent.createDiv({ cls: "los-atlas-filters" });
@@ -45338,6 +45396,18 @@ var AtlasView = class extends import_obsidian13.ItemView {
     const result = await this.boardController().openBoard(entry, template);
     if (!result.ok) new import_obsidian13.Notice(result.reason);
   }
+  async usePortalChild(child) {
+    const parent = this.boardCatalog().find(
+      (entry) => entry.kind === child.parent_kind && entry.id === child.parent_id
+    );
+    if (!parent) {
+      new import_obsidian13.Notice("This scope has no parent board to point at it.");
+      return;
+    }
+    const result = await this.boardController().useEditableChild(parent, child);
+    new import_obsidian13.Notice(result.ok ? "Portals on the parent board now open the editable child." : result.reason);
+    this.render();
+  }
   async refreshAtlasBoard(entry) {
     const vault = new AtlasBoardVault(this.app);
     const [template, preview] = [
@@ -52058,7 +52128,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:b0312bbafaac11748e096dae6a3a31a49d925e1867033b345b0374ae1a836a98" : "unavailable";
+  return true ? "sha256:8fcf6e4db2fc9aa5933f9b08faa0e972deb40c12f7c20350efccc0a5de6a1038" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;

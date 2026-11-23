@@ -334,6 +334,10 @@ function renderBoardControls(root: HTMLElement, host: AtlasHost): void {
       ? 'Open this board with Advanced Canvas portals'
       : 'Needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin',
   });
+  if (selected?.parent_kind && host.plugin.settings.atlasAdvancedCanvas) {
+    button(row, 'Use editable child in portals',
+      () => { void host.usePortalChild(selected); }, 'quiet');
+  }
 }
 
 /**

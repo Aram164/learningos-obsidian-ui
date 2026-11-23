@@ -82,7 +82,9 @@ export function mergeBoards(
   const merged = new Map<string, CanvasObject>();
 
   // Managed nodes: template semantics, working geometry. The portal target
-  // and flag survive only when the accepted file target survives (step 21).
+  // and flag survive only when an accepted file target survives (step 21):
+  // the generated template, or the same child's editable working board,
+  // whose path the reserved scope id itself names.
   for (const id of templateNodeIds) {
     const template = templateById.get(id)!;
     const current = workingById.get(id);
@@ -90,9 +92,14 @@ export function mergeBoards(
     if (current) {
       node.x = current.x; node.y = current.y;
       node.width = current.width; node.height = current.height;
-      if (template.type === 'file' && current.file === template.file
-          && typeof current.portal === 'boolean') {
-        node.portal = current.portal;
+      if (template.type === 'file' && typeof current.file === 'string') {
+        const scopeMatch = /^los-scope-([a-z]+)--(.+)$/.exec(id);
+        const editableTarget = scopeMatch
+          ? `boards/atlas/${scopeMatch[1]}/${scopeMatch[2]}.canvas` : null;
+        if (current.file === template.file || current.file === editableTarget) {
+          node.file = current.file;
+          if (typeof current.portal === 'boolean') node.portal = current.portal;
+        }
       }
     }
     merged.set(id, node);

@@ -34,6 +34,34 @@ Yanki/Anki may be evaluated only through an approval-gated generated export
 folder with automatic sync disabled. Zotero Integration may be evaluated only
 through staging and source registration, never direct canonical-note overwrite.
 
+## Experimental, fixture-only (Native Atlas branch)
+
+Two optional plugins are pinned separately in
+`scripts/experimental-atlas-plugins.json` — the only place their versions and
+SHA-256 digests live — and installed only by
+`scripts/install-experimental-plugin.py` into marked fixture vaults. Neither
+is part of the production ecosystem above, neither is installed by default,
+and the ordinary Atlas list, boards and authoring work with both absent.
+
+- **Advanced Canvas 7.1.2** may be applied only to a vault carrying
+  `.los-atlas-fixture`. It is an optional portal view over the same editable
+  boards: enable the `atlasAdvancedCanvas` setting, open a board with
+  **Advanced board**, create the editable child first, then use **Use
+  editable child in portals** and the plugin's own card menu to open and
+  close the portal. Portal state is presentation only; nothing is written
+  back to Core. With the plugin absent or disabled, the standard Canvas,
+  list, evidence and authoring paths stay fully operable.
+- **LearnKit 1.8.6** may be applied only to a practice vault whose
+  `.learningos-practice-vault.json` carries `experimental: true` (created by
+  Core's `tools/export_learnkit.py --init`). Cards arrive append-only from
+  that exporter; schedule, review log and plugin state stay in LearnKit.
+
+The installer validates digests, the embedded manifest id and the exact
+version before checking the destination marker; it stages a complete plugin
+directory on the target filesystem and publishes only if absent. Existing
+exact assets are a no-op; divergent bytes, symlink components, unmarked or
+cross-marked roots, and Git checkouts refuse with no writes.
+
 ## Updating
 
 Review the maintainer's primary release notes and license; update one pin and
