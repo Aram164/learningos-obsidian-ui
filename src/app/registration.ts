@@ -20,6 +20,11 @@ import type { AppSurface } from './surface';
 import { clearPalette } from './palette';
 import { applyInterfaceDesign, clearInterfaceDesign, INTERFACE_DESIGNS } from './interface-design';
 import { LearningOSSettingsTab } from '../settings';
+import {
+  EVIDENCE_PROTOCOL_ACTION,
+  openEvidenceBinding,
+  parseEvidenceParams,
+} from '../features/atlas/evidence';
 import { AbilitiesView } from '../views/abilities-view';
 import { AtlasView } from '../views/atlas-view';
 import { BoundaryView } from '../views/boundary-view';
@@ -108,6 +113,26 @@ export function registerApplication(plugin: ApplicationPlugin): void {
     // Focus is a fallback for a missed file event, so it reloads only a
     // manifest that actually changed.
     plugin.registerDomEvent(window, 'focus', () => plugin.requestManifestRefresh({ ifChanged: true }));
+  }
+
+  // Evidence deep links carry only a relation identity and a binding
+  // ordinal (P4 step 28). Extras, unknown relations and unsupported digests
+  // refuse inside the evidence policy; no path ever arrives from outside.
+  // API absent in an older host: no registration, and the citation stays
+  // visible in the inspector with its Open evidence action (step 28 fallback).
+  if (typeof plugin.registerObsidianProtocolHandler === 'function') {
+    plugin.registerObsidianProtocolHandler(EVIDENCE_PROTOCOL_ACTION, (params) => {
+    const parsed = parseEvidenceParams(params);
+    if ('error' in parsed) {
+      plugin.notify(parsed.error);
+      return;
+    }
+      openEvidenceBinding({
+        store: plugin.store,
+        openMaterialPath: (path, destination) => plugin.openMaterialPath(path, destination),
+        notify: (message) => plugin.notify(message),
+      }, parsed.relationId, parsed.ordinal);
+    });
   }
 
   plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));

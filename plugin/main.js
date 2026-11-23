@@ -31275,12 +31275,12 @@ function makeModalAccessible(content, options) {
   let cancelInitialFocus = null;
   if (options.initialFocus) {
     const view = document2?.defaultView ?? globalThis.window;
-    const focus2 = () => options.initialFocus?.()?.focus?.();
+    const focus = () => options.initialFocus?.()?.focus?.();
     if (typeof view?.requestAnimationFrame === "function") {
-      const frame = view.requestAnimationFrame(focus2);
+      const frame = view.requestAnimationFrame(focus);
       cancelInitialFocus = () => view.cancelAnimationFrame?.(frame);
     } else {
-      const timer = view.setTimeout(focus2, 0);
+      const timer = view.setTimeout(focus, 0);
       cancelInitialFocus = () => view.clearTimeout(timer);
     }
   }
@@ -31477,6 +31477,724 @@ var SessionEndModal = class extends import_obsidian2.Modal {
   }
 };
 
+// src/infrastructure/resource-target.ts
+function isFileShapedPath(value) {
+  if (typeof value !== "string") return false;
+  const path = value.trim().split(/[?#]/, 1)[0] ?? "";
+  const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
+  return /^[^./][^/]*\.[^./]+$/.test(name);
+}
+function isDirectMaterialFileTarget(record7) {
+  return record7.material_exists === true && isFileShapedPath(record7.material_path);
+}
+var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
+function pageDestination(record7) {
+  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
+  if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
+  const locator = typeof record7.locator === "string" ? record7.locator : "";
+  const match = QUALIFIED_PAGES.exec(locator);
+  if (!match) return null;
+  const first = Number(match[1]);
+  const last = match[2] ? Number(match[2]) : null;
+  if (!Number.isInteger(first) || first < 1) return null;
+  if (last !== null && (!Number.isInteger(last) || last <= first)) {
+    return { page: first, label: `physical page ${first}` };
+  }
+  return {
+    page: first,
+    label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
+  };
+}
+function hasDirectResourceTarget(record7) {
+  if (isDirectMaterialFileTarget(record7)) return true;
+  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
+  if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
+  return safeWebUrl(record7.url) !== null;
+}
+
+// src/sorting.ts
+var collator = new Intl.Collator("en", {
+  numeric: true,
+  sensitivity: "variant",
+  caseFirst: "lower"
+});
+function compareStrings(left, right) {
+  return collator.compare(left, right) || (left < right ? -1 : left > right ? 1 : 0);
+}
+function foldCase(value) {
+  return value.toLocaleLowerCase("en");
+}
+function upperCase(value) {
+  return value.toLocaleUpperCase("en");
+}
+
+// src/features/atlas/graph.ts
+var STRICT_RELATION_TYPES = ["builds-on", "requires"];
+var SEMANTIC_RELATION_TYPES = [
+  "applies-in",
+  "contrasts-with",
+  "derives",
+  "equivalent-to",
+  "generalizes",
+  "motivates"
+];
+var STRICT = new Set(STRICT_RELATION_TYPES);
+var SEMANTIC = new Set(SEMANTIC_RELATION_TYPES);
+var RELATION_PHRASES = {
+  "applies-in": "applies in",
+  "builds-on": "builds on",
+  "contrasts-with": "contrasts with",
+  "derives": "derives",
+  "equivalent-to": "is equivalent to",
+  "generalizes": "generalizes",
+  "motivates": "motivates",
+  "requires": "requires"
+};
+function relationLayer(type) {
+  if (STRICT.has(type)) return "strict";
+  if (SEMANTIC.has(type)) return "semantic";
+  return "unrecognized";
+}
+function relationPhrase(type) {
+  return RELATION_PHRASES[type] ?? type;
+}
+function moduleConceptKey(moduleId, conceptId) {
+  return `${moduleId}\0${conceptId}`;
+}
+function normalizedSortKey(label) {
+  return foldCase(label.trim());
+}
+function compareConcepts(left, right) {
+  return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
+}
+function compareModules(left, right) {
+  if (left.actionable !== right.actionable) return left.actionable ? -1 : 1;
+  return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
+}
+function shortModuleLabel(record7, label) {
+  const code = asString(record7.code);
+  if (code) return code;
+  const words2 = label.split(/\s+/).filter(Boolean);
+  return words2.length > 2 ? words2.map((word) => word.charAt(0)).join("").toUpperCase() : label;
+}
+function edgeIdentity(relation) {
+  return `${relation.from}--${relation.type}--${relation.to}`;
+}
+function push(index, key, value) {
+  const existing = index.get(key);
+  if (existing) existing.push(value);
+  else index.set(key, [value]);
+}
+function toEdge(wire) {
+  const relation = wire;
+  const layer = relationLayer(relation.type);
+  const strict = layer === "strict";
+  const status = relation.status === "retracted" || relation.status === "vetoed" ? relation.status : "active";
+  const evidence2 = Array.isArray(relation.evidence) ? relation.evidence.flatMap((binding) => {
+    const row3 = binding;
+    return typeof row3.source_id === "string" && typeof row3.material_relpath === "string" && typeof row3.file_sha256 === "string" && typeof row3.page === "number" && typeof row3.quote === "string" ? [{
+      source_id: row3.source_id,
+      material_relpath: row3.material_relpath,
+      file_sha256: row3.file_sha256,
+      page: row3.page,
+      quote: row3.quote
+    }] : [];
+  }) : [];
+  const evidenceState = ["disputed", "stale", "verified"].includes(
+    String(relation.evidence_state)
+  ) ? relation.evidence_state : "missing";
+  return {
+    id: edgeIdentity(relation),
+    from: relation.from,
+    type: relation.type,
+    to: relation.to,
+    context: relation.context,
+    source: relation.source,
+    layer,
+    studyFrom: strict ? relation.to : relation.from,
+    studyTo: strict ? relation.from : relation.to,
+    prerequisiteId: strict ? relation.to : null,
+    dependentId: strict ? relation.from : null,
+    status,
+    origin: relation.origin === "aram" ? "aram" : "pilot",
+    pinned: relation.pinned === true,
+    statusReason: relation.status_reason ?? null,
+    evidenceDisputed: relation.evidence_disputed === true,
+    evidence: evidence2,
+    evidenceState
+  };
+}
+function buildAtlasGraph(store) {
+  const conceptById = /* @__PURE__ */ new Map();
+  const remember = (id) => {
+    const known = conceptById.get(id);
+    if (known) return known;
+    const record7 = store.get(id);
+    const label = record7 ? asLabel(record7, id) : id;
+    const aliases = Array.isArray(record7?.aliases) ? record7.aliases.filter((value) => typeof value === "string" && Boolean(value)) : [];
+    const concept = {
+      id,
+      label,
+      sortKey: normalizedSortKey(label),
+      aliases,
+      record: record7 ?? null
+    };
+    conceptById.set(id, concept);
+    return concept;
+  };
+  for (const record7 of store.of("concept")) {
+    const id = asString(record7.id);
+    if (id) remember(id);
+  }
+  const edges = [];
+  const relationByIdentity = /* @__PURE__ */ new Map();
+  const prerequisiteEdges = /* @__PURE__ */ new Map();
+  const dependentEdges = /* @__PURE__ */ new Map();
+  const semanticEdges = /* @__PURE__ */ new Map();
+  const unrecognizedEdges = /* @__PURE__ */ new Map();
+  const historyEdges = /* @__PURE__ */ new Map();
+  const resolvedSources = /* @__PURE__ */ new Map();
+  for (const relation of store.relations()) {
+    const edge = toEdge(relation);
+    if (relationByIdentity.has(edge.id)) continue;
+    relationByIdentity.set(edge.id, edge);
+    edges.push(edge);
+    remember(edge.from);
+    remember(edge.to);
+    if (edge.source && !resolvedSources.has(edge.source)) {
+      const record7 = store.get(edge.source);
+      if (record7) resolvedSources.set(edge.source, record7);
+    }
+    if (edge.status !== "active") {
+      push(historyEdges, edge.from, edge);
+      if (edge.to !== edge.from) push(historyEdges, edge.to, edge);
+      continue;
+    }
+    if (edge.layer === "strict") {
+      push(prerequisiteEdges, edge.from, edge);
+      push(dependentEdges, edge.to, edge);
+    } else if (edge.layer === "semantic") {
+      push(semanticEdges, edge.from, edge);
+      if (edge.to !== edge.from) push(semanticEdges, edge.to, edge);
+    } else {
+      push(unrecognizedEdges, edge.from, edge);
+      if (edge.to !== edge.from) push(unrecognizedEdges, edge.to, edge);
+    }
+  }
+  const modulesByConcept = /* @__PURE__ */ new Map();
+  const conceptsByModule = /* @__PURE__ */ new Map();
+  const evidenceByModuleConcept = /* @__PURE__ */ new Map();
+  for (const edge of store.moduleConceptEdges()) {
+    const moduleId = asString(edge.module_id);
+    const conceptId = asString(edge.concept_id);
+    if (!moduleId || !conceptId || !edge.evidence?.length) continue;
+    const key = moduleConceptKey(moduleId, conceptId);
+    if (evidenceByModuleConcept.has(key)) continue;
+    evidenceByModuleConcept.set(key, edge.evidence);
+    remember(conceptId);
+    push(modulesByConcept, conceptId, moduleId);
+    push(conceptsByModule, moduleId, conceptId);
+  }
+  const modules = store.modules().flatMap((record7) => {
+    const id = asString(record7.id);
+    if (!id) return [];
+    const label = asLabel(record7, id);
+    return [{
+      id,
+      label,
+      shortLabel: shortModuleLabel(record7, label),
+      sortKey: normalizedSortKey(label),
+      actionable: record7.is_actionable === true,
+      conceptCount: conceptsByModule.get(id)?.length ?? 0
+    }];
+  }).sort(compareModules);
+  const concepts = [...conceptById.values()].sort(compareConcepts);
+  const order = (left, right) => compareConcepts(remember(left), remember(right));
+  for (const [index, farEnd] of [
+    [prerequisiteEdges, (edge) => edge.to],
+    [dependentEdges, (edge) => edge.from]
+  ]) {
+    for (const list3 of index.values()) {
+      list3.sort((left, right) => order(farEnd(left), farEnd(right)) || compareStrings(left.type, right.type) || compareStrings(left.id, right.id));
+    }
+  }
+  for (const index of [semanticEdges, unrecognizedEdges]) {
+    for (const [conceptId, list3] of index) {
+      list3.sort((left, right) => {
+        const leftFar = left.from === conceptId ? left.to : left.from;
+        const rightFar = right.from === conceptId ? right.to : right.from;
+        return compareStrings(left.type, right.type) || order(leftFar, rightFar) || compareStrings(left.id, right.id);
+      });
+    }
+  }
+  for (const list3 of modulesByConcept.values()) {
+    list3.sort((left, right) => compareStrings(left, right));
+  }
+  for (const list3 of conceptsByModule.values()) {
+    list3.sort(order);
+  }
+  return {
+    concepts,
+    conceptById,
+    edges: edges.slice().sort((left, right) => compareStrings(left.id, right.id)),
+    relationByIdentity,
+    prerequisiteEdges,
+    dependentEdges,
+    semanticEdges,
+    unrecognizedEdges,
+    historyEdges,
+    modules,
+    modulesByConcept,
+    conceptsByModule,
+    evidenceByModuleConcept,
+    resolvedSources
+  };
+}
+function conceptOf(graph, id) {
+  return graph.conceptById.get(id) ?? { id, label: id, sortKey: normalizedSortKey(id), aliases: [], record: null };
+}
+function conceptLabel(graph, id) {
+  return conceptOf(graph, id).label;
+}
+function canonicalSentence(graph, edge) {
+  return `${conceptLabel(graph, edge.from)} ${relationPhrase(edge.type)} ${conceptLabel(graph, edge.to)}`;
+}
+function studyOrderSentence(graph, edge) {
+  if (!edge.prerequisiteId || !edge.dependentId) return null;
+  return `Learn ${conceptLabel(graph, edge.prerequisiteId)} before ${conceptLabel(graph, edge.dependentId)}`;
+}
+function provenanceOf(graph, edge) {
+  if (!edge.source) return { state: "undocumented" };
+  const record7 = graph.resolvedSources.get(edge.source);
+  return record7 ? {
+    state: "resolved",
+    sourceId: edge.source,
+    label: asLabel(record7, edge.source),
+    record: record7
+  } : { state: "unresolved", sourceId: edge.source };
+}
+function evidenceFor(graph, moduleId, conceptId) {
+  return graph.evidenceByModuleConcept.get(
+    moduleConceptKey(moduleId, conceptId)
+  ) ?? [];
+}
+function modulesFor(graph, conceptId) {
+  const ids = new Set(graph.modulesByConcept.get(conceptId) ?? []);
+  return graph.modules.filter((module2) => ids.has(module2.id));
+}
+function neighbourhood(graph, focusId, options = {}) {
+  const depth = Math.max(1, Math.trunc(options.depth ?? 1));
+  const focus = conceptOf(graph, focusId);
+  const placed = /* @__PURE__ */ new Map();
+  placed.set(focus.id, { concept: focus, direction: "focus", distance: 0, column: 0 });
+  const walk = (direction) => {
+    let frontier = [focus.id];
+    for (let distance = 1; distance <= depth; distance += 1) {
+      const next = [];
+      for (const id of frontier) {
+        const edges = direction === "prerequisite" ? graph.prerequisiteEdges.get(id) ?? [] : graph.dependentEdges.get(id) ?? [];
+        for (const edge of edges) {
+          const neighbour = direction === "prerequisite" ? edge.to : edge.from;
+          if (placed.has(neighbour)) continue;
+          placed.set(neighbour, {
+            concept: conceptOf(graph, neighbour),
+            direction,
+            distance,
+            column: direction === "prerequisite" ? -distance : distance
+          });
+          next.push(neighbour);
+        }
+      }
+      frontier = next;
+    }
+    return frontier;
+  };
+  const prerequisiteFrontier = walk("prerequisite");
+  const dependentFrontier = walk("dependent");
+  const semanticNeighbours = /* @__PURE__ */ new Map();
+  for (const edge of graph.semanticEdges.get(focus.id) ?? []) {
+    const other = edge.from === focus.id ? edge.to : edge.from;
+    if (placed.has(other) || semanticNeighbours.has(other)) continue;
+    semanticNeighbours.set(other, conceptOf(graph, other));
+  }
+  const unrecognizedNeighbours = /* @__PURE__ */ new Map();
+  for (const edge of graph.unrecognizedEdges.get(focus.id) ?? []) {
+    const other = edge.from === focus.id ? edge.to : edge.from;
+    if (placed.has(other) || unrecognizedNeighbours.has(other)) continue;
+    unrecognizedNeighbours.set(other, conceptOf(graph, other));
+  }
+  if (options.includeSemanticNeighbours) {
+    for (const concept of semanticNeighbours.values()) {
+      placed.set(concept.id, {
+        concept,
+        direction: "related",
+        distance: 1,
+        column: 0
+      });
+    }
+    semanticNeighbours.clear();
+  }
+  const nodes = [...placed.values()].sort((left, right) => left.column - right.column || Number(left.direction !== "focus") - Number(right.direction !== "focus") || compareConcepts(left.concept, right.concept));
+  const columnValues = [...new Set(nodes.map((node) => node.column))].sort((left, right) => left - right);
+  const columns = columnValues.map((column) => nodes.filter((node) => node.column === column));
+  const focusColumn = columnValues.indexOf(0);
+  const inside = (id) => placed.has(id);
+  const strictEdges = [];
+  const drawnSemantic = [];
+  const drawnUnrecognized = [];
+  for (const edge of graph.edges) {
+    if (edge.status !== "active") continue;
+    const both = inside(edge.from) && inside(edge.to);
+    if (edge.layer === "strict") {
+      if (both) strictEdges.push(edge);
+      continue;
+    }
+    if (!both) continue;
+    if (edge.layer === "semantic") drawnSemantic.push(edge);
+    else drawnUnrecognized.push(edge);
+  }
+  const beyondFrom = (frontier, direction) => {
+    const found = /* @__PURE__ */ new Map();
+    for (const id of frontier) {
+      const edges = direction === "prerequisite" ? graph.prerequisiteEdges.get(id) ?? [] : graph.dependentEdges.get(id) ?? [];
+      for (const edge of edges) {
+        const neighbour = direction === "prerequisite" ? edge.to : edge.from;
+        if (placed.has(neighbour) || found.has(neighbour)) continue;
+        found.set(neighbour, conceptOf(graph, neighbour));
+      }
+    }
+    return found;
+  };
+  const beyondPrerequisites = beyondFrom(prerequisiteFrontier, "prerequisite");
+  const beyondDependents = beyondFrom(dependentFrontier, "dependent");
+  const sortedConcepts = (values) => [...values].sort(compareConcepts);
+  const prerequisites = sortedConcepts(beyondPrerequisites.values());
+  const dependents = sortedConcepts(beyondDependents.values());
+  const semantic = sortedConcepts(semanticNeighbours.values());
+  const unrecognized = sortedConcepts(unrecognizedNeighbours.values());
+  return {
+    focus,
+    depth,
+    nodes,
+    columns,
+    focusColumn,
+    strictEdges,
+    semanticEdges: drawnSemantic,
+    unrecognizedEdges: drawnUnrecognized,
+    beyond: {
+      prerequisites,
+      dependents,
+      semantic,
+      unrecognized,
+      total: prerequisites.length + dependents.length + semantic.length + unrecognized.length
+    }
+  };
+}
+function strictAncestors(graph, focusId) {
+  const seen = /* @__PURE__ */ new Set([focusId]);
+  const collected = /* @__PURE__ */ new Map();
+  const pending = [focusId];
+  while (pending.length) {
+    const id = pending.pop();
+    if (id === void 0) break;
+    for (const edge of graph.prerequisiteEdges.get(id) ?? []) {
+      if (seen.has(edge.to)) continue;
+      seen.add(edge.to);
+      collected.set(edge.to, conceptOf(graph, edge.to));
+      pending.push(edge.to);
+    }
+  }
+  return [...collected.values()].sort(compareConcepts);
+}
+function findStrictCycle(graph, scope) {
+  const within = (id) => !scope || scope.has(id);
+  const roots = graph.concepts.map((concept) => concept.id).filter(within);
+  const state = /* @__PURE__ */ new Map();
+  const trail = [];
+  const prerequisitesOf = (id) => (graph.prerequisiteEdges.get(id) ?? []).map((edge) => edge.to).filter(within);
+  for (const root of roots) {
+    if (state.has(root)) continue;
+    const stack2 = [
+      { id: root, queue: prerequisitesOf(root), at: 0 }
+    ];
+    state.set(root, "open");
+    trail.push(root);
+    while (stack2.length) {
+      const frame = stack2[stack2.length - 1];
+      if (!frame) break;
+      const next = frame.queue[frame.at];
+      frame.at += 1;
+      if (next === void 0) {
+        state.set(frame.id, "closed");
+        stack2.pop();
+        trail.pop();
+        continue;
+      }
+      if (state.get(next) === "closed") continue;
+      if (state.get(next) === "open") {
+        const start2 = trail.indexOf(next);
+        return [...trail.slice(start2), next];
+      }
+      state.set(next, "open");
+      trail.push(next);
+      stack2.push({ id: next, queue: prerequisitesOf(next), at: 0 });
+    }
+  }
+  return null;
+}
+function strictPath(graph, focusId) {
+  const ancestors = strictAncestors(graph, focusId);
+  const scope = /* @__PURE__ */ new Set([focusId, ...ancestors.map((concept) => concept.id)]);
+  const cycle = findStrictCycle(graph, scope);
+  if (cycle) return { ok: false, cycle };
+  const depthOf = /* @__PURE__ */ new Map();
+  const resolve3 = (id) => {
+    const known = depthOf.get(id);
+    if (known !== void 0) return known;
+    let deepest = 0;
+    for (const edge of graph.prerequisiteEdges.get(id) ?? []) {
+      if (!scope.has(edge.to)) continue;
+      deepest = Math.max(deepest, resolve3(edge.to) + 1);
+    }
+    depthOf.set(id, deepest);
+    return deepest;
+  };
+  for (const id of scope) resolve3(id);
+  const layers = [];
+  for (const id of scope) {
+    const index = depthOf.get(id) ?? 0;
+    while (layers.length <= index) layers.push([]);
+    layers[index]?.push(conceptOf(graph, id));
+  }
+  for (const layer of layers) layer.sort(compareConcepts);
+  const edges = graph.edges.filter((edge) => edge.layer === "strict" && scope.has(edge.from) && scope.has(edge.to));
+  return { ok: true, layers, edges, total: scope.size };
+}
+function bridges(graph) {
+  return graph.concepts.flatMap((concept) => {
+    const modules = modulesFor(graph, concept.id);
+    return modules.length > 1 ? [{ concept, modules, moduleCount: modules.length }] : [];
+  }).sort((left, right) => right.moduleCount - left.moduleCount || compareConcepts(left.concept, right.concept));
+}
+function diagnostic(id, title2, meaning, kind, records) {
+  const conceptIds2 = records.conceptIds ?? [];
+  const edgeIds = records.edgeIds ?? [];
+  const moduleIds = records.moduleIds ?? [];
+  return {
+    id,
+    title: title2,
+    meaning,
+    kind,
+    count: kind === "concepts" ? conceptIds2.length : kind === "relations" ? edgeIds.length : moduleIds.length,
+    conceptIds: conceptIds2,
+    edgeIds,
+    moduleIds
+  };
+}
+function diagnostics(graph) {
+  const conceptIds2 = (predicate) => graph.concepts.filter(predicate).map((concept) => concept.id);
+  const inStrict = (id) => Boolean(graph.prerequisiteEdges.get(id)?.length) || Boolean(graph.dependentEdges.get(id)?.length);
+  const edgeIds = (predicate) => graph.edges.filter(predicate).map((edge) => edge.id);
+  const entries2 = [
+    diagnostic(
+      "strict-roots",
+      "Concepts with no authored prerequisites",
+      "Nothing in the registry has to be learned first. That is a statement about what has been authored, not a claim that the concept is foundational.",
+      "concepts",
+      { conceptIds: conceptIds2((concept) => inStrict(concept.id) && !graph.prerequisiteEdges.get(concept.id)?.length) }
+    ),
+    diagnostic(
+      "strict-leaves",
+      "Concepts nothing yet builds on",
+      "No authored relation names this concept as a prerequisite. It does not mean the concept is advanced, or finished.",
+      "concepts",
+      { conceptIds: conceptIds2((concept) => inStrict(concept.id) && !graph.dependentEdges.get(concept.id)?.length) }
+    ),
+    diagnostic(
+      "unrelated-concepts",
+      "Concepts with no authored relation",
+      "The concept exists and carries no relation of any layer. Unwritten, not unrelated.",
+      "concepts",
+      {
+        conceptIds: conceptIds2((concept) => !inStrict(concept.id) && !graph.semanticEdges.get(concept.id)?.length && !graph.unrecognizedEdges.get(concept.id)?.length)
+      }
+    ),
+    diagnostic(
+      "concepts-without-module-evidence",
+      "Concepts no module evidences",
+      "No module publishes a stage or knowledge node for this concept. It says where teaching has been recorded, not where the concept belongs.",
+      "concepts",
+      { conceptIds: conceptIds2((concept) => !graph.modulesByConcept.get(concept.id)?.length) }
+    ),
+    diagnostic(
+      "unresolved-concepts",
+      "Relations naming an unknown concept",
+      "A relation endpoint the projection does not carry. The relation is still drawn, under the identifier it names.",
+      "concepts",
+      { conceptIds: conceptIds2((concept) => concept.record === null) }
+    ),
+    diagnostic(
+      "relations-without-context",
+      "Relations with no context note",
+      "The relation is authored and valid; nothing records why. Context is optional by schema.",
+      "relations",
+      { edgeIds: edgeIds((edge) => edge.context === null) }
+    ),
+    diagnostic(
+      "relations-without-source",
+      "Relations with no recorded source",
+      "Undocumented, and permitted: the schema allows an absent source. Nothing may be substituted for one.",
+      "relations",
+      { edgeIds: edgeIds((edge) => edge.source === null) }
+    ),
+    diagnostic(
+      "relations-with-unresolved-source",
+      "Relations whose source does not resolve",
+      "The citation names a record the projection does not carry. The identifier is reported exactly and no stand-in is offered.",
+      "relations",
+      {
+        edgeIds: edgeIds((edge) => edge.source !== null && !graph.resolvedSources.has(edge.source))
+      }
+    ),
+    diagnostic(
+      "relations-outside-vocabulary",
+      "Relations outside the authored vocabulary",
+      "The type is neither strict nor semantic, so it orders nothing and explains nothing here. It is kept and named rather than reclassified.",
+      "relations",
+      { edgeIds: edgeIds((edge) => edge.layer === "unrecognized") }
+    ),
+    diagnostic(
+      "modules-without-concepts",
+      "Modules publishing no concept evidence",
+      "The module has no stage or knowledge node tagged with a concept. Its column is empty because nothing has been mapped, not because nothing is taught.",
+      "modules",
+      { moduleIds: graph.modules.filter((module2) => module2.conceptCount === 0).map((module2) => module2.id) }
+    )
+  ];
+  const cycle = findStrictCycle(graph);
+  if (cycle) {
+    entries2.push(diagnostic(
+      "strict-cycle",
+      "Prerequisite cycle",
+      "Concepts that require one another in a loop. No learning order exists over them, so path derivation is blocked until the registry is corrected.",
+      "concepts",
+      { conceptIds: cycle }
+    ));
+  }
+  return entries2;
+}
+function summarize(graph) {
+  const strictNodes = /* @__PURE__ */ new Set();
+  let strict = 0;
+  let semantic = 0;
+  let unrecognized = 0;
+  for (const edge of graph.edges) {
+    if (edge.layer === "strict") {
+      strict += 1;
+      strictNodes.add(edge.from);
+      strictNodes.add(edge.to);
+    } else if (edge.layer === "semantic") semantic += 1;
+    else unrecognized += 1;
+  }
+  return {
+    concepts: graph.concepts.length,
+    relations: graph.edges.length,
+    strictRelations: strict,
+    semanticRelations: semantic,
+    unrecognizedRelations: unrecognized,
+    conceptsInStrictLayer: strictNodes.size,
+    bridges: bridges(graph).length,
+    modulesPublishing: graph.modules.filter((module2) => module2.conceptCount > 0).length,
+    modules: graph.modules.length
+  };
+}
+var ALL_RELATION_TYPES = [
+  ...STRICT_RELATION_TYPES,
+  ...SEMANTIC_RELATION_TYPES
+];
+var EMPTY_FILTERS = { layer: "all", type: "all", evidence: "all" };
+function filtersActive(filters) {
+  return filters.layer !== "all" || filters.type !== "all" || filters.evidence !== "all";
+}
+function matchesQuery(graph, edge, needle) {
+  if (!needle) return true;
+  const haystack2 = [
+    conceptLabel(graph, edge.from),
+    conceptLabel(graph, edge.to),
+    edge.type,
+    edge.from,
+    edge.to
+  ].join(" ").toLowerCase();
+  return needle.split(/\s+/).every((word) => haystack2.includes(word));
+}
+function filterRelations(graph, query, filters) {
+  const needle = foldCase(query.trim());
+  return graph.edges.filter((edge) => edge.status === "active" && (filters.layer === "all" || edge.layer === filters.layer) && (filters.type === "all" || edge.type === filters.type) && (filters.evidence === "all" || edge.evidenceState === filters.evidence) && matchesQuery(graph, edge, needle));
+}
+function filterConcepts(graph, query, filters) {
+  const needle = foldCase(query.trim());
+  const touching = filtersActive(filters) ? new Set(filterRelations(graph, "", filters).flatMap((edge) => [edge.from, edge.to])) : null;
+  return graph.concepts.filter((concept) => {
+    if (!concept.record) return false;
+    if (touching && !touching.has(concept.id)) return false;
+    if (!needle) return true;
+    const haystack2 = [concept.label, concept.id, ...concept.aliases].join(" ").toLowerCase();
+    return needle.split(/\s+/).every((word) => haystack2.includes(word));
+  });
+}
+
+// src/features/atlas/evidence.ts
+var RELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*--[A-Za-z0-9._-]+--[A-Za-z0-9][A-Za-z0-9._-]*$/;
+var DIGEST = /^[0-9a-f]{64}$/;
+function parseEvidenceParams(params) {
+  const keys = Object.keys(params).filter((key) => params[key] !== "");
+  if (keys.some((key) => key !== "relation" && key !== "ordinal")) {
+    return { error: "Evidence link refused: unexpected parameters." };
+  }
+  const relationId = params.relation ?? "";
+  const ordinalText = params.ordinal ?? "";
+  if (!RELATION_ID.test(relationId)) {
+    return { error: "Evidence link refused: unknown relation." };
+  }
+  if (!/^\d{1,2}$/.test(ordinalText)) {
+    return { error: "Evidence link refused: invalid binding ordinal." };
+  }
+  return { relationId, ordinal: Number(ordinalText) };
+}
+function resolveEvidenceBinding(graph, relationId, ordinal) {
+  const edge = graph.relationByIdentity.get(relationId);
+  if (!edge) return { error: `Evidence link refused: unknown relation ${relationId}.` };
+  const binding = edge.evidence[ordinal];
+  if (!binding) {
+    return { error: `No evidence binding ${ordinal} is recorded for ${relationId}.` };
+  }
+  if (!DIGEST.test(binding.file_sha256)) {
+    return { error: "Evidence binding has an unsupported digest; nothing was opened." };
+  }
+  if (!Number.isInteger(binding.page) || binding.page < 1) {
+    return { error: "Evidence binding has no physical page; nothing was opened." };
+  }
+  return { edge, binding };
+}
+function openEvidenceBinding(ports, relationId, ordinal) {
+  const graph = buildAtlasGraph(ports.store);
+  const resolved = resolveEvidenceBinding(graph, relationId, ordinal);
+  if ("error" in resolved) {
+    ports.notify(resolved.error);
+    return false;
+  }
+  const { binding } = resolved;
+  const destination = { page: binding.page, label: `physical page ${binding.page}` };
+  const source = ports.store.get(binding.source_id);
+  if (source && isDirectMaterialFileTarget(source)) {
+    void ports.openMaterialPath(String(source.material_path), destination);
+    return true;
+  }
+  void ports.openMaterialPath(`materials/${binding.material_relpath}`, destination);
+  return true;
+}
+var EVIDENCE_PROTOCOL_ACTION = "learningos-atlas-evidence";
+
 // src/accessibility/render-focus.ts
 function captureRenderFocus(root) {
   const doc = root.ownerDocument ?? globalThis.document;
@@ -31592,22 +32310,6 @@ function asAtlasDepth(value) {
 }
 function asAbilityLayout(value) {
   return value === "list" ? "list" : "plane";
-}
-
-// src/sorting.ts
-var collator = new Intl.Collator("en", {
-  numeric: true,
-  sensitivity: "variant",
-  caseFirst: "lower"
-});
-function compareStrings(left, right) {
-  return collator.compare(left, right) || (left < right ? -1 : left > right ? 1 : 0);
-}
-function foldCase(value) {
-  return value.toLocaleLowerCase("en");
-}
-function upperCase(value) {
-  return value.toLocaleUpperCase("en");
 }
 
 // src/features/atlas/domain-model.ts
@@ -31854,11 +32556,11 @@ function renderNotes(parent, host, index, domain, notes, redraw) {
 }
 function renderShelves(parent, host, index, domain, shelves, redraw) {
   const state = host.domains;
-  const section3 = parent.createDiv({ cls: "los-domain-shelves" });
+  const section4 = parent.createDiv({ cls: "los-domain-shelves" });
   const first = shelves[0];
   if (!first) {
     empty(
-      section3,
+      section4,
       domain.shelves.length ? "No source shelves match this search" : "No source shelves published in this domain",
       "Source folders remain available through Atlas tools."
     );
@@ -31866,7 +32568,7 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
   }
   if (!shelves.some((shelf2) => shelf2.id === state.selectedShelf)) state.selectedShelf = asText(first.id);
   if (shelves.length > 1) {
-    const choices = section3.createDiv({ cls: "los-domain-shelf-choices", attr: { role: "group", "aria-label": `Source shelves in ${domain.title}` } });
+    const choices = section4.createDiv({ cls: "los-domain-shelf-choices", attr: { role: "group", "aria-label": `Source shelves in ${domain.title}` } });
     enableButtonGroupKeyboardNavigation(choices, "vertical");
     for (const shelf2 of shelves) {
       const id = asText(shelf2.id) ?? "";
@@ -31882,7 +32584,7 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
   }
   const shelf = shelves.find((row3) => row3.id === state.selectedShelf) ?? first;
   const shelfId = asText(shelf.id) ?? "";
-  const body = section3.createDiv({ cls: "los-domain-shelf", attr: { "data-shelf-id": shelfId, "data-los-scroll": `shelf:${shelfId}` } });
+  const body = section4.createDiv({ cls: "los-domain-shelf", attr: { "data-shelf-id": shelfId, "data-los-scroll": `shelf:${shelfId}` } });
   body.createEl("h3", { text: title(shelf) });
   body.createDiv({ cls: "los-domain-counts", text: shelfCounts(shelf) });
   const actions = body.createDiv({ cls: "los-actions" });
@@ -31976,15 +32678,15 @@ function renderResults(results, host, index) {
 }
 function renderSourceDomains(root, host, index) {
   const body = disclosure2(root, host.domains, "atlas:tools", "Atlas tools", "los-domain-tools");
-  const section3 = body.createDiv({ cls: "los-domain-source-domains" });
-  section3.createEl("h2", { text: "Source folders" });
-  section3.createEl("p", { text: "Sources use their recorded thematic groups. A source may appear in more than one folder; these counts overlap." });
-  const actions = section3.createDiv({ cls: "los-actions" });
+  const section4 = body.createDiv({ cls: "los-domain-source-domains" });
+  section4.createEl("h2", { text: "Source folders" });
+  section4.createEl("p", { text: "Sources use their recorded thematic groups. A source may appear in more than one folder; these counts overlap." });
+  const actions = section4.createDiv({ cls: "los-actions" });
   button(actions, `All sources \xB7 ${index.sources.size}`, () => host.plugin.nav.openLibraryHome("sources"), "quiet").addClass("los-domain-all-sources");
   button(actions, "Search all sources", () => host.plugin.nav.openLibraryHome("sources", host.domains.query), "quiet").addClass("los-domain-search-sources");
   const groups = host.plugin.store.thematicGroups();
   const groupIds = new Set(groups.map((group2) => asText(group2.id)).filter(Boolean));
-  const list3 = section3.createDiv({ cls: "los-domain-source-groups" });
+  const list3 = section4.createDiv({ cls: "los-domain-source-groups" });
   for (const group2 of groups) {
     const id = asText(group2.id);
     if (!id) continue;
@@ -32557,7 +33259,7 @@ function sentence(reason) {
   const trimmed = reason.trim();
   return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : trimmed;
 }
-function shortModuleLabel(title2, code, fallback) {
+function shortModuleLabel2(title2, code, fallback) {
   const bracket = title2?.match(/\(([A-Za-z][A-Za-z0-9&]{1,7})\)\s*$/)?.[1];
   if (bracket && bracket === bracket.toUpperCase()) return bracket;
   if (code) return code;
@@ -32573,7 +33275,7 @@ function projectionLabels(store) {
     concept: (id) => asString(store.get(id)?.title),
     module: (id) => {
       const record7 = store.get(id);
-      return shortModuleLabel(
+      return shortModuleLabel2(
         asString(record7?.title),
         asString(record7?.code),
         id.replace(/^module-/, "")
@@ -33117,9 +33819,9 @@ function abilityWorkspaces(store, row3) {
   }
   return [...seen].map(([id, title2]) => ({ id, title: title2 }));
 }
-function abilityWorkPointers(store, focus2) {
+function abilityWorkPointers(store, focus) {
   const options = [];
-  for (const encounter2 of focus2?.encounters ?? []) {
+  for (const encounter2 of focus?.encounters ?? []) {
     const stage = store.stage(encounter2.stage_id);
     const unit = store.get(encounter2.unit_id);
     const place = `${asLabel(unit, encounter2.unit_id)} \xB7 ${encounter2.title ?? encounter2.stage_id}`;
@@ -33136,12 +33838,12 @@ function abilityWorkPointers(store, focus2) {
   }
   return options;
 }
-function openDraft(host, row3, focus2, supersedes = null) {
+function openDraft(host, row3, focus, supersedes = null) {
   new AbilityClaimDraftModal(host.app, {
     ability: row3,
-    definition: focus2?.ability ?? null,
+    definition: focus?.ability ?? null,
     workspaces: abilityWorkspaces(host.plugin.store, row3),
-    workPointers: abilityWorkPointers(host.plugin.store, focus2),
+    workPointers: abilityWorkPointers(host.plugin.store, focus),
     existing: null,
     supersedes,
     save: (draft) => host.plugin.saveAbilityDraftEdit(draft),
@@ -33215,18 +33917,18 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
   const horizon2 = host.plugin.abilityHorizon;
   horizon2.ensureExpansion(abilityId);
   const expansion = horizon2.expansion(abilityId);
-  const focus2 = expansion && "ability" in expansion ? expansion : null;
+  const focus = expansion && "ability" in expansion ? expansion : null;
   const labels = projectionLabels(host.plugin.store);
   const titleOf2 = (id) => plane.rowOf.get(id)?.title ?? id;
   const modules = row3.module_ids.map((id) => labels.module(id));
   const page2 = root.createDiv({ cls: "los-ability-detail" });
   const header = page2.createDiv({ cls: "los-ability-detail-head" });
   const eyebrow = ["Ability", ...modules];
-  if (focus2?.ability.lifecycle === "retired") {
+  if (focus?.ability.lifecycle === "retired") {
     eyebrow.push("retired identity");
-  } else if (focus2?.ability.review.state === "reviewed") {
-    eyebrow.push(`reviewed${focus2.ability.review.reviewed_on ? ` ${focus2.ability.review.reviewed_on}` : ""}`);
-  } else if (focus2) {
+  } else if (focus?.ability.review.state === "reviewed") {
+    eyebrow.push(`reviewed${focus.ability.review.reviewed_on ? ` ${focus.ability.review.reviewed_on}` : ""}`);
+  } else if (focus) {
     eyebrow.push("candidate identity");
   }
   header.createDiv({ cls: "los-ability-eyebrow is-accent", text: eyebrow.join(" \xB7 ") });
@@ -33237,11 +33939,11 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
   });
   for (const reason of row3.reasons) status.createDiv({ cls: "los-micro", text: sentence(reason) });
   const actions = header.createDiv({ cls: "los-actions los-ability-detail-actions" });
-  const canRecord = focus2?.ability.review.state === "reviewed" && focus2.ability.lifecycle === "active";
-  const draftButton = button(actions, "Draft a worked attempt", () => openDraft(host, row3, focus2), "cta");
+  const canRecord = focus?.ability.review.state === "reviewed" && focus.ability.lifecycle === "active";
+  const draftButton = button(actions, "Draft a worked attempt", () => openDraft(host, row3, focus), "cta");
   draftButton.disabled = !canRecord;
   if (!canRecord) {
-    draftButton.setAttr("title", focus2?.ability.lifecycle === "retired" ? "Retired identities keep their history but cannot receive new evidence." : focus2 ? "Only a reviewed ability can hold evidence." : "Waiting for this ability\u2019s conditions from Core.");
+    draftButton.setAttr("title", focus?.ability.lifecycle === "retired" ? "Retired identities keep their history but cannot receive new evidence." : focus ? "Only a reviewed ability can hold evidence." : "Waiting for this ability\u2019s conditions from Core.");
   }
   button(actions, "Note a possible connection", () => openConnection(host, row3, brief), "quiet").disabled = row3.lifecycle === "retired";
   button(actions, "Back to map", () => host.go({ detail: false }), "tertiary");
@@ -33261,18 +33963,18 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     }
   }
   const counts = block(page2, "What counts");
-  if (focus2) {
-    counts.createEl("p", { cls: "los-ability-claim", text: focus2.ability.claim });
-    if (focus2.ability.conditions.length) {
+  if (focus) {
+    counts.createEl("p", { cls: "los-ability-claim", text: focus.ability.claim });
+    if (focus.ability.conditions.length) {
       counts.createEl("h3", { text: "Conditions" });
-      list(counts, focus2.ability.conditions);
+      list(counts, focus.ability.conditions);
     }
     counts.createEl("h3", { text: "The attempt must show" });
-    list(counts, focus2.ability.evidence_spec);
-    if (focus2.ability.source) {
+    list(counts, focus.ability.evidence_spec);
+    if (focus.ability.source) {
       const source = counts.createDiv({ cls: "los-ability-evidence-refs" });
       source.createSpan({ cls: "los-micro", text: "Defined from: " });
-      pointer(source, host, focus2.ability.source);
+      pointer(source, host, focus.ability.source);
     }
   } else {
     renderExpansionState(counts, host, abilityId);
@@ -33309,14 +34011,14 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     }
   });
   const ledger = block(page2, "Evidence", "Every recorded attempt, corrections included. Conflicting work stays visible.");
-  const rows2 = focus2?.ability.evidence ?? row3.evidence;
+  const rows2 = focus?.ability.evidence ?? row3.evidence;
   if (!rows2.length) {
     ledger.createEl("p", { text: "No learner attempt has been recorded. Confirmed work can change this state." });
   } else {
     const correctedBy = /* @__PURE__ */ new Map();
     for (const item of rows2) if (item.supersedes) correctedBy.set(item.supersedes, item.id);
     for (const item of [...rows2].reverse()) {
-      renderEvidenceRow(ledger, host, item, correctedBy, (id) => openDraft(host, row3, focus2, id));
+      renderEvidenceRow(ledger, host, item, correctedBy, (id) => openDraft(host, row3, focus, id));
     }
   }
   for (const transfer of row3.transfer) {
@@ -33326,7 +34028,7 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     card.createEl("p", { text: `Still differs: ${transfer.changes}` });
   }
   const bridges2 = block(page2, "Bridges", "Reviewed bridges carry evidence only inside their conditions and while their source is current.");
-  const bridgeRows = focus2?.bridges ?? brief.bridges.filter((bridge2) => bridge2.from === abilityId || bridge2.to === abilityId);
+  const bridgeRows = focus?.bridges ?? brief.bridges.filter((bridge2) => bridge2.from === abilityId || bridge2.to === abilityId);
   if (!bridgeRows.length) bridges2.createEl("p", { cls: "los-micro", text: "No bridge names this ability." });
   for (const bridge2 of bridgeRows) {
     const card = bridges2.createDiv({ cls: `los-ability-route is-bridge is-${bridge2.freshness}` });
@@ -33344,7 +34046,7 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     source.createSpan({ cls: "los-micro", text: "Source: " });
     pointer(source, host, bridge2.source);
   }
-  const tentative = focus2?.candidate_connections ?? brief.candidate_connections.filter((row22) => row22.from === abilityId || row22.to === abilityId);
+  const tentative = focus?.candidate_connections ?? brief.candidate_connections.filter((row22) => row22.from === abilityId || row22.to === abilityId);
   const candidates = block(page2, "Tentative connections", "Noticed, not reviewed. They carry no evidence and change no state.");
   if (!tentative.length) candidates.createEl("p", { cls: "los-micro", text: "None recorded." });
   for (const connection of tentative) {
@@ -33359,12 +34061,12 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     "Where courses teach it",
     "A stage\u2019s status is study progress. Completing a stage never establishes this ability."
   );
-  if (!focus2) {
+  if (!focus) {
     renderExpansionState(encounters, host, abilityId);
-  } else if (!focus2.encounters.length) {
+  } else if (!focus.encounters.length) {
     encounters.createEl("p", { cls: "los-micro", text: "No stage lists this ability yet." });
   } else {
-    for (const encounter2 of focus2.encounters) {
+    for (const encounter2 of focus.encounters) {
       const card = encounters.createDiv({ cls: "los-ability-route" });
       const unit = host.plugin.store.get(encounter2.unit_id);
       card.createEl("h3", { text: `${labels.module(encounter2.module_id)} \xB7 ${asLabel(unit, encounter2.unit_id)} \xB7 ${encounter2.title ?? encounter2.stage_id}` });
@@ -33380,29 +34082,29 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
       button(card, "Open stage", () => host.plugin.nav.openUnit(encounter2.unit_id, encounter2.stage_id), "quiet");
     }
   }
-  if (focus2?.related_encounters.length) {
+  if (focus?.related_encounters.length) {
     const related = block(
       page2,
       "Connected stages in other courses",
       "Stages that teach an ability this one depends on or is bridged to. Cross-course links live here in the Atlas, not in a study session."
     );
-    for (const encounter2 of focus2.related_encounters) {
+    for (const encounter2 of focus.related_encounters) {
       const card = related.createDiv({ cls: "los-ability-route" });
       const unit = host.plugin.store.get(encounter2.unit_id);
       card.createEl("h3", { text: `${labels.module(encounter2.module_id)} \xB7 ${asLabel(unit, encounter2.unit_id)} \xB7 ${encounter2.title ?? encounter2.stage_id}` });
       card.createDiv({ cls: "los-micro", text: `Teaches: ${encounter2.ability_ids.map(titleOf2).join(", ")}` });
       button(card, "Open stage", () => host.plugin.nav.openUnit(encounter2.unit_id, encounter2.stage_id), "quiet");
     }
-    if (focus2.related_encounters_total > focus2.related_encounters.length) {
+    if (focus.related_encounters_total > focus.related_encounters.length) {
       related.createDiv({
         cls: "los-micro",
-        text: `Showing ${focus2.related_encounters.length} of ${focus2.related_encounters_total}.`
+        text: `Showing ${focus.related_encounters.length} of ${focus.related_encounters_total}.`
       });
     }
   }
-  if (focus2?.shared_concept_candidates.length) {
+  if (focus?.shared_concept_candidates.length) {
     const shared = block(page2, "Shares a concept tag with", "A shared tag is a lead to look at, never credit.");
-    list(shared, focus2.shared_concept_candidates.map(titleOf2));
+    list(shared, focus.shared_concept_candidates.map(titleOf2));
   }
   const concepts = asStrings(row3.concept_ids);
   if (concepts.length) {
@@ -33417,7 +34119,7 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
       );
     }
   }
-  if (!focus2 && horizon2.expansionError(abilityId)) {
+  if (!focus && horizon2.expansionError(abilityId)) {
     empty(page2, "Part of this ability could not be read", horizon2.expansionError(abilityId) ?? "");
   }
 }
@@ -34191,7 +34893,7 @@ function renderInspector(surface, host, plane, brief, abilityId) {
   const horizon2 = host.plugin.abilityHorizon;
   horizon2.ensureExpansion(abilityId);
   const expansion = horizon2.expansion(abilityId);
-  const focus2 = expansion && "ability" in expansion ? expansion : null;
+  const focus = expansion && "ability" in expansion ? expansion : null;
   const labels = projectionLabels(host.plugin.store);
   const titleOf2 = (id) => plane.rowOf.get(id)?.title ?? id;
   const panel = surface.createEl("aside", {
@@ -34207,12 +34909,12 @@ function renderInspector(surface, host, plane, brief, abilityId) {
   panel.createEl("h2", { text: row3.title });
   renderStatus(panel, row3);
   const counts = section2(panel, "What counts");
-  if (focus2) {
-    counts.createEl("p", { text: focus2.ability.claim });
-    if (focus2.ability.conditions.length) {
+  if (focus) {
+    counts.createEl("p", { text: focus.ability.claim });
+    if (focus.ability.conditions.length) {
       counts.createEl("p", {
         cls: "los-micro",
-        text: `Under: ${focus2.ability.conditions.join("; ")}.`
+        text: `Under: ${focus.ability.conditions.join("; ")}.`
       });
     }
   } else {
@@ -34460,556 +35162,6 @@ var AbilitiesView = class extends import_obsidian4.ItemView {
 // src/views/atlas-view.ts
 var import_obsidian13 = require("obsidian");
 
-// src/features/atlas/graph.ts
-var STRICT_RELATION_TYPES = ["builds-on", "requires"];
-var SEMANTIC_RELATION_TYPES = [
-  "applies-in",
-  "contrasts-with",
-  "derives",
-  "equivalent-to",
-  "generalizes",
-  "motivates"
-];
-var STRICT = new Set(STRICT_RELATION_TYPES);
-var SEMANTIC = new Set(SEMANTIC_RELATION_TYPES);
-var RELATION_PHRASES = {
-  "applies-in": "applies in",
-  "builds-on": "builds on",
-  "contrasts-with": "contrasts with",
-  "derives": "derives",
-  "equivalent-to": "is equivalent to",
-  "generalizes": "generalizes",
-  "motivates": "motivates",
-  "requires": "requires"
-};
-function relationLayer(type) {
-  if (STRICT.has(type)) return "strict";
-  if (SEMANTIC.has(type)) return "semantic";
-  return "unrecognized";
-}
-function relationPhrase(type) {
-  return RELATION_PHRASES[type] ?? type;
-}
-function moduleConceptKey(moduleId, conceptId) {
-  return `${moduleId}\0${conceptId}`;
-}
-function normalizedSortKey(label) {
-  return foldCase(label.trim());
-}
-function compareConcepts(left, right) {
-  return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
-}
-function compareModules(left, right) {
-  if (left.actionable !== right.actionable) return left.actionable ? -1 : 1;
-  return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
-}
-function shortModuleLabel2(record7, label) {
-  const code = asString(record7.code);
-  if (code) return code;
-  const words2 = label.split(/\s+/).filter(Boolean);
-  return words2.length > 2 ? words2.map((word) => word.charAt(0)).join("").toUpperCase() : label;
-}
-function edgeIdentity(relation) {
-  return `${relation.from}--${relation.type}--${relation.to}`;
-}
-function push(index, key, value) {
-  const existing = index.get(key);
-  if (existing) existing.push(value);
-  else index.set(key, [value]);
-}
-function toEdge(wire) {
-  const relation = wire;
-  const layer = relationLayer(relation.type);
-  const strict = layer === "strict";
-  return {
-    id: edgeIdentity(relation),
-    from: relation.from,
-    type: relation.type,
-    to: relation.to,
-    context: relation.context,
-    source: relation.source,
-    layer,
-    studyFrom: strict ? relation.to : relation.from,
-    studyTo: strict ? relation.from : relation.to,
-    prerequisiteId: strict ? relation.to : null,
-    dependentId: strict ? relation.from : null
-  };
-}
-function buildAtlasGraph(store) {
-  const conceptById = /* @__PURE__ */ new Map();
-  const remember = (id) => {
-    const known = conceptById.get(id);
-    if (known) return known;
-    const record7 = store.get(id);
-    const label = record7 ? asLabel(record7, id) : id;
-    const concept = {
-      id,
-      label,
-      sortKey: normalizedSortKey(label),
-      record: record7 ?? null
-    };
-    conceptById.set(id, concept);
-    return concept;
-  };
-  for (const record7 of store.of("concept")) {
-    const id = asString(record7.id);
-    if (id) remember(id);
-  }
-  const edges = [];
-  const relationByIdentity = /* @__PURE__ */ new Map();
-  const prerequisiteEdges = /* @__PURE__ */ new Map();
-  const dependentEdges = /* @__PURE__ */ new Map();
-  const semanticEdges = /* @__PURE__ */ new Map();
-  const unrecognizedEdges = /* @__PURE__ */ new Map();
-  const resolvedSources = /* @__PURE__ */ new Map();
-  for (const relation of store.relations()) {
-    const edge = toEdge(relation);
-    if (relationByIdentity.has(edge.id)) continue;
-    relationByIdentity.set(edge.id, edge);
-    edges.push(edge);
-    remember(edge.from);
-    remember(edge.to);
-    if (edge.source && !resolvedSources.has(edge.source)) {
-      const record7 = store.get(edge.source);
-      if (record7) resolvedSources.set(edge.source, record7);
-    }
-    if (edge.layer === "strict") {
-      push(prerequisiteEdges, edge.from, edge);
-      push(dependentEdges, edge.to, edge);
-    } else if (edge.layer === "semantic") {
-      push(semanticEdges, edge.from, edge);
-      if (edge.to !== edge.from) push(semanticEdges, edge.to, edge);
-    } else {
-      push(unrecognizedEdges, edge.from, edge);
-      if (edge.to !== edge.from) push(unrecognizedEdges, edge.to, edge);
-    }
-  }
-  const modulesByConcept = /* @__PURE__ */ new Map();
-  const conceptsByModule = /* @__PURE__ */ new Map();
-  const evidenceByModuleConcept = /* @__PURE__ */ new Map();
-  for (const edge of store.moduleConceptEdges()) {
-    const moduleId = asString(edge.module_id);
-    const conceptId = asString(edge.concept_id);
-    if (!moduleId || !conceptId || !edge.evidence?.length) continue;
-    const key = moduleConceptKey(moduleId, conceptId);
-    if (evidenceByModuleConcept.has(key)) continue;
-    evidenceByModuleConcept.set(key, edge.evidence);
-    remember(conceptId);
-    push(modulesByConcept, conceptId, moduleId);
-    push(conceptsByModule, moduleId, conceptId);
-  }
-  const modules = store.modules().flatMap((record7) => {
-    const id = asString(record7.id);
-    if (!id) return [];
-    const label = asLabel(record7, id);
-    return [{
-      id,
-      label,
-      shortLabel: shortModuleLabel2(record7, label),
-      sortKey: normalizedSortKey(label),
-      actionable: record7.is_actionable === true,
-      conceptCount: conceptsByModule.get(id)?.length ?? 0
-    }];
-  }).sort(compareModules);
-  const concepts = [...conceptById.values()].sort(compareConcepts);
-  const order = (left, right) => compareConcepts(remember(left), remember(right));
-  for (const [index, farEnd] of [
-    [prerequisiteEdges, (edge) => edge.to],
-    [dependentEdges, (edge) => edge.from]
-  ]) {
-    for (const list3 of index.values()) {
-      list3.sort((left, right) => order(farEnd(left), farEnd(right)) || compareStrings(left.type, right.type) || compareStrings(left.id, right.id));
-    }
-  }
-  for (const index of [semanticEdges, unrecognizedEdges]) {
-    for (const [conceptId, list3] of index) {
-      list3.sort((left, right) => {
-        const leftFar = left.from === conceptId ? left.to : left.from;
-        const rightFar = right.from === conceptId ? right.to : right.from;
-        return compareStrings(left.type, right.type) || order(leftFar, rightFar) || compareStrings(left.id, right.id);
-      });
-    }
-  }
-  for (const list3 of modulesByConcept.values()) {
-    list3.sort((left, right) => compareStrings(left, right));
-  }
-  for (const list3 of conceptsByModule.values()) {
-    list3.sort(order);
-  }
-  return {
-    concepts,
-    conceptById,
-    edges: edges.slice().sort((left, right) => compareStrings(left.id, right.id)),
-    relationByIdentity,
-    prerequisiteEdges,
-    dependentEdges,
-    semanticEdges,
-    unrecognizedEdges,
-    modules,
-    modulesByConcept,
-    conceptsByModule,
-    evidenceByModuleConcept,
-    resolvedSources
-  };
-}
-function conceptOf(graph, id) {
-  return graph.conceptById.get(id) ?? { id, label: id, sortKey: normalizedSortKey(id), record: null };
-}
-function conceptLabel(graph, id) {
-  return conceptOf(graph, id).label;
-}
-function canonicalSentence(graph, edge) {
-  return `${conceptLabel(graph, edge.from)} ${relationPhrase(edge.type)} ${conceptLabel(graph, edge.to)}`;
-}
-function studyOrderSentence(graph, edge) {
-  if (!edge.prerequisiteId || !edge.dependentId) return null;
-  return `Learn ${conceptLabel(graph, edge.prerequisiteId)} before ${conceptLabel(graph, edge.dependentId)}`;
-}
-function provenanceOf(graph, edge) {
-  if (!edge.source) return { state: "undocumented" };
-  const record7 = graph.resolvedSources.get(edge.source);
-  return record7 ? {
-    state: "resolved",
-    sourceId: edge.source,
-    label: asLabel(record7, edge.source),
-    record: record7
-  } : { state: "unresolved", sourceId: edge.source };
-}
-function evidenceFor(graph, moduleId, conceptId) {
-  return graph.evidenceByModuleConcept.get(
-    moduleConceptKey(moduleId, conceptId)
-  ) ?? [];
-}
-function modulesFor(graph, conceptId) {
-  const ids = new Set(graph.modulesByConcept.get(conceptId) ?? []);
-  return graph.modules.filter((module2) => ids.has(module2.id));
-}
-function neighbourhood(graph, focusId, options = {}) {
-  const depth = Math.max(1, Math.trunc(options.depth ?? 1));
-  const focus2 = conceptOf(graph, focusId);
-  const placed = /* @__PURE__ */ new Map();
-  placed.set(focus2.id, { concept: focus2, direction: "focus", distance: 0, column: 0 });
-  const walk = (direction) => {
-    let frontier = [focus2.id];
-    for (let distance = 1; distance <= depth; distance += 1) {
-      const next = [];
-      for (const id of frontier) {
-        const edges = direction === "prerequisite" ? graph.prerequisiteEdges.get(id) ?? [] : graph.dependentEdges.get(id) ?? [];
-        for (const edge of edges) {
-          const neighbour = direction === "prerequisite" ? edge.to : edge.from;
-          if (placed.has(neighbour)) continue;
-          placed.set(neighbour, {
-            concept: conceptOf(graph, neighbour),
-            direction,
-            distance,
-            column: direction === "prerequisite" ? -distance : distance
-          });
-          next.push(neighbour);
-        }
-      }
-      frontier = next;
-    }
-    return frontier;
-  };
-  const prerequisiteFrontier = walk("prerequisite");
-  const dependentFrontier = walk("dependent");
-  const semanticNeighbours = /* @__PURE__ */ new Map();
-  for (const edge of graph.semanticEdges.get(focus2.id) ?? []) {
-    const other = edge.from === focus2.id ? edge.to : edge.from;
-    if (placed.has(other) || semanticNeighbours.has(other)) continue;
-    semanticNeighbours.set(other, conceptOf(graph, other));
-  }
-  const unrecognizedNeighbours = /* @__PURE__ */ new Map();
-  for (const edge of graph.unrecognizedEdges.get(focus2.id) ?? []) {
-    const other = edge.from === focus2.id ? edge.to : edge.from;
-    if (placed.has(other) || unrecognizedNeighbours.has(other)) continue;
-    unrecognizedNeighbours.set(other, conceptOf(graph, other));
-  }
-  if (options.includeSemanticNeighbours) {
-    for (const concept of semanticNeighbours.values()) {
-      placed.set(concept.id, {
-        concept,
-        direction: "related",
-        distance: 1,
-        column: 0
-      });
-    }
-    semanticNeighbours.clear();
-  }
-  const nodes = [...placed.values()].sort((left, right) => left.column - right.column || Number(left.direction !== "focus") - Number(right.direction !== "focus") || compareConcepts(left.concept, right.concept));
-  const columnValues = [...new Set(nodes.map((node) => node.column))].sort((left, right) => left - right);
-  const columns = columnValues.map((column) => nodes.filter((node) => node.column === column));
-  const focusColumn = columnValues.indexOf(0);
-  const inside = (id) => placed.has(id);
-  const strictEdges = [];
-  const drawnSemantic = [];
-  const drawnUnrecognized = [];
-  for (const edge of graph.edges) {
-    const both = inside(edge.from) && inside(edge.to);
-    if (edge.layer === "strict") {
-      if (both) strictEdges.push(edge);
-      continue;
-    }
-    if (!both) continue;
-    if (edge.layer === "semantic") drawnSemantic.push(edge);
-    else drawnUnrecognized.push(edge);
-  }
-  const beyondFrom = (frontier, direction) => {
-    const found = /* @__PURE__ */ new Map();
-    for (const id of frontier) {
-      const edges = direction === "prerequisite" ? graph.prerequisiteEdges.get(id) ?? [] : graph.dependentEdges.get(id) ?? [];
-      for (const edge of edges) {
-        const neighbour = direction === "prerequisite" ? edge.to : edge.from;
-        if (placed.has(neighbour) || found.has(neighbour)) continue;
-        found.set(neighbour, conceptOf(graph, neighbour));
-      }
-    }
-    return found;
-  };
-  const beyondPrerequisites = beyondFrom(prerequisiteFrontier, "prerequisite");
-  const beyondDependents = beyondFrom(dependentFrontier, "dependent");
-  const sortedConcepts = (values) => [...values].sort(compareConcepts);
-  const prerequisites = sortedConcepts(beyondPrerequisites.values());
-  const dependents = sortedConcepts(beyondDependents.values());
-  const semantic = sortedConcepts(semanticNeighbours.values());
-  const unrecognized = sortedConcepts(unrecognizedNeighbours.values());
-  return {
-    focus: focus2,
-    depth,
-    nodes,
-    columns,
-    focusColumn,
-    strictEdges,
-    semanticEdges: drawnSemantic,
-    unrecognizedEdges: drawnUnrecognized,
-    beyond: {
-      prerequisites,
-      dependents,
-      semantic,
-      unrecognized,
-      total: prerequisites.length + dependents.length + semantic.length + unrecognized.length
-    }
-  };
-}
-function strictAncestors(graph, focusId) {
-  const seen = /* @__PURE__ */ new Set([focusId]);
-  const collected = /* @__PURE__ */ new Map();
-  const pending = [focusId];
-  while (pending.length) {
-    const id = pending.pop();
-    if (id === void 0) break;
-    for (const edge of graph.prerequisiteEdges.get(id) ?? []) {
-      if (seen.has(edge.to)) continue;
-      seen.add(edge.to);
-      collected.set(edge.to, conceptOf(graph, edge.to));
-      pending.push(edge.to);
-    }
-  }
-  return [...collected.values()].sort(compareConcepts);
-}
-function findStrictCycle(graph, scope) {
-  const within = (id) => !scope || scope.has(id);
-  const roots = graph.concepts.map((concept) => concept.id).filter(within);
-  const state = /* @__PURE__ */ new Map();
-  const trail = [];
-  const prerequisitesOf = (id) => (graph.prerequisiteEdges.get(id) ?? []).map((edge) => edge.to).filter(within);
-  for (const root of roots) {
-    if (state.has(root)) continue;
-    const stack2 = [
-      { id: root, queue: prerequisitesOf(root), at: 0 }
-    ];
-    state.set(root, "open");
-    trail.push(root);
-    while (stack2.length) {
-      const frame = stack2[stack2.length - 1];
-      if (!frame) break;
-      const next = frame.queue[frame.at];
-      frame.at += 1;
-      if (next === void 0) {
-        state.set(frame.id, "closed");
-        stack2.pop();
-        trail.pop();
-        continue;
-      }
-      if (state.get(next) === "closed") continue;
-      if (state.get(next) === "open") {
-        const start2 = trail.indexOf(next);
-        return [...trail.slice(start2), next];
-      }
-      state.set(next, "open");
-      trail.push(next);
-      stack2.push({ id: next, queue: prerequisitesOf(next), at: 0 });
-    }
-  }
-  return null;
-}
-function strictPath(graph, focusId) {
-  const ancestors = strictAncestors(graph, focusId);
-  const scope = /* @__PURE__ */ new Set([focusId, ...ancestors.map((concept) => concept.id)]);
-  const cycle = findStrictCycle(graph, scope);
-  if (cycle) return { ok: false, cycle };
-  const depthOf = /* @__PURE__ */ new Map();
-  const resolve3 = (id) => {
-    const known = depthOf.get(id);
-    if (known !== void 0) return known;
-    let deepest = 0;
-    for (const edge of graph.prerequisiteEdges.get(id) ?? []) {
-      if (!scope.has(edge.to)) continue;
-      deepest = Math.max(deepest, resolve3(edge.to) + 1);
-    }
-    depthOf.set(id, deepest);
-    return deepest;
-  };
-  for (const id of scope) resolve3(id);
-  const layers = [];
-  for (const id of scope) {
-    const index = depthOf.get(id) ?? 0;
-    while (layers.length <= index) layers.push([]);
-    layers[index]?.push(conceptOf(graph, id));
-  }
-  for (const layer of layers) layer.sort(compareConcepts);
-  const edges = graph.edges.filter((edge) => edge.layer === "strict" && scope.has(edge.from) && scope.has(edge.to));
-  return { ok: true, layers, edges, total: scope.size };
-}
-function bridges(graph) {
-  return graph.concepts.flatMap((concept) => {
-    const modules = modulesFor(graph, concept.id);
-    return modules.length > 1 ? [{ concept, modules, moduleCount: modules.length }] : [];
-  }).sort((left, right) => right.moduleCount - left.moduleCount || compareConcepts(left.concept, right.concept));
-}
-function diagnostic(id, title2, meaning, kind, records) {
-  const conceptIds2 = records.conceptIds ?? [];
-  const edgeIds = records.edgeIds ?? [];
-  const moduleIds = records.moduleIds ?? [];
-  return {
-    id,
-    title: title2,
-    meaning,
-    kind,
-    count: kind === "concepts" ? conceptIds2.length : kind === "relations" ? edgeIds.length : moduleIds.length,
-    conceptIds: conceptIds2,
-    edgeIds,
-    moduleIds
-  };
-}
-function diagnostics(graph) {
-  const conceptIds2 = (predicate) => graph.concepts.filter(predicate).map((concept) => concept.id);
-  const inStrict = (id) => Boolean(graph.prerequisiteEdges.get(id)?.length) || Boolean(graph.dependentEdges.get(id)?.length);
-  const edgeIds = (predicate) => graph.edges.filter(predicate).map((edge) => edge.id);
-  const entries2 = [
-    diagnostic(
-      "strict-roots",
-      "Concepts with no authored prerequisites",
-      "Nothing in the registry has to be learned first. That is a statement about what has been authored, not a claim that the concept is foundational.",
-      "concepts",
-      { conceptIds: conceptIds2((concept) => inStrict(concept.id) && !graph.prerequisiteEdges.get(concept.id)?.length) }
-    ),
-    diagnostic(
-      "strict-leaves",
-      "Concepts nothing yet builds on",
-      "No authored relation names this concept as a prerequisite. It does not mean the concept is advanced, or finished.",
-      "concepts",
-      { conceptIds: conceptIds2((concept) => inStrict(concept.id) && !graph.dependentEdges.get(concept.id)?.length) }
-    ),
-    diagnostic(
-      "unrelated-concepts",
-      "Concepts with no authored relation",
-      "The concept exists and carries no relation of any layer. Unwritten, not unrelated.",
-      "concepts",
-      {
-        conceptIds: conceptIds2((concept) => !inStrict(concept.id) && !graph.semanticEdges.get(concept.id)?.length && !graph.unrecognizedEdges.get(concept.id)?.length)
-      }
-    ),
-    diagnostic(
-      "concepts-without-module-evidence",
-      "Concepts no module evidences",
-      "No module publishes a stage or knowledge node for this concept. It says where teaching has been recorded, not where the concept belongs.",
-      "concepts",
-      { conceptIds: conceptIds2((concept) => !graph.modulesByConcept.get(concept.id)?.length) }
-    ),
-    diagnostic(
-      "unresolved-concepts",
-      "Relations naming an unknown concept",
-      "A relation endpoint the projection does not carry. The relation is still drawn, under the identifier it names.",
-      "concepts",
-      { conceptIds: conceptIds2((concept) => concept.record === null) }
-    ),
-    diagnostic(
-      "relations-without-context",
-      "Relations with no context note",
-      "The relation is authored and valid; nothing records why. Context is optional by schema.",
-      "relations",
-      { edgeIds: edgeIds((edge) => edge.context === null) }
-    ),
-    diagnostic(
-      "relations-without-source",
-      "Relations with no recorded source",
-      "Undocumented, and permitted: the schema allows an absent source. Nothing may be substituted for one.",
-      "relations",
-      { edgeIds: edgeIds((edge) => edge.source === null) }
-    ),
-    diagnostic(
-      "relations-with-unresolved-source",
-      "Relations whose source does not resolve",
-      "The citation names a record the projection does not carry. The identifier is reported exactly and no stand-in is offered.",
-      "relations",
-      {
-        edgeIds: edgeIds((edge) => edge.source !== null && !graph.resolvedSources.has(edge.source))
-      }
-    ),
-    diagnostic(
-      "relations-outside-vocabulary",
-      "Relations outside the authored vocabulary",
-      "The type is neither strict nor semantic, so it orders nothing and explains nothing here. It is kept and named rather than reclassified.",
-      "relations",
-      { edgeIds: edgeIds((edge) => edge.layer === "unrecognized") }
-    ),
-    diagnostic(
-      "modules-without-concepts",
-      "Modules publishing no concept evidence",
-      "The module has no stage or knowledge node tagged with a concept. Its column is empty because nothing has been mapped, not because nothing is taught.",
-      "modules",
-      { moduleIds: graph.modules.filter((module2) => module2.conceptCount === 0).map((module2) => module2.id) }
-    )
-  ];
-  const cycle = findStrictCycle(graph);
-  if (cycle) {
-    entries2.push(diagnostic(
-      "strict-cycle",
-      "Prerequisite cycle",
-      "Concepts that require one another in a loop. No learning order exists over them, so path derivation is blocked until the registry is corrected.",
-      "concepts",
-      { conceptIds: cycle }
-    ));
-  }
-  return entries2;
-}
-function summarize(graph) {
-  const strictNodes = /* @__PURE__ */ new Set();
-  let strict = 0;
-  let semantic = 0;
-  let unrecognized = 0;
-  for (const edge of graph.edges) {
-    if (edge.layer === "strict") {
-      strict += 1;
-      strictNodes.add(edge.from);
-      strictNodes.add(edge.to);
-    } else if (edge.layer === "semantic") semantic += 1;
-    else unrecognized += 1;
-  }
-  return {
-    concepts: graph.concepts.length,
-    relations: graph.edges.length,
-    strictRelations: strict,
-    semanticRelations: semantic,
-    unrecognizedRelations: unrecognized,
-    conceptsInStrictLayer: strictNodes.size,
-    bridges: bridges(graph).length,
-    modulesPublishing: graph.modules.filter((module2) => module2.conceptCount > 0).length,
-    modules: graph.modules.length
-  };
-}
-
 // src/features/atlas/narrative.ts
 function plural2(count4, singular, many = `${singular}s`) {
   return `${count4} ${count4 === 1 ? singular : many}`;
@@ -35083,143 +35235,7 @@ function provenanceLine(graph, edge, conceptId) {
   ].join(" \xB7 ");
 }
 
-// src/features/atlas/edge-layer.ts
-var sequence = 0;
-var SVG2 = "http://www.w3.org/2000/svg";
-function mountEdges(canvas, host, graph, edges, emphasized) {
-  const doc = canvas.ownerDocument;
-  if (!doc?.createElementNS || typeof canvas.getBoundingClientRect !== "function") return;
-  const win = doc.defaultView;
-  if (!win) return;
-  const svg = doc.createElementNS(SVG2, "svg");
-  svg.setAttribute("class", "los-atlas-edge-layer");
-  svg.setAttribute("aria-hidden", "true");
-  canvas.prepend(svg);
-  const markerId = `los-atlas-arrow-${++sequence}`;
-  let frame = 0;
-  let disposed = false;
-  const draw = () => {
-    frame = 0;
-    if (disposed || !canvas.isConnected) return;
-    svg.replaceChildren();
-    const base = canvas.getBoundingClientRect();
-    svg.setAttribute("width", String(base.width));
-    svg.setAttribute("height", String(base.height));
-    const defs = doc.createElementNS(SVG2, "defs");
-    const marker = doc.createElementNS(SVG2, "marker");
-    for (const [key, value] of Object.entries({
-      id: markerId,
-      viewBox: "0 0 10 10",
-      refX: "9",
-      refY: "5",
-      markerWidth: "7",
-      markerHeight: "7",
-      orient: "auto-start-reverse"
-    })) marker.setAttribute(key, value);
-    const arrow = doc.createElementNS(SVG2, "path");
-    arrow.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
-    arrow.setAttribute("class", "los-atlas-arrowhead");
-    marker.append(arrow);
-    defs.append(marker);
-    svg.append(defs);
-    const nodes = new Map(Array.from(canvas.querySelectorAll("[data-atlas-concept]")).map((node) => [node.getAttribute("data-atlas-concept"), node]));
-    for (const edge of edges) {
-      const from = nodes.get(edge.studyFrom), to = nodes.get(edge.studyTo);
-      if (!from || !to) continue;
-      const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
-      if (!a.width || !b.width) continue;
-      const rightward = b.left + b.width / 2 >= a.left + a.width / 2;
-      const x1 = (rightward ? a.right : a.left) - base.left + canvas.scrollLeft;
-      const x2 = (rightward ? b.left : b.right) - base.left + canvas.scrollLeft;
-      const y1 = a.top + a.height / 2 - base.top + canvas.scrollTop;
-      const y2 = b.top + b.height / 2 - base.top + canvas.scrollTop;
-      const bend = Math.max(20, Math.abs(x2 - x1) / 2) * (rightward ? 1 : -1);
-      const d = `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
-      for (const hit of [false, true]) {
-        const path = doc.createElementNS(SVG2, "path");
-        path.setAttribute("d", d);
-        path.setAttribute("data-relation-id", edge.id);
-        path.setAttribute("data-from", edge.studyFrom);
-        path.setAttribute("data-to", edge.studyTo);
-        path.setAttribute("class", hit ? "los-atlas-edge-hit" : `los-atlas-edge los-atlas-edge--${edge.type}${host.edgeId === edge.id || emphasized?.(edge) ? " is-selected" : ""}`);
-        if (!hit) path.setAttribute("marker-end", `url(#${markerId})`);
-        else {
-          const title2 = doc.createElementNS(SVG2, "title");
-          title2.textContent = canonicalSentence(graph, edge);
-          path.append(title2);
-          path.addEventListener("click", () => host.inspectEdge(edge.id));
-        }
-        svg.append(path);
-      }
-    }
-  };
-  const schedule = () => {
-    if (!disposed && !frame) frame = win.requestAnimationFrame(draw);
-  };
-  const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
-  observer?.observe(canvas);
-  canvas.querySelectorAll("[data-atlas-concept]").forEach((node) => observer?.observe(node));
-  win.addEventListener("resize", schedule);
-  const scrollRegions = [canvas, ...Array.from(canvas.querySelectorAll(".los-atlas-lanes"))];
-  scrollRegions.forEach((region) => region.addEventListener("scroll", schedule));
-  schedule();
-  host.addRenderCleanup(() => {
-    disposed = true;
-    if (frame) win.cancelAnimationFrame(frame);
-    observer?.disconnect();
-    win.removeEventListener("resize", schedule);
-    scrollRegions.forEach((region) => region.removeEventListener("scroll", schedule));
-    svg.remove();
-  });
-}
-
-// src/features/atlas/disclosure.ts
-function conceptDisclosure(parent, host, key, label, cls = "") {
-  const details = parent.createEl("details", {
-    cls: `los-disclosure los-atlas-disclosure ${cls}`.trim()
-  });
-  details.createEl("summary", { text: label });
-  details.open = host.concepts.disclosures.get(key) === true;
-  details.setAttribute("data-atlas-disclosure", key);
-  details.addEventListener("toggle", () => {
-    if (details.isConnected !== false) host.concepts.disclosures.set(key, details.open);
-  });
-  return details.createDiv({ cls: "los-disclosure-body" });
-}
-
-// src/features/atlas/presentation.ts
-function conceptPlaneSlice(view, perLane = 4) {
-  const limit = Math.max(1, Math.trunc(perLane));
-  const counts = /* @__PURE__ */ new Map();
-  const ids = /* @__PURE__ */ new Set([view.focus.id]);
-  const outward = [...view.nodes].sort((left, right) => left.distance - right.distance);
-  for (const node of outward) {
-    if (node.direction === "focus") continue;
-    const key = `${node.direction}:${node.column}`;
-    const count4 = counts.get(key) ?? 0;
-    const connected = node.direction === "related" ? view.semanticEdges.some((edge) => edge.from === node.concept.id && ids.has(edge.to) || edge.to === node.concept.id && ids.has(edge.from)) : view.strictEdges.some((edge) => node.direction === "prerequisite" ? edge.to === node.concept.id && ids.has(edge.from) : edge.from === node.concept.id && ids.has(edge.to));
-    if (count4 >= limit || !connected) continue;
-    ids.add(node.concept.id);
-    counts.set(key, count4 + 1);
-  }
-  const shown = view.nodes.filter((node) => ids.has(node.concept.id));
-  const omitted = view.nodes.filter((node) => !ids.has(node.concept.id));
-  const visible = (edge) => ids.has(edge.from) && ids.has(edge.to);
-  return {
-    nodes: shown,
-    omitted,
-    strictEdges: view.strictEdges.filter(visible),
-    semanticEdges: view.semanticEdges.filter(visible)
-  };
-}
-
-// src/features/atlas/focused-graph.ts
-var COLUMN_HEADINGS = {
-  prerequisite: "Before this",
-  focus: "Selected concept",
-  dependent: "Builds on this",
-  related: "Semantic neighbours"
-};
+// src/features/atlas/text-navigation.ts
 function inspectConcept(host, origin, concept) {
   host.concepts.inspections ??= /* @__PURE__ */ new Map();
   host.concepts.inspections.set(origin, concept);
@@ -35227,217 +35243,12 @@ function inspectConcept(host, origin, concept) {
   host.tab = "summary";
   host.render();
 }
-function nodeAttachment(graph, view, node) {
-  if (node.direction === "focus") return moduleTrail(graph, node.concept.id);
-  const edges = view.strictEdges.filter((edge) => edge.from === node.concept.id || edge.to === node.concept.id);
-  const toward = edges.filter((edge) => otherEnd(edge, node.concept.id) !== node.concept.id);
-  const nearest = toward.find((edge) => {
-    const other = otherEnd(edge, node.concept.id);
-    const otherNode = view.nodes.find((row3) => row3.concept.id === other);
-    return (otherNode?.distance ?? Number.MAX_SAFE_INTEGER) < node.distance;
-  }) ?? toward[0];
-  if (node.direction === "related") {
-    const semantic = view.semanticEdges.find((edge) => edge.from === node.concept.id || edge.to === node.concept.id);
-    const type = semantic ? relationPhrase(semantic.type) : "related";
-    return `${type} \xB7 ${moduleTrail(graph, node.concept.id)}`;
-  }
-  if (!nearest) return moduleTrail(graph, node.concept.id);
-  return `${relationSentences(graph, nearest)[0]} \xB7 ${moduleTrail(graph, node.concept.id)}`;
-}
-function renderNode(parent, host, graph, view, node) {
-  const control = parent.createEl("button", {
-    cls: "los-atlas-node is-clickable",
-    attr: { type: "button" }
-  });
-  control.addClass(`los-atlas-node--${node.direction}`);
-  control.setAttribute("data-atlas-concept", node.concept.id);
-  control.toggleClass("is-focus", node.direction === "focus");
-  const inspected = host.concepts.inspections?.get(view.focus.id) ?? view.focus.id;
-  control.toggleClass("is-selected", node.concept.id === inspected);
-  control.setAttribute("aria-pressed", String(node.concept.id === inspected));
-  if (node.concept.record === null) {
-    control.addClass("is-unresolved");
-  }
-  control.createDiv({
-    cls: "los-atlas-node-title",
-    text: node.concept.label
-  });
-  control.createDiv({
-    cls: "los-micro los-atlas-node-trail",
-    text: node.direction === "focus" ? "Current focus" : node.direction === "prerequisite" ? "Prerequisite" : node.direction === "dependent" ? "Dependent" : "Related idea"
-  });
-  control.createSpan({ cls: "los-sr-only", text: nodeAttachment(graph, view, node) });
-  control.setAttribute("title", nodeAttachment(graph, view, node));
-  if (node.concept.record === null) {
-    control.createDiv({
-      cls: "los-micro",
-      text: "No concept record \u2014 shown under its identifier"
-    });
-  }
-  control.setAttrs({
-    "aria-label": `Inspect ${node.concept.label} \u2014 ${COLUMN_HEADINGS[node.direction] ?? "Concept"}. ${nodeAttachment(graph, view, node)}`
-  });
-  if (node.direction === "focus") {
-    control.setAttrs({ "aria-current": "true" });
-  }
-  control.addEventListener("click", () => {
-    inspectConcept(host, view.focus.id, node.concept.id);
-  });
-}
-function renderRemainder(parent, host, view, concepts, noun) {
-  if (!concepts.length) return;
-  const card = parent.createDiv({ cls: "los-atlas-remainder" });
-  const summary = card.createEl("button", {
-    cls: "los-atlas-remainder-toggle is-clickable",
-    attr: { type: "button" }
-  });
-  summary.createDiv({
-    cls: "los-atlas-remainder-title",
-    text: `+ ${plural2(concepts.length, `more ${noun}`, `more ${noun}s`)}`
-  });
-  summary.createDiv({
-    cls: "los-micro",
-    text: host.remainderOpen ? `beyond depth ${view.depth} \xB7 counted, never dropped` : `beyond depth ${view.depth} \xB7 expand to name them`
-  });
-  summary.setAttrs({ "aria-expanded": String(host.remainderOpen) });
-  summary.addEventListener("click", () => {
-    host.remainderOpen = !host.remainderOpen;
-    host.render();
-  });
-  if (!host.remainderOpen) return;
-  const list3 = card.createDiv({ cls: "los-atlas-remainder-list" });
-  enableButtonGroupKeyboardNavigation(list3, "vertical");
-  for (const concept of concepts) {
-    const row3 = list3.createEl("button", {
-      cls: "los-atlas-remainder-item is-clickable",
-      attr: { type: "button" },
-      text: concept.label
-    });
-    row3.addEventListener("click", () => inspectConcept(host, view.focus.id, concept.id));
-  }
-}
-function renderFocusedGraph(parent, host, graph, view) {
-  const canvas = parent.createDiv({ cls: "los-atlas-canvas", attr: { "data-los-scroll": `concept-map:${view.focus.id}` } });
-  const slice = conceptPlaneSlice(view);
-  const lanes = canvas.createDiv({ cls: "los-atlas-lanes" });
-  lanes.setAttrs({
-    role: "group",
-    "aria-label": `Concepts around ${view.focus.label}`,
-    "data-los-scroll": `concept-lanes:${view.focus.id}`
-  });
-  enableButtonGroupKeyboardNavigation(lanes, "both");
-  const strictNodes = slice.nodes.filter((node) => node.direction !== "related");
-  const columns = [...new Set(strictNodes.map((node) => node.column))].sort((left, right) => left - right);
-  if (!strictNodes.some((node) => node.direction === "prerequisite")) {
-    const lane = lanes.createDiv({ cls: "los-atlas-lane los-atlas-lane--prerequisite" });
-    lane.createDiv({ cls: "los-atlas-lane-head los-micro", text: COLUMN_HEADINGS.prerequisite });
-    const card = lane.createDiv({ cls: "los-atlas-absence" });
-    card.createDiv({ cls: "los-atlas-absence-title", text: "No authored prerequisites" });
-    card.createDiv({ cls: "los-micro", text: "Absence, not a claim that none exist." });
-    renderRemainder(lane, host, view, view.beyond.prerequisites, "prerequisite");
-  }
-  for (const column of columns) {
-    const nodes = strictNodes.filter((node) => node.column === column);
-    const first = nodes[0];
-    if (!first) continue;
-    const lane = lanes.createDiv({ cls: "los-atlas-lane" });
-    lane.addClass(`los-atlas-lane--${first.direction}`);
-    lane.createDiv({
-      cls: "los-atlas-lane-head los-micro",
-      text: column === 0 ? COLUMN_HEADINGS.focus : `${COLUMN_HEADINGS[first.direction]}${Math.abs(column) > 1 ? ` \xB7 depth ${Math.abs(column)}` : ""}`
-    });
-    for (const node of nodes) renderNode(lane, host, graph, view, node);
-    if (column === Math.min(...columns) && column < 0) {
-      renderRemainder(lane, host, view, view.beyond.prerequisites, "prerequisite");
-    }
-    if (column === Math.max(...columns) && column > 0) {
-      renderRemainder(lane, host, view, view.beyond.dependents, "dependent");
-    }
-  }
-  if (!strictNodes.some((node) => node.direction === "dependent")) {
-    const lane = lanes.createDiv({ cls: "los-atlas-lane los-atlas-lane--dependent" });
-    lane.createDiv({ cls: "los-atlas-lane-head los-micro", text: COLUMN_HEADINGS.dependent });
-    const card = lane.createDiv({ cls: "los-atlas-absence" });
-    card.createDiv({ cls: "los-atlas-absence-title", text: "No authored dependents" });
-    card.createDiv({ cls: "los-micro", text: "Absence, not a claim that none exist." });
-    renderRemainder(lane, host, view, view.beyond.dependents, "dependent");
-  }
-  const related = slice.nodes.filter((node) => node.direction === "related");
-  if (related.length || view.semanticEdges.length || view.beyond.semantic.length) {
-    const band = canvas.createDiv({ cls: "los-atlas-semantic" });
-    band.createDiv({
-      cls: "los-atlas-lane-head los-micro",
-      text: "Semantic context \xB7 excluded from path order"
-    });
-    if (related.length) {
-      const row3 = band.createDiv({ cls: "los-atlas-semantic-row" });
-      enableButtonGroupKeyboardNavigation(row3, "horizontal");
-      for (const node of related) renderNode(row3, host, graph, view, node);
-    }
-    band.createDiv({
-      cls: "los-micro",
-      text: view.beyond.semantic.length ? `${plural2(view.beyond.semantic.length, "semantic link")} not drawn by this lens: ${view.beyond.semantic.map((concept) => concept.label).join(" \xB7 ")}` : "Related ideas add authored associations. They do not change prerequisite order."
-    });
-  }
-  if (view.beyond.unrecognized.length) {
-    const note2 = canvas.createDiv({ cls: "los-atlas-unrecognized" });
-    note2.createDiv({
-      cls: "los-atlas-absence-title",
-      text: `${plural2(view.beyond.unrecognized.length, "relation")} outside the authored vocabulary`
-    });
-    note2.createDiv({
-      cls: "los-micro",
-      text: `Neither strict nor semantic, so nothing traverses it: ${view.beyond.unrecognized.map((concept) => concept.label).join(" \xB7 ")}. Listed in Diagnostics.`
-    });
-  }
-  if (slice.omitted.length) {
-    canvas.createDiv({
-      cls: "los-micro los-atlas-picture-scope",
-      text: `${slice.nodes.length} of ${view.nodes.length} concepts drawn at depth ${view.depth} \xB7 ${slice.omitted.length} in the named remainder`
-    });
-    const remainder = conceptDisclosure(
-      canvas,
-      host,
-      `${view.focus.id}:crowded-remainder`,
-      `Show ${slice.omitted.length} more concepts at this depth`,
-      "los-atlas-crowded-remainder"
-    );
-    for (const node of slice.omitted) {
-      const row3 = button(
-        remainder,
-        `${node.concept.label} \xB7 ${COLUMN_HEADINGS[node.direction]}`,
-        () => inspectConcept(host, view.focus.id, node.concept.id),
-        "row"
-      );
-      row3.setAttribute("data-omitted-concept", node.concept.id);
-    }
-    remainder.createDiv({ cls: "los-micro", text: "Every connection at this depth remains inspectable in Text outline." });
-  }
-  mountEdges(canvas, host, graph, [
-    ...slice.strictEdges,
-    ...host.state.lens === "semantic" ? slice.semanticEdges : []
-  ]);
-  renderLegend(conceptDisclosure(canvas, host, "graph-legend", "Map legend"));
-}
-function renderLegend(parent) {
-  const legend = parent.createDiv({ cls: "los-atlas-legend" });
-  legend.createDiv({ cls: "los-micro los-atlas-legend-kicker", text: "Legend" });
-  const items = legend.createDiv({ cls: "los-atlas-legend-items" });
-  for (const [key, text4] of [
-    ["requires", "requires"],
-    ["builds-on", "builds on"],
-    ["semantic", "semantic \u2014 never in a path"],
-    ["order", "arrows show study order: prerequisite \u2192 dependent"],
-    ["unauthored", "dotted \u2014 not authored"]
-  ]) {
-    const item = items.createDiv({ cls: "los-atlas-legend-item" });
-    item.createSpan({ cls: `los-atlas-legend-mark los-atlas-legend-mark--${key}` }).setAttrs({ "aria-hidden": "true" });
-    item.createSpan({ text: text4 });
-  }
-  legend.createDiv({
-    cls: "los-micro",
-    text: "Every distinction above is also written on the node and in the outline. None of them is carried by colour, weight, or dash alone."
-  });
+function layerBadge(parent, edge) {
+  return badge(
+    parent,
+    edge.layer === "strict" ? "orders learning" : edge.layer === "semantic" ? "explains only" : "unknown type",
+    edge.layer === "strict" ? "" : "quiet"
+  );
 }
 function outlineRow(parent, host, graph, edge, focusId, position, hiddenByLens = false) {
   const row3 = parent.createEl("button", {
@@ -35447,6 +35258,7 @@ function outlineRow(parent, host, graph, edge, focusId, position, hiddenByLens =
   row3.addClass(`los-atlas-outline-row--${edge.layer}`);
   if (hiddenByLens) row3.addClass("los-atlas-outline-row--hidden-by-lens");
   row3.setAttribute("data-relation-id", edge.id);
+  row3.setAttribute("data-row-key", `relation:${edge.id}`);
   const state = hiddenByLens ? " \xB7 hidden by the selected lens" : "";
   row3.createDiv({
     cls: "los-atlas-outline-title",
@@ -35460,7 +35272,11 @@ function outlineRow(parent, host, graph, edge, focusId, position, hiddenByLens =
   row3.setAttrs({
     "aria-label": `${relationSentences(graph, edge).join(" ")}${state}. ${provenanceLine(graph, edge, focusId)}. Inspect connection.`
   });
-  row3.addEventListener("click", () => host.inspectEdge(edge.id));
+  row3.addEventListener("click", () => {
+    host.inspectorOrigin = `relation:${edge.id}`;
+    host.focusInspector = true;
+    host.inspectEdge(edge.id);
+  });
 }
 function renderOutline(parent, host, graph, view) {
   const outline = parent.createDiv({ cls: "los-atlas-outline" });
@@ -35476,7 +35292,7 @@ function renderOutline(parent, host, graph, view) {
   });
   head.createDiv({
     cls: "los-micro",
-    text: "Complete authored relations at this depth, including concepts in the named picture remainder."
+    text: "Complete authored relations at this depth, including concepts in the named remainder."
   });
   const prerequisites = view.strictEdges;
   const authoredSemantic = graph.semanticEdges.get(view.focus.id) ?? [];
@@ -35486,7 +35302,7 @@ function renderOutline(parent, host, graph, view) {
   const semanticHeading = authoredSemantic.length ? `Semantic \xB7 ${plural2(authoredSemantic.length, "authored", "authored")}, ${drawnSemantic.length} drawn by this lens` : "Semantic \xB7 0 authored";
   const list3 = outline.createDiv({ cls: "los-atlas-outline-list" });
   enableButtonGroupKeyboardNavigation(list3, "vertical");
-  for (const [heading2, edges, absence, hidden2] of [
+  for (const [heading2, edges, absence2, hidden2] of [
     [
       `Visible prerequisite connections \xB7 ${plural2(prerequisites.length, "authored", "authored")}`,
       prerequisites,
@@ -35500,10 +35316,10 @@ function renderOutline(parent, host, graph, view) {
       hiddenSemantic
     ]
   ]) {
-    if (!edges.length && !hidden2.length && !absence) continue;
+    if (!edges.length && !hidden2.length && !absence2) continue;
     list3.createDiv({ cls: "los-micro los-atlas-outline-group", text: heading2 });
     if (!edges.length && !hidden2.length) {
-      list3.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence });
+      list3.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence2 });
       continue;
     }
     const total = edges.length + hidden2.length;
@@ -35523,7 +35339,7 @@ function renderOutline(parent, host, graph, view) {
     });
   }
   const keys = outline.createDiv({ cls: "los-atlas-keys los-micro" });
-  keys.createDiv({ text: "Keyboard \xB7 Tab moves between search, module filter, lens, depth, the graph, this outline and the inspector." });
+  keys.createDiv({ text: "Keyboard \xB7 Tab moves between search, module filter, lens, depth, the list, this outline and the inspector." });
   keys.createDiv({ text: "Arrow keys move within a group; Enter inspects the selected connection." });
 }
 function renderPath(parent, host, graph, focusId) {
@@ -35547,53 +35363,51 @@ function renderPath(parent, host, graph, focusId) {
     );
     return;
   }
-  const canvas = parent.createDiv({ cls: "los-atlas-canvas los-atlas-canvas--path", attr: { "data-los-scroll": `concept-path:${focusId}` } });
+  const wrap = parent.createDiv({ cls: "los-atlas-path", attr: { "data-los-scroll": `concept-path:${focusId}` } });
   if (path.total === 1) {
     empty(
-      canvas,
+      wrap,
       "Nothing has to be worked through first",
       `${conceptLabel(graph, focusId)} has no authored prerequisites, so this path has one step \u2014 the concept itself. That is a statement about the relation registry, not about how hard the concept is.`
     );
     return;
   }
-  const lanes = canvas.createDiv({ cls: "los-atlas-lanes los-atlas-lanes--path" });
-  lanes.setAttrs({
-    role: "group",
-    "aria-label": `Study order to ${conceptLabel(graph, focusId)}`,
-    "data-los-scroll": `concept-path-lanes:${focusId}`
-  });
-  enableButtonGroupKeyboardNavigation(lanes, "both");
+  const steps = wrap.createEl("ol", { cls: "los-atlas-path-steps" });
+  steps.setAttrs({ "aria-label": `Study order to ${conceptLabel(graph, focusId)}` });
   path.layers.forEach((layer, index) => {
-    const lane = lanes.createDiv({ cls: "los-atlas-lane" });
-    lane.createDiv({
-      cls: "los-atlas-lane-head los-micro",
-      text: index === path.layers.length - 1 ? "Then the concept itself" : `Step ${index + 1}`
-    });
     for (const concept of layer) {
-      const control = lane.createEl("button", {
-        cls: "los-atlas-node is-clickable",
+      const item = steps.createEl("li", { cls: "los-atlas-path-step" });
+      const control = item.createEl("button", {
+        cls: "los-atlas-path-step-button is-clickable",
         attr: { type: "button" }
       });
       control.toggleClass("is-focus", concept.id === focusId);
       const inspected = host.concepts.inspections?.get(focusId) ?? focusId;
       control.toggleClass("is-selected", concept.id === inspected);
-      control.setAttrs({ "aria-pressed": String(concept.id === inspected), "aria-label": `Inspect ${concept.label}` });
+      control.setAttrs({
+        "aria-pressed": String(concept.id === inspected),
+        "aria-label": `Step ${index + 1}: inspect ${concept.label}`,
+        "data-row-key": `concept:${concept.id}`
+      });
       control.setAttribute("data-atlas-concept", concept.id);
       control.createDiv({ cls: "los-atlas-node-title", text: concept.label });
+      const incoming = path.edges.find((edge) => edge.dependentId === concept.id && edge.prerequisiteId !== concept.id);
       control.createDiv({
-        cls: "los-micro los-atlas-node-trail",
-        text: moduleTrail(graph, concept.id)
+        cls: "los-micro",
+        text: incoming ? `evidence: ${incoming.evidenceState}` : "the concept itself"
       });
-      control.addEventListener("click", () => inspectConcept(host, focusId, concept.id));
+      control.addEventListener("click", () => {
+        host.inspectorOrigin = `concept:${concept.id}`;
+        host.focusInspector = true;
+        inspectConcept(host, focusId, concept.id);
+      });
     }
   });
-  mountEdges(canvas, host, graph, path.edges);
-  const note2 = canvas.createDiv({ cls: "los-atlas-path-note" });
-  note2.createDiv({
+  wrap.createDiv({
     cls: "los-micro",
     text: `${plural2(path.total, "concept")} in ${plural2(path.layers.length, "step")}, ordered by authored prerequisites. Related ideas do not set learning order.`
   });
-  const list3 = canvas.createDiv({ cls: "los-atlas-outline-list" });
+  const list3 = wrap.createDiv({ cls: "los-atlas-outline-list" });
   enableButtonGroupKeyboardNavigation(list3, "vertical");
   list3.createDiv({
     cls: "los-micro los-atlas-outline-group",
@@ -35602,13 +35416,6 @@ function renderPath(parent, host, graph, focusId) {
   path.edges.forEach((edge, index) => {
     outlineRow(list3, host, graph, edge, edge.from, `${index + 1} of ${path.edges.length}`);
   });
-}
-function layerBadge(parent, edge) {
-  return badge(
-    parent,
-    edge.layer === "strict" ? "orders learning" : edge.layer === "semantic" ? "explains only" : "unknown type",
-    edge.layer === "strict" ? "" : "quiet"
-  );
 }
 
 // src/features/atlas/context.ts
@@ -35699,6 +35506,20 @@ function questionDestination(target) {
   return target.from;
 }
 
+// src/features/atlas/disclosure.ts
+function conceptDisclosure(parent, host, key, label, cls = "") {
+  const details = parent.createEl("details", {
+    cls: `los-disclosure los-atlas-disclosure ${cls}`.trim()
+  });
+  details.createEl("summary", { text: label });
+  details.open = host.concepts.disclosures.get(key) === true;
+  details.setAttribute("data-atlas-disclosure", key);
+  details.addEventListener("toggle", () => {
+    if (details.isConnected !== false) host.concepts.disclosures.set(key, details.open);
+  });
+  return details.createDiv({ cls: "los-disclosure-body" });
+}
+
 // src/features/atlas/relation-editor.ts
 var RELATION_TYPES = [
   ...STRICT_RELATION_TYPES,
@@ -35723,6 +35544,37 @@ function draftRow(draft) {
     ...source ? { source } : {}
   };
 }
+function isDecorated(edge) {
+  return edge.status !== "active" || edge.pinned || edge.evidence.length > 0 || edge.evidenceDisputed || edge.statusReason !== null || edge.origin === "aram";
+}
+function editedRow(draft) {
+  const base = { ...draft.original ?? {} };
+  delete base.context;
+  delete base.source;
+  return { ...base, ...draftRow(draft) };
+}
+var NO_ACTIONS = {
+  edit: false,
+  pin: false,
+  unpin: false,
+  veto: false,
+  retract: false,
+  restore: false,
+  remove: false
+};
+function relationEligibility(edge) {
+  if (edge.pinned) return { ...NO_ACTIONS, unpin: true };
+  if (edge.status === "vetoed") return { ...NO_ACTIONS, restore: true };
+  if (edge.status === "retracted") return { ...NO_ACTIONS, edit: true, restore: true };
+  return {
+    ...NO_ACTIONS,
+    edit: true,
+    pin: true,
+    veto: true,
+    retract: true,
+    remove: !isDecorated(edge)
+  };
+}
 function newDraft(from = "", to = "") {
   return {
     mode: "add",
@@ -35737,7 +35589,7 @@ function newDraft(from = "", to = "") {
     error: null
   };
 }
-function editDraft(edge) {
+function editDraft(edge, original) {
   return {
     mode: "edit",
     from: edge.from,
@@ -35745,7 +35597,7 @@ function editDraft(edge) {
     to: edge.to,
     context: edge.context ?? "",
     source: edge.source ?? "",
-    original: rowOf(edge),
+    original: original ?? rowOf(edge),
     picking: null,
     search: "",
     error: null
@@ -35947,8 +35799,7 @@ function renderRelationEditor(parent, host, graph, draft) {
     actions,
     draft.mode === "add" ? "Save this connection" : "Save the change",
     () => {
-      const row3 = draftRow(draft);
-      void host.changeRelations([draft.mode === "add" ? { action: "add", new: row3 } : { action: "replace", old: draft.original, new: row3 }]);
+      void host.changeRelations([draft.mode === "add" ? { action: "add", new: draftRow(draft) } : { action: "replace", old: draft.original, new: editedRow(draft) }]);
     }
   );
   save.addClass("los-atlas-editor-save");
@@ -35958,152 +35809,54 @@ function renderRelationEditor(parent, host, graph, draft) {
     host.render();
   }, "quiet").addClass("los-atlas-editor-cancel");
 }
-function renderRemoveConnection(parent, host, graph, edge) {
-  const wrap = parent.createDiv({ cls: "los-actions" });
-  button(wrap, "Change", () => {
-    host.editor = editDraft(edge);
-    host.render();
-  }, "quiet").addClass("los-atlas-edit-connection");
-  button(wrap, "Remove", () => {
-    void host.changeRelations([{ action: "remove", old: rowOf(edge) }]);
-  }, "quiet").addClass("los-atlas-remove-connection");
-  parent.createDiv({
-    cls: "los-micro",
-    text: `Removing takes away the claim that ${conceptLabel(graph, edge.from)} ${relationPhrase(edge.type)} ${conceptLabel(graph, edge.to)}. Both concepts, their notes, materials and any question recorded about them stay exactly as they are.`
-  });
-}
 
 // src/features/atlas/inspector.ts
-var TABS = [
-  ["summary", "Summary"],
-  ["connections", "Connections"],
-  ["evidence", "Evidence"],
-  ["sources", "Sources"]
-];
 function aliasesOf(record7) {
   return Array.isArray(record7?.aliases) ? record7.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
 }
-function connectionRow(parent, host, graph, edge, conceptId) {
-  const other = otherEnd(edge, conceptId);
-  const row3 = parent.createDiv({ cls: "los-atlas-connection" });
+function section3(parent, title2) {
+  const wrap = parent.createDiv({ cls: "los-atlas-inspector-section" });
+  wrap.createEl("h3", { cls: "los-atlas-section-title", text: title2 });
+  return wrap;
+}
+function absence(parent, text4) {
+  parent.createDiv({ cls: "los-atlas-absence", text: text4 });
+}
+function relationRow(parent, host, graph, edge, conceptId) {
+  const row3 = parent.createEl("button", {
+    cls: "los-atlas-connection is-clickable",
+    attr: { type: "button" }
+  });
   row3.setAttribute("data-relation-id", edge.id);
+  row3.setAttribute("data-row-key", `relation:${edge.id}`);
   row3.toggleClass("is-selected", host.edgeId === edge.id);
-  const copy = row3.createDiv({ cls: "los-atlas-connection-copy" });
-  const headline2 = copy.createDiv({ cls: "los-atlas-connection-title" });
+  const headline2 = row3.createDiv({ cls: "los-atlas-connection-title" });
   headline2.createSpan({ text: edgeHeadline(graph, edge, conceptId) });
   layerBadge(headline2, edge);
-  copy.createDiv({
+  row3.createDiv({
     cls: "los-micro",
-    text: relationSentences(graph, edge).join(" ")
+    text: `${moduleTrail(graph, otherEnd(edge, conceptId))} \xB7 ${provenanceSentence(provenanceOf(graph, edge))} \xB7 ${contextSentence(edge)} \xB7 evidence: ${edge.evidenceState}`
   });
-  const provenance = provenanceOf(graph, edge);
-  const line = copy.createDiv({ cls: "los-atlas-provenance" });
-  line.addClass(`los-atlas-provenance--${provenance.state}`);
-  line.createSpan({
-    cls: "los-micro",
-    text: `${moduleTrail(graph, other)} \xB7 ${provenanceSentence(provenance)} \xB7 ${contextSentence(edge)}`
-  });
-  if (provenance.state === "resolved") {
-    button(
-      line,
-      "Open source",
-      () => host.plugin.nav.openRecord(provenance.record),
-      "quiet"
-    );
-  }
-  if (provenance.state === "unresolved") {
-    copy.createDiv({
-      cls: "los-micro los-atlas-unresolved",
-      text: `The relation is authored and still applies. No substitute source is offered for ${provenance.sourceId}.`
-    });
-    button(
-      line,
-      "Open Diagnostics",
-      () => host.go({ lens: "diagnostics" }),
-      "quiet"
-    );
-  }
   if (edge.context) {
-    copy.createDiv({ cls: "los-atlas-connection-context", text: edge.context });
+    row3.createDiv({ cls: "los-atlas-connection-context", text: edge.context });
   }
-  const action = row3.createDiv({ cls: "los-atlas-connection-action" });
-  button(action, "Explore from here", () => host.go({ concept: other }), "quiet");
+  row3.setAttrs({
+    "aria-label": `Inspect connection: ${canonicalSentence(graph, edge)}. Evidence ${edge.evidenceState}.`
+  });
+  row3.addEventListener("click", () => {
+    host.inspectorOrigin = `relation:${edge.id}`;
+    host.focusInspector = true;
+    host.inspectEdge(edge.id);
+  });
 }
-function renderConnections(parent, host, graph, conceptId) {
-  const prerequisites = graph.prerequisiteEdges.get(conceptId) ?? [];
-  const dependents = graph.dependentEdges.get(conceptId) ?? [];
-  const semantic = graph.semanticEdges.get(conceptId) ?? [];
-  const unrecognized = graph.unrecognizedEdges.get(conceptId) ?? [];
-  const label = conceptLabel(graph, conceptId);
-  parent.createDiv({
-    cls: "los-micro los-atlas-group-head",
-    text: `Prerequisites of ${label} \xB7 ${plural2(prerequisites.length, "authored", "authored")}`
-  });
-  if (prerequisites.length) {
-    const group2 = parent.createDiv({ cls: "los-atlas-connections" });
-    for (const edge of prerequisites) {
-      connectionRow(group2, host, graph, edge, conceptId);
-    }
-  } else {
-    parent.createDiv({
-      cls: "los-atlas-absence",
-      text: "No authored prerequisites. Absence, not a claim that none exist \u2014 and never a claim that the concept is foundational."
-    });
+function renderRelationGroup(parent, host, graph, conceptId, edges, emptyText) {
+  if (!edges.length) {
+    absence(parent, emptyText);
+    return;
   }
-  parent.createDiv({
-    cls: "los-micro los-atlas-group-head",
-    text: `Dependents \xB7 ${plural2(dependents.length, "authored", "authored")}`
-  });
-  if (dependents.length) {
-    const group2 = parent.createDiv({ cls: "los-atlas-connections" });
-    for (const edge of dependents) {
-      connectionRow(group2, host, graph, edge, conceptId);
-    }
-  } else {
-    parent.createDiv({
-      cls: "los-atlas-absence",
-      text: "No authored dependents. Nothing is inferred to fill this, and it does not mean the concept is advanced."
-    });
-  }
-  if (semantic.length) {
-    const toggle = parent.createEl("button", {
-      cls: "los-atlas-semantic-toggle is-clickable",
-      attr: { type: "button" }
-    });
-    toggle.createDiv({
-      cls: "los-atlas-connection-title",
-      text: plural2(semantic.length, "semantic link")
-    });
-    toggle.createDiv({
-      cls: "los-micro",
-      text: `${[...new Set(semantic.map((edge) => edge.type))].join(" \xB7 ")} \u2014 never in a path`
-    });
-    toggle.setAttrs({ "aria-expanded": String(host.semanticOpen) });
-    toggle.addEventListener("click", () => {
-      host.semanticOpen = !host.semanticOpen;
-      host.render();
-    });
-    if (host.semanticOpen) {
-      const group2 = parent.createDiv({ cls: "los-atlas-connections" });
-      for (const edge of semantic) {
-        connectionRow(group2, host, graph, edge, conceptId);
-      }
-    }
-  }
-  if (unrecognized.length) {
-    parent.createDiv({
-      cls: "los-micro los-atlas-group-head",
-      text: `Outside the authored vocabulary \xB7 ${plural2(unrecognized.length, "relation")}`
-    });
-    const group2 = parent.createDiv({ cls: "los-atlas-connections" });
-    for (const edge of unrecognized) {
-      connectionRow(group2, host, graph, edge, conceptId);
-    }
-  }
-  parent.createDiv({
-    cls: "los-micro los-atlas-authoring",
-    text: "These are your connections. Select one to change or remove it, or connect two concepts from the graph \u2014 no AI is involved either way."
-  });
+  const group2 = parent.createDiv({ cls: "los-atlas-connections" });
+  enableButtonGroupKeyboardNavigation(group2, "vertical");
+  for (const edge of edges) relationRow(group2, host, graph, edge, conceptId);
 }
 function renderEvidenceItem(parent, host, evidence2) {
   const unit = host.plugin.store.get(evidence2.unit_id);
@@ -36131,13 +35884,10 @@ function renderEvidenceItem(parent, host, evidence2) {
     });
   }
 }
-function renderEvidence(parent, host, graph, conceptId) {
+function renderModuleEvidence(parent, host, graph, conceptId) {
   const modules = modulesFor(graph, conceptId);
   if (!modules.length) {
-    parent.createDiv({
-      cls: "los-atlas-absence",
-      text: "No module publishes a stage tag or reviewed knowledge-map node for this concept. That records where teaching has been mapped, not whether the concept is relevant."
-    });
+    absence(parent, "No module publishes a stage tag or reviewed knowledge-map node for this concept. That records where teaching has been mapped, not whether the concept is relevant.");
     return;
   }
   parent.createDiv({
@@ -36164,7 +35914,7 @@ function renderEvidence(parent, host, graph, conceptId) {
     }
   }
 }
-function renderSources(parent, host, graph, conceptId) {
+function renderRelationSources(parent, host, graph, conceptId) {
   const edges = [
     ...graph.prerequisiteEdges.get(conceptId) ?? [],
     ...graph.dependentEdges.get(conceptId) ?? [],
@@ -36176,10 +35926,7 @@ function renderSources(parent, host, graph, conceptId) {
     text: `Where each relation comes from \xB7 ${plural2(edges.length, "relation")}`
   });
   if (!edges.length) {
-    parent.createDiv({
-      cls: "los-atlas-absence",
-      text: "No relation names this concept, so there is nothing to cite."
-    });
+    absence(parent, "No relation names this concept, so there is nothing to cite.");
   }
   for (const edge of edges) {
     const provenance = provenanceOf(graph, edge);
@@ -36220,8 +35967,12 @@ function renderSources(parent, host, graph, conceptId) {
         cls: "los-item is-clickable",
         attr: { type: "button" }
       });
+      item.setAttribute("data-note-id", asString(note2.id) ?? "");
       item.createDiv({ cls: "los-item-title", text: asLabel(note2) });
-      item.createDiv({ cls: "los-micro", text: "Explicit concept backlink" });
+      item.createDiv({
+        cls: "los-micro",
+        text: [noteMetadata(note2), "Explicit concept backlink"].filter(Boolean).join(" \xB7 ")
+      });
       item.addEventListener("click", () => host.plugin.nav.openRecord(note2));
     }
   }
@@ -36246,7 +35997,7 @@ function renderSources(parent, host, graph, conceptId) {
     }
   }
 }
-function renderQuestionNote(parent, host, questions, absence) {
+function renderQuestionNote(parent, host, questions, absenceText) {
   const band = parent.createDiv({ cls: "los-atlas-questions" });
   const open = questions.filter((question) => question.state === "open");
   band.createDiv({
@@ -36254,26 +36005,26 @@ function renderQuestionNote(parent, host, questions, absence) {
     text: questions.length ? `My questions \xB7 ${plural2(open.length, "open")} of ${questions.length}` : "My questions"
   });
   if (!questions.length) {
-    band.createDiv({ cls: "los-atlas-absence los-micro", text: absence });
+    band.createDiv({ cls: "los-atlas-absence los-micro", text: absenceText });
     return;
   }
   const list3 = band.createDiv({ cls: "los-atlas-question-list" });
   for (const question of questions) {
     const row3 = list3.createDiv({ cls: "los-atlas-question-row" });
     row3.toggleClass("is-resolved", question.state === "resolved");
-    const open2 = row3.createEl("button", {
+    const openButton = row3.createEl("button", {
       cls: "los-atlas-question-open is-clickable",
       attr: { type: "button" }
     });
-    open2.createDiv({ cls: "los-atlas-record-title", text: question.title });
-    open2.createDiv({
+    openButton.createDiv({ cls: "los-atlas-record-title", text: question.title });
+    openButton.createDiv({
       cls: "los-micro",
       text: question.state === "open" ? "Open" : "Resolved"
     });
-    open2.setAttrs({
+    openButton.setAttrs({
       "aria-label": `${question.title}. ${question.state}. Open the note.`
     });
-    open2.addEventListener("click", () => host.plugin.openVaultPath(question.path));
+    openButton.addEventListener("click", () => host.plugin.openVaultPath(question.path));
     const actions = row3.createDiv({ cls: "los-actions" });
     const resolving = question.state === "open";
     const control = button(
@@ -36289,45 +36040,6 @@ function renderQuestionNote(parent, host, questions, absence) {
       "aria-label": resolving ? `Mark \u201C${question.title}\u201D answered` : `Reopen \u201C${question.title}\u201D`
     });
   }
-}
-function renderSummary(parent, host, graph, view) {
-  const concept = view.focus;
-  if (concept.record === null) {
-    parent.createDiv({
-      cls: "los-atlas-absence",
-      text: `The projection carries no concept record for ${concept.id}. It is shown under its identifier because relations name it; nothing is invented to stand in for the record.`
-    });
-  }
-  const facts = parent.createDiv({ cls: "los-atlas-facts" });
-  for (const [term, value] of [
-    ["Taught in", moduleTrail(graph, concept.id)],
-    ["Prerequisites", plural2(graph.prerequisiteEdges.get(concept.id)?.length ?? 0, "authored", "authored")],
-    ["Dependents", plural2(graph.dependentEdges.get(concept.id)?.length ?? 0, "authored", "authored")],
-    ["Semantic", plural2(graph.semanticEdges.get(concept.id)?.length ?? 0, "authored", "authored")]
-  ]) {
-    const fact2 = facts.createDiv({ cls: "los-atlas-fact" });
-    fact2.createDiv({ cls: "los-micro", text: term });
-    fact2.createDiv({ cls: "los-atlas-fact-value", text: value });
-  }
-  renderQuestionNote(
-    parent,
-    host,
-    questionsForConcept(collectQuestions(host.plugin.store, graph), concept.id),
-    `No question recorded against ${concept.label}.`
-  );
-  if (concept.record) {
-    const actions = parent.createDiv({ cls: "los-actions" });
-    button(
-      actions,
-      "Open concept",
-      () => host.plugin.nav.openRecord(concept.record),
-      "quiet"
-    );
-  }
-  parent.createDiv({
-    cls: "los-micro",
-    text: "Evidence records what exists, not what was understood."
-  });
 }
 function noteMetadata(note2) {
   const labels = {
@@ -36357,84 +36069,550 @@ function renderLinkedNote(parent, host, note2) {
   row3.createSpan({ cls: "los-atlas-record-open", text: "Open" });
   row3.addEventListener("click", () => host.plugin.nav.openRecord(note2));
 }
+function renderPractice(parent, host, conceptId) {
+  const context = buildConceptContext(host.plugin.store, conceptId);
+  const practice = context.notes.filter((note2) => {
+    const role = asString(note2.role);
+    return role === "exercise-bank" || role === "mock-exam";
+  });
+  if (!practice.length) {
+    absence(parent, "No exercise bank or mock exam is linked to this concept. Practice stays reachable from its source note; nothing is inferred from tags or titles.");
+    return;
+  }
+  const list3 = parent.createDiv({ cls: "los-atlas-records" });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
+  for (const note2 of practice) renderLinkedNote(list3, host, note2);
+  parent.createDiv({
+    cls: "los-micro",
+    text: "Practice links back to the source note. No answer text, key or mastery score is shown here."
+  });
+}
+function renderPathSection(parent, host, graph, conceptId) {
+  const path = strictPath(graph, conceptId);
+  if (!path.ok) {
+    const blocked = parent.createDiv({ cls: "los-atlas-blocked" });
+    blocked.setAttrs({ role: "alert" });
+    blocked.createDiv({
+      cls: "los-atlas-blocked-title",
+      text: "No learning order exists for this concept"
+    });
+    blocked.createDiv({
+      cls: "los-atlas-blocked-body",
+      text: `These concepts require one another in a loop: ${path.cycle.join(" \u2192 ")}.`
+    });
+    return;
+  }
+  if (path.total === 1) {
+    absence(parent, "No authored prerequisites, so the path is this concept alone. That is a statement about the registry, not about difficulty.");
+    return;
+  }
+  const steps = parent.createEl("ol", { cls: "los-atlas-path-steps" });
+  for (const layer of path.layers) {
+    for (const concept of layer) {
+      const item = steps.createEl("li", { cls: "los-atlas-path-step" });
+      const control = item.createEl("button", {
+        cls: "los-atlas-path-step-button is-clickable",
+        attr: { type: "button" },
+        text: concept.label
+      });
+      control.setAttribute("data-row-key", `concept:${concept.id}`);
+      const incoming = path.edges.find((edge) => edge.dependentId === concept.id);
+      item.createDiv({
+        cls: "los-micro",
+        text: incoming ? `evidence: ${incoming.evidenceState}` : "the concept itself"
+      });
+      control.addEventListener("click", () => {
+        host.inspectorOrigin = `concept:${concept.id}`;
+        host.focusInspector = true;
+        host.go({ concept: concept.id });
+      });
+    }
+  }
+}
+function renderRelationActionForm(parent, host, edge) {
+  const action = host.relationAction;
+  if (!action || action.edgeId !== edge.id) return;
+  const form = parent.createDiv({ cls: "los-atlas-action-form" });
+  form.setAttrs({ role: "group", "aria-label": `${action.kind} this connection` });
+  form.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      host.relationAction = null;
+      host.render();
+    }
+  });
+  if (action.kind === "veto" || action.kind === "retract") {
+    form.createEl("label", { cls: "los-micro", text: `Why is this connection being ${action.kind === "veto" ? "vetoed" : "retracted"}? (1\u2013400 characters)` });
+    const reason = form.createEl("textarea", {
+      cls: "los-atlas-action-reason",
+      attr: { rows: "2", maxlength: "400" }
+    });
+    reason.value = action.reason;
+    reason.addEventListener("input", () => {
+      action.reason = reason.value;
+    });
+  } else if (edge.status === "vetoed") {
+    form.createDiv({
+      cls: "los-micro",
+      text: "Restoring a vetoed connection needs fresh evidence from a previously unused registered source."
+    });
+    const fields = [
+      ["Source ID", action.sourceId, (value) => {
+        action.sourceId = value;
+      }],
+      ["Material path (under materials/)", action.materialRelpath, (value) => {
+        action.materialRelpath = value;
+      }],
+      ["File SHA-256", action.fileSha256, (value) => {
+        action.fileSha256 = value;
+      }],
+      ["Physical PDF page", action.page, (value) => {
+        action.page = value;
+      }],
+      ["Quote (1\u2013240 characters)", action.quote, (value) => {
+        action.quote = value;
+      }]
+    ];
+    for (const [label, value, set] of fields) {
+      form.createEl("label", { cls: "los-micro", text: label });
+      const input = form.createEl("input", { cls: "los-atlas-action-field", attr: { type: "text", value } });
+      input.addEventListener("input", () => set(input.value));
+    }
+  } else {
+    form.createDiv({ cls: "los-micro", text: "This restores the connection as active. Its history stays recorded." });
+  }
+  if (action.error) {
+    form.createDiv({ cls: "los-atlas-editor-refusal los-micro", text: action.error }).setAttrs({ role: "alert" });
+  }
+  const actions = form.createDiv({ cls: "los-actions" });
+  button(
+    actions,
+    action.kind === "restore" ? "Restore this connection" : `${action.kind === "veto" ? "Veto" : "Retract"} this connection`,
+    () => {
+      void host.submitRelationAction();
+    },
+    "quiet"
+  );
+  button(actions, "Cancel", () => {
+    host.relationAction = null;
+    host.render();
+  }, "tertiary");
+}
+function renderRelationInspector(panel, host, graph, edge) {
+  panel.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !host.relationAction) {
+      host.edgeId = null;
+      host.restoreFocus = true;
+      host.render();
+    }
+  });
+  panel.createDiv({ cls: "los-micro", text: "Selected connection" });
+  const heading2 = panel.createEl("h2", { text: canonicalSentence(graph, edge) });
+  heading2.setAttrs({ tabindex: "-1", "data-atlas-inspector-heading": "true" });
+  layerBadge(panel, edge);
+  const facts = panel.createDiv({ cls: "los-atlas-facts" });
+  const fact2 = (term, value) => {
+    const row3 = facts.createDiv({ cls: "los-atlas-fact" });
+    row3.createDiv({ cls: "los-micro", text: term });
+    row3.createDiv({ cls: "los-atlas-fact-value", text: value });
+  };
+  const endpoint = (term, conceptId) => {
+    const row3 = facts.createDiv({ cls: "los-atlas-fact" });
+    row3.createDiv({ cls: "los-micro", text: term });
+    const control = button(row3, conceptLabel(graph, conceptId), () => {
+      host.inspectorOrigin = `concept:${conceptId}`;
+      host.focusInspector = true;
+      host.go({ concept: conceptId });
+    }, "quiet");
+    control.setAttribute("data-row-key", `concept:${conceptId}`);
+  };
+  endpoint("From", edge.from);
+  fact2("Type", `${relationPhrase(edge.type)} (${edge.type})`);
+  endpoint("To", edge.to);
+  fact2("Context", edge.context ?? "No context recorded. The schema permits that, and nothing is invented to fill it.");
+  const scopes = /* @__PURE__ */ new Set([
+    ...modulesFor(graph, edge.from).map((module2) => module2.label),
+    ...modulesFor(graph, edge.to).map((module2) => module2.label)
+  ]);
+  fact2("Affected scopes", scopes.size ? [...scopes].join(" \xB7 ") : "No module evidence recorded for either endpoint");
+  fact2("Status", edge.status === "active" ? "active" : `${edge.status}${edge.statusReason ? ` \u2014 ${edge.statusReason}` : ""}`);
+  if (edge.pinned) fact2("Pinned", "Only an exact unpin is accepted");
+  fact2("Evidence", edge.evidenceDisputed ? "disputed" : edge.evidenceState);
+  if (edge.evidence.length) {
+    const bindings = panel.createDiv({ cls: "los-atlas-bindings" });
+    bindings.createDiv({ cls: "los-micro los-atlas-group-head", text: "Evidence bindings" });
+    edge.evidence.forEach((binding, ordinal) => {
+      const item = bindings.createDiv({ cls: "los-atlas-binding" });
+      item.createDiv({ cls: "los-atlas-binding-quote", text: `\u201C${binding.quote}\u201D` });
+      item.createDiv({
+        cls: "los-micro",
+        text: `${binding.source_id} \xB7 physical page ${binding.page}`
+      });
+      button(item, "Open evidence", () => host.openEvidence(edge.id, ordinal), "quiet");
+    });
+  }
+  renderQuestionNote(
+    conceptDisclosure(panel, host, `${edge.id}:questions`, "Questions about this connection"),
+    host,
+    questionsForRelation(collectQuestions(host.plugin.store, graph), edge.id),
+    "No question recorded against this connection."
+  );
+  const eligibility = relationEligibility(edge);
+  const actions = panel.createDiv({ cls: "los-actions los-atlas-relation-actions" });
+  if (eligibility.edit) {
+    button(actions, "Edit", () => host.editRelation(edge), "quiet").addClass("los-atlas-edit-connection");
+  }
+  if (eligibility.pin) {
+    button(actions, "Pin", () => {
+      void host.togglePin(edge);
+    }, "quiet");
+  }
+  if (eligibility.unpin) {
+    button(actions, "Unpin", () => {
+      void host.togglePin(edge);
+    }, "quiet");
+  }
+  if (eligibility.veto) {
+    button(actions, "Veto", () => host.startRelationAction(edge, "veto"), "quiet");
+  }
+  if (eligibility.retract) {
+    button(actions, "Retract", () => host.startRelationAction(edge, "retract"), "quiet");
+  }
+  if (eligibility.restore) {
+    button(actions, "Restore", () => host.startRelationAction(edge, "restore"), "quiet");
+  }
+  if (eligibility.remove) {
+    button(actions, "Remove", () => {
+      void host.changeRelations([{ action: "remove", old: rowOf(edge) }]);
+    }, "quiet").addClass("los-atlas-remove-connection");
+  }
+  renderRelationActionForm(panel, host, edge);
+  panel.createDiv({
+    cls: "los-micro",
+    text: `Removing or retiring takes away the claim that ${canonicalSentence(graph, edge)}. Both concepts, their notes, materials and any question recorded about them stay exactly as they are.`
+  });
+  button(panel, "Close connection", () => {
+    host.edgeId = null;
+    host.relationAction = null;
+    host.restoreFocus = true;
+    host.render();
+  }, "quiet");
+}
 function renderInspector2(parent, host, graph, view) {
   const panel = parent.createEl("aside", { cls: "los-atlas-inspector" });
   panel.setAttrs({ role: "complementary", "aria-label": `Notes and details for ${view.focus.label}` });
   const selectedEdge = host.edgeId ? graph.relationByIdentity.get(host.edgeId) : null;
   if (selectedEdge) {
-    panel.createDiv({ cls: "los-micro", text: "Selected connection" });
-    connectionRow(panel, host, graph, selectedEdge, selectedEdge.from);
-    renderQuestionNote(
-      conceptDisclosure(
-        panel,
-        host,
-        `${selectedEdge.id}:questions`,
-        "Questions about this connection"
-      ),
-      host,
-      questionsForRelation(collectQuestions(host.plugin.store, graph), selectedEdge.id),
-      "No question recorded against this connection."
-    );
-    renderRemoveConnection(panel, host, graph, selectedEdge);
-    button(panel, "Close connection", () => {
-      host.edgeId = null;
-      host.tab = "summary";
-      host.render();
-    }, "quiet");
+    renderRelationInspector(panel, host, graph, selectedEdge);
     return;
   }
+  const concept = view.focus;
   panel.createDiv({ cls: "los-micro", text: "Selected concept" });
-  panel.createEl("h2", { text: view.focus.label });
-  const notes = buildConceptContext(host.plugin.store, view.focus.id).notes;
-  panel.createEl("h3", { text: `Linked notes \xB7 ${notes.length}` });
-  const list3 = panel.createDiv({ cls: "los-atlas-records los-atlas-linked-notes" });
-  list3.setAttribute("aria-label", "Linked notes");
-  enableButtonGroupKeyboardNavigation(list3, "vertical");
-  for (const note2 of notes.slice(0, 2)) renderLinkedNote(list3, host, note2);
-  if (!notes.length) list3.createDiv({ cls: "los-micro", text: "No notes explicitly linked to this concept." });
-  if (notes.length > 2) {
-    const all = conceptDisclosure(panel, host, `${view.focus.id}:notes`, `Show all ${notes.length} linked notes`);
-    all.createDiv({ cls: "los-micro", text: `${notes.length - 2} more notes; the first two remain above.` });
-    for (const note2 of notes.slice(2)) renderLinkedNote(all, host, note2);
-  }
-  const actions = panel.createDiv({ cls: "los-actions los-atlas-inspector-actions" });
-  const openDetails = (tab) => {
-    host.tab = tab;
-    host.concepts.disclosures.set(`${view.focus.id}:details`, true);
-    host.render();
-  };
-  button(actions, "Where it is taught", () => openDetails("evidence"), "quiet");
-  button(actions, "Questions", () => openDetails("summary"), "quiet");
-  const details = conceptDisclosure(panel, host, `${view.focus.id}:details`, "Concept details");
-  const aliases = aliasesOf(view.focus.record);
-  if (aliases.length) details.createDiv({ cls: "los-micro", text: `Also called ${aliases.join(" \xB7 ")}` });
-  filterTabs(
-    details,
-    "What to inspect about this concept",
-    TABS,
-    host.tab,
-    (value) => {
-      host.tab = value;
-      host.render();
+  const heading2 = panel.createEl("h2", { text: concept.label });
+  heading2.setAttrs({ tabindex: "-1", "data-atlas-inspector-heading": "true" });
+  const definition2 = section3(panel, "Definition");
+  if (concept.record === null) {
+    absence(definition2, `The projection carries no concept record for ${concept.id}. It is shown under its identifier because relations name it; nothing is invented to stand in for the record.`);
+  } else {
+    const description = asString(concept.record.description);
+    definition2.createDiv({
+      text: description ?? "No definition is recorded for this concept. Its label and linked notes are what exists."
+    });
+    const aliases = aliasesOf(concept.record);
+    if (aliases.length) {
+      definition2.createDiv({ cls: "los-micro", text: `Also called ${aliases.join(" \xB7 ")}` });
     }
+    const actions = definition2.createDiv({ cls: "los-actions" });
+    button(
+      actions,
+      "Open card",
+      () => host.plugin.nav.openRecord(concept.record),
+      "quiet"
+    );
+  }
+  const prerequisites = section3(panel, "Prerequisites");
+  renderRelationGroup(
+    prerequisites,
+    host,
+    graph,
+    concept.id,
+    graph.prerequisiteEdges.get(concept.id) ?? [],
+    "No authored prerequisites. Absence, not a claim that none exist \u2014 and never a claim that the concept is foundational."
   );
-  const detailBody = details.createDiv({ cls: "los-atlas-inspector-body" });
-  enableButtonGroupKeyboardNavigation(detailBody, "vertical");
-  switch (host.tab) {
-    case "connections":
-      renderConnections(detailBody, host, graph, view.focus.id);
-      break;
-    case "evidence":
-      renderEvidence(detailBody, host, graph, view.focus.id);
-      break;
-    case "sources":
-      renderSources(detailBody, host, graph, view.focus.id);
-      break;
-    default:
-      renderSummary(detailBody, host, graph, view);
-      break;
+  const dependents = section3(panel, "Dependents");
+  renderRelationGroup(
+    dependents,
+    host,
+    graph,
+    concept.id,
+    graph.dependentEdges.get(concept.id) ?? [],
+    "No authored dependents. Nothing is inferred to fill this, and it does not mean the concept is advanced."
+  );
+  const related = section3(panel, "Related concepts");
+  const relatedEdges = [
+    ...graph.semanticEdges.get(concept.id) ?? [],
+    ...graph.unrecognizedEdges.get(concept.id) ?? []
+  ];
+  renderRelationGroup(
+    related,
+    host,
+    graph,
+    concept.id,
+    relatedEdges,
+    "No related concepts are recorded. Semantic relations explain; they never order learning."
+  );
+  const pathSection = section3(panel, "Path");
+  renderPathSection(pathSection, host, graph, concept.id);
+  const sources = section3(panel, "Sources");
+  renderModuleEvidence(sources, host, graph, concept.id);
+  renderRelationSources(sources, host, graph, concept.id);
+  const practice = section3(panel, "Practice");
+  renderPractice(practice, host, concept.id);
+  const questions = section3(panel, "Questions");
+  renderQuestionNote(
+    questions,
+    host,
+    questionsForConcept(collectQuestions(host.plugin.store, graph), concept.id),
+    `No question recorded against ${concept.label}.`
+  );
+  const history = section3(panel, "History");
+  renderRelationGroup(
+    history,
+    host,
+    graph,
+    concept.id,
+    graph.historyEdges.get(concept.id) ?? [],
+    "No retracted or vetoed connection touches this concept."
+  );
+  panel.createDiv({
+    cls: "los-micro",
+    text: "Evidence records what exists, not what was understood."
+  });
+}
+
+// src/features/atlas/board-merge.ts
+var RESERVED_PREFIXES = ["los-concept-", "los-rel-", "los-evidence-", "los-scope-", "los-group-"];
+function isReserved(id) {
+  return RESERVED_PREFIXES.some((prefix) => id.startsWith(prefix));
+}
+function validGeometry(node) {
+  return ["x", "y", "width", "height"].every((key) => {
+    const value = node[key];
+    return typeof value === "number" && Number.isFinite(value);
+  }) && node.width > 0 && node.height > 0;
+}
+function idsOf(items) {
+  const ids = [];
+  for (const item of items ?? []) {
+    if (typeof item.id !== "string" || !item.id) return null;
+    if (ids.includes(item.id)) return null;
+    ids.push(item.id);
+  }
+  return ids;
+}
+function mergeBoards(previousManagedIds, working, nextTemplate) {
+  const workingNodes = working.nodes ?? [];
+  const workingEdges = working.edges ?? [];
+  const templateNodes = nextTemplate.nodes ?? [];
+  const templateEdges = nextTemplate.edges ?? [];
+  const workingNodeIds = idsOf(workingNodes);
+  const templateNodeIds = idsOf(templateNodes);
+  const workingEdgeIds = idsOf(workingEdges);
+  const templateEdgeIds = idsOf(templateEdges);
+  if (!workingNodeIds || !templateNodeIds || !workingEdgeIds || !templateEdgeIds) {
+    return { ok: false, reason: "Board contains duplicate or missing object ids." };
+  }
+  const previous = new Set(previousManagedIds);
+  const templateSet = new Set(templateNodeIds);
+  for (const node of [...workingNodes, ...templateNodes]) {
+    if (!validGeometry(node)) {
+      return { ok: false, reason: `Board object ${String(node.id)} has invalid geometry.` };
+    }
+  }
+  for (const id of workingNodeIds) {
+    if (isReserved(id) && !previous.has(id) && !templateSet.has(id)) {
+      return { ok: false, reason: `Board contains an unknown reserved object: ${id}.` };
+    }
+  }
+  const workingById = new Map(workingNodes.map((node) => [node.id, node]));
+  const templateById = new Map(templateNodes.map((node) => [node.id, node]));
+  const merged = /* @__PURE__ */ new Map();
+  for (const id of templateNodeIds) {
+    const template = templateById.get(id);
+    const current = workingById.get(id);
+    const node = { ...template };
+    if (current) {
+      node.x = current.x;
+      node.y = current.y;
+      node.width = current.width;
+      node.height = current.height;
+      if (template.type === "file" && current.file === template.file && typeof current.portal === "boolean") {
+        node.portal = current.portal;
+      }
+    }
+    merged.set(id, node);
+  }
+  const authoredEdges = workingEdges.filter(
+    (edge) => !previous.has(edge.id) && !templateEdgeIds.includes(edge.id)
+  );
+  const referenced = /* @__PURE__ */ new Set();
+  for (const edge of authoredEdges) {
+    referenced.add(String(edge.fromNode));
+    referenced.add(String(edge.toNode));
+  }
+  for (const node of workingNodes) {
+    const id = node.id;
+    if (merged.has(id)) continue;
+    const authored = !previous.has(id);
+    const retired = previous.has(id) && referenced.has(id);
+    if (authored) {
+      merged.set(id, { ...node });
+    } else if (retired) {
+      merged.set(id, { ...node, losRetired: true });
+    }
+  }
+  const edges = [];
+  for (const edge of templateEdges) edges.push({ ...edge });
+  for (const edge of authoredEdges) {
+    if (!merged.has(String(edge.fromNode)) || !merged.has(String(edge.toNode))) {
+      return { ok: false, reason: `Authored edge ${String(edge.id)} references a missing board object.` };
+    }
+    edges.push({ ...edge });
+  }
+  const nodes = [];
+  for (const node of workingNodes) {
+    const id = node.id;
+    if (merged.has(id)) nodes.push(merged.get(id));
+  }
+  for (const id of templateNodeIds) {
+    if (!workingById.has(id)) nodes.push(merged.get(id));
+  }
+  const canvas = {
+    ...working,
+    ...Object.fromEntries(Object.entries(nextTemplate).filter(([key]) => key !== "nodes" && key !== "edges" && !(key in working))),
+    nodes,
+    edges
+  };
+  const retiredIds = nodes.filter((node) => node.losRetired === true).map((node) => node.id);
+  return { ok: true, canvas, managedIds: [...templateNodeIds, ...templateEdgeIds, ...retiredIds] };
+}
+function parseBoard(text4) {
+  try {
+    const value = JSON.parse(text4);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    if (value.nodes !== void 0 && !Array.isArray(value.nodes)) return null;
+    if (value.edges !== void 0 && !Array.isArray(value.edges)) return null;
+    return value;
+  } catch {
+    return null;
   }
 }
+function serializeBoard(canvas) {
+  return JSON.stringify(canvas) + "\n";
+}
+function sidecarFor(templateSha256, managedIds) {
+  return { schema_version: 1, template_sha256: templateSha256, managed_ids: [...managedIds] };
+}
+function parseSidecar(text4) {
+  try {
+    const value = JSON.parse(text4);
+    if (!value || value.schema_version !== 1 || typeof value.template_sha256 !== "string" || !Array.isArray(value.managed_ids)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+// src/features/atlas/board-controller.ts
+function defaultBoardEntry(catalog, moduleId, currentSemester) {
+  if (moduleId) {
+    const module2 = catalog.find((entry) => entry.kind === "module" && entry.id === moduleId);
+    if (module2) return module2;
+  }
+  if (typeof currentSemester?.id === "string" && typeof currentSemester?.program_id === "string") {
+    const wanted = `${currentSemester.program_id}--${currentSemester.id}`;
+    const matches3 = catalog.filter((entry) => entry.kind === "semester" && entry.id === wanted);
+    if (matches3.length === 1) return matches3[0] ?? null;
+  }
+  return null;
+}
+function sidecarPath(entry) {
+  return `boards/atlas/.state/${entry.kind}/${entry.id}.json`;
+}
+function advancedBoardAvailable(settingEnabled, pluginEnabled) {
+  return settingEnabled && pluginEnabled;
+}
+var BoardController = class {
+  constructor(port) {
+    this.port = port;
+  }
+  lane = Promise.resolve();
+  enqueue(task) {
+    const run = this.lane.then(task, task);
+    this.lane = run.then(() => void 0, () => void 0);
+    return run;
+  }
+  openBoard(entry, templateText) {
+    return this.enqueue(() => this.openBoardNow(entry, templateText));
+  }
+  refreshBoard(entry, templateText, previewText) {
+    return this.enqueue(() => this.refreshBoardNow(entry, templateText, previewText));
+  }
+  async openBoardNow(entry, templateText) {
+    const existing = await this.port.read(entry.working_path);
+    if (existing !== null) {
+      await this.port.openLeaf(entry.working_path);
+      return { ok: true, action: "opened" };
+    }
+    const template = parseBoard(templateText);
+    if (!template) return { ok: false, reason: "Board template is unavailable." };
+    await this.port.create(entry.working_path, templateText);
+    const managed = [...template.nodes ?? [], ...template.edges ?? []].map((node) => String(node.id));
+    await this.port.create(sidecarPath(entry), JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n");
+    await this.port.openLeaf(entry.working_path);
+    return { ok: true, action: "created" };
+  }
+  async refreshBoardNow(entry, templateText, previewText) {
+    if (await this.port.managedCanvasOpen([entry.working_path])) {
+      return {
+        ok: false,
+        reason: "Close the board before refreshing it, and leave the Atlas pane open."
+      };
+    }
+    const template = parseBoard(templateText);
+    if (!template) return { ok: false, reason: "Board template is unavailable." };
+    const sidecarText = await this.port.read(sidecarPath(entry));
+    const sidecar = sidecarText ? parseSidecar(sidecarText) : null;
+    if (!sidecar) {
+      return {
+        ok: false,
+        reason: "Board ownership cannot be verified. Reopen it and review before refreshing."
+      };
+    }
+    let failure = null;
+    let managed = [];
+    const wrote = await this.port.process(entry.working_path, (latest) => {
+      if (latest !== previewText) {
+        failure = "Board changed. Reopen it and review before refreshing.";
+        return null;
+      }
+      const working = parseBoard(latest);
+      if (!working) {
+        failure = "Board is malformed; nothing was written.";
+        return null;
+      }
+      const merged = mergeBoards(sidecar.managed_ids, working, template);
+      if (!merged.ok) {
+        failure = merged.reason;
+        return null;
+      }
+      managed = merged.managedIds;
+      return serializeBoard(merged.canvas);
+    });
+    if (!wrote) return { ok: false, reason: failure ?? "Board refresh was refused." };
+    await this.port.process(sidecarPath(entry), () => JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n");
+    return { ok: true, action: "refreshed" };
+  }
+};
 
 // src/features/atlas/lenses.ts
 function conceptRow(parent, host, graph, conceptId, detail) {
@@ -36865,9 +37043,9 @@ function renderDepth(parent, host, remainder) {
     text: remainder ? `${plural2(remainder, "concept")} beyond depth ${host.state.depth} \u2014 counted, never dropped` : `Nothing lies beyond depth ${host.state.depth} here`
   });
 }
-function renderMapMeaning(parent, host, graph, focus2) {
+function renderMapMeaning(parent, host, graph, focus) {
   const meaning = parent.createDiv({ cls: "los-atlas-mode-meaning", attr: { role: "status" } });
-  const semanticCount = graph.semanticEdges.get(focus2)?.length ?? 0;
+  const semanticCount = graph.semanticEdges.get(focus)?.length ?? 0;
   meaning.createDiv({ text: host.state.lens === "path" ? "Learning path follows the complete authored prerequisite order leading to this concept." : host.state.lens === "semantic" ? semanticCount ? "Related ideas adds authored associations to the prerequisite context. Associations do not set learning order." : "No additional related-idea connections are recorded for this concept. Its prerequisite context remains visible." : "Direct connections shows what comes before this concept and what builds on it." });
   meaning.createDiv({ cls: "los-micro", text: host.state.lens === "path" ? "Select a concept to inspect it. Explore from here changes the centre of exploration." : `Depth ${host.state.depth} includes ${host.state.depth === 1 ? "immediate connections" : "connections up to two steps away"}. Depth changes which neighbours are included. Select a concept to inspect it without moving the map.` });
   if (host.state.module) {
@@ -36962,13 +37140,19 @@ function renderBoardControls(root, host) {
   select2.createEl("option", { text: "Choose a board", attr: { value: "" } });
   for (const entry of catalog) {
     select2.createEl("option", {
-      text: `${entry.kind} \xB7 ${entry.id}`,
+      text: `${entry.kind} \xB7 ${entry.title ?? entry.id}`,
       attr: { value: `${entry.kind}/${entry.id}` }
     });
   }
-  if (!host.boardScope) {
-    const current = catalog.find((entry) => entry.kind === "module" && entry.id === host.state.module) ?? catalog[0];
-    host.boardScope = current ? `${current.kind}/${current.id}` : null;
+  const desired = defaultBoardEntry(
+    catalog,
+    host.state.module,
+    host.plugin.store.currentSemester()
+  );
+  if (host.state.module && desired?.kind === "module") {
+    host.boardScope = `${desired.kind}/${desired.id}`;
+  } else if (!host.boardScope && desired) {
+    host.boardScope = `${desired.kind}/${desired.id}`;
   }
   select2.value = host.boardScope ?? "";
   select2.addEventListener("change", () => {
@@ -36986,19 +37170,160 @@ function renderBoardControls(root, host) {
   }, "quiet");
   open.disabled = !selected;
   refresh.disabled = !selected;
-  if (host.plugin.settings.atlasAdvancedCanvas) {
-    const advanced = button(
-      row3,
-      "Advanced board",
-      () => {
-        if (selected) void host.openAtlasBoard(selected, true);
-      },
-      "quiet"
-    );
-    advanced.disabled = !selected;
+  const advanced = button(
+    row3,
+    "Advanced board",
+    () => {
+      if (selected) void host.openAtlasBoard(selected, true);
+    },
+    "quiet"
+  );
+  advanced.disabled = !selected;
+  advanced.setAttrs({
+    title: host.plugin.settings.atlasAdvancedCanvas ? "Open this board with Advanced Canvas portals" : "Needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin"
+  });
+}
+function renderFilters(parent, host) {
+  const wrap = parent.createDiv({ cls: "los-atlas-filters" });
+  wrap.setAttrs({ role: "group", "aria-label": "Filter concepts and connections" });
+  const addSelect = (key, label, options) => {
+    const field2 = wrap.createEl("label", { cls: "los-atlas-filter" });
+    field2.createSpan({ cls: "los-micro", text: label });
+    const select2 = field2.createEl("select", {
+      cls: "los-atlas-filter-select",
+      attr: { "aria-label": label, "data-atlas-filter": key }
+    });
+    for (const [value, text4] of options) {
+      select2.createEl("option", { text: text4, attr: { value } });
+    }
+    select2.value = host.filters[key];
+    select2.addEventListener("change", () => {
+      host.filters = { ...host.filters, [key]: select2.value };
+      host.render();
+    });
+  };
+  addSelect("layer", "Layer", [
+    ["all", "All layers"],
+    ["strict", "Strict"],
+    ["semantic", "Semantic"]
+  ]);
+  addSelect("type", "Type", [
+    ["all", "All types"],
+    ...ALL_RELATION_TYPES.map((type) => [type, relationPhrase(type)])
+  ]);
+  addSelect("evidence", "Evidence", [
+    ["all", "All evidence"],
+    ["verified", "Verified"],
+    ["missing", "Missing"],
+    ["stale", "Stale"],
+    ["disputed", "Disputed"]
+  ]);
+  const clear = button(wrap, "Clear filters", () => {
+    host.filters = { layer: "all", type: "all", evidence: "all" };
+    host.query = "";
+    host.render();
+  }, "tertiary");
+  clear.disabled = !filtersActive(host.filters) && !host.query.trim();
+}
+function renderResultsInto(container, host, graph) {
+  container.empty();
+  if (!host.query.trim() && !filtersActive(host.filters)) return;
+  const concepts = filterConcepts(graph, host.query, host.filters);
+  const relations = filterRelations(graph, host.query, host.filters);
+  let cleared = "";
+  if (host.edgeId && !relations.some((edge) => edge.id === host.edgeId)) {
+    host.edgeId = null;
+    host.relationAction = null;
+    cleared = " The selected connection no longer matches the filters.";
+  }
+  if (host.concepts.selected && !concepts.some((concept) => concept.id === host.concepts.selected)) {
+    host.concepts.selected = null;
+    cleared += " The selected concept no longer matches the filters.";
+  }
+  const status = container.createDiv({
+    cls: "los-atlas-match-count los-micro",
+    attr: { role: "status" },
+    text: `${plural2(concepts.length, "concept")} \xB7 ${plural2(relations.length, "connection")} match.${cleared}`
+  });
+  void status;
+  const shown = Math.min(host.concepts.visibleLimit, concepts.length + relations.length);
+  let rendered = 0;
+  const list3 = container.createDiv({
+    cls: "los-atlas-results",
+    attr: { role: "group", "aria-label": "Matching concepts and connections" }
+  });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
+  for (const concept of concepts) {
+    if (rendered >= shown) break;
+    rendered += 1;
+    const row3 = button(list3, concept.label, () => {
+      host.inspectorOrigin = `concept:${concept.id}`;
+      host.focusInspector = true;
+      host.go({ concept: concept.id });
+    }, "row");
+    row3.setAttribute("data-row-key", `concept:${concept.id}`);
+    row3.createSpan({
+      cls: "los-micro",
+      text: modulesLine(graph, concept.id)
+    });
+  }
+  for (const edge of relations) {
+    if (rendered >= shown) break;
+    rendered += 1;
+    const row3 = button(list3, canonicalSentence(graph, edge), () => {
+      host.inspectorOrigin = `relation:${edge.id}`;
+      host.focusInspector = true;
+      host.inspectEdge(edge.id);
+    }, "row");
+    row3.setAttribute("data-row-key", `relation:${edge.id}`);
+    row3.setAttribute("data-relation-id", edge.id);
+    row3.createSpan({
+      cls: "los-micro",
+      text: `${relationPhrase(edge.type)} \xB7 evidence: ${edge.evidenceState}`
+    });
+  }
+  const total = concepts.length + relations.length;
+  if (rendered < total) {
+    button(container, `Show more \xB7 ${total - rendered} remaining`, () => {
+      host.concepts.visibleLimit += 30;
+      host.render();
+    }, "quiet").addClass("los-atlas-show-more");
+  }
+  if (!total) {
+    container.createDiv({
+      cls: "los-atlas-absence",
+      text: "Nothing matches. Clear a filter or try another search."
+    });
+  }
+}
+function modulesLine(graph, conceptId) {
+  const modules = graph.modules.filter((module2) => (graph.modulesByConcept.get(conceptId) ?? []).includes(module2.id)).map((module2) => module2.shortLabel);
+  return modules.length ? modules.join(" \xB7 ") : "No module evidence recorded";
+}
+function applyFocus(root, host) {
+  const focusable = (el) => {
+    if (el && typeof el.focus === "function") el.focus({ preventScroll: true });
+  };
+  if (host.focusInspector) {
+    host.focusInspector = false;
+    host.restoreFocus = false;
+    const heading2 = typeof root.querySelectorAll === "function" ? Array.from(root.querySelectorAll("h2")).find((node) => node.getAttribute("data-atlas-inspector-heading") === "true") : null;
+    focusable(heading2);
+    return;
+  }
+  if (host.restoreFocus) {
+    host.restoreFocus = false;
+    if (host.inspectorOrigin && typeof root.querySelectorAll === "function") {
+      const row3 = Array.from(root.querySelectorAll("[data-row-key]")).find((node) => node.getAttribute("data-row-key") === host.inspectorOrigin);
+      focusable(row3);
+    }
   }
 }
 function renderAtlas(root, host) {
+  renderAtlasView(root, host);
+  applyFocus(root, host);
+}
+function renderAtlasView(root, host) {
   const domainLens = host.state.lens === "domains";
   root.empty();
   manifestFreshness(root, host.plugin.store);
@@ -37042,9 +37367,11 @@ function renderAtlas(root, host) {
   forward.disabled = !host.canConceptForward;
   let results;
   let entryRegion = null;
+  let filterResults = null;
   const updateSearch = () => {
     results.empty();
     if (host.query.trim()) renderConceptBrowser(results, host, graph);
+    if (filterResults) renderResultsInto(filterResults, host, graph);
     if (entryRegion) {
       entryRegion.empty();
       if (!host.query.trim()) renderConceptBrowser(entryRegion, host, graph);
@@ -37053,6 +37380,7 @@ function renderAtlas(root, host) {
   renderSearch(controls, host, updateSearch);
   renderConceptDomainFilter(controls, host, graph);
   renderModuleFilter(controls, host, graph);
+  renderFilters(controls, host);
   button(controls, "Explore", () => host.openConceptBrowser(), "quiet");
   if (host.query.trim() || host.state.module || host.concepts.domain) {
     button(controls, "Reset browsing", () => {
@@ -37063,6 +37391,9 @@ function renderAtlas(root, host) {
   }
   results = root.createDiv({ cls: "los-atlas-search-results" });
   results.setAttrs({ "aria-live": "polite" });
+  filterResults = root.createDiv({ cls: "los-atlas-filter-results" });
+  filterResults.setAttrs({ "aria-live": "polite" });
+  renderResultsInto(filterResults, host, graph);
   updateSearch();
   if (!graph.concepts.length) {
     empty(root, "No concepts are published yet", "Register a concept to make it available here.");
@@ -37085,6 +37416,16 @@ function renderAtlas(root, host) {
     entryRegion = root.createDiv({ cls: "los-atlas-entry-region" });
     if (!host.query.trim()) renderConceptBrowser(entryRegion, host, graph);
     if (host.editor) renderRelationEditor(root, host, graph, host.editor);
+    if (host.edgeId) {
+      const edge = graph.relationByIdentity.get(host.edgeId);
+      if (edge) {
+        const region = root.createDiv({ cls: "los-atlas-inspection-region" });
+        renderInspector2(region, host, graph, neighbourhood(graph, edge.from, {
+          depth: host.state.depth,
+          includeSemanticNeighbours: true
+        }));
+      }
+    }
     renderAtlasTools(root, host, graph);
     return;
   }
@@ -37106,13 +37447,12 @@ function renderAtlas(root, host) {
   const main = body.createDiv({ cls: "los-atlas-main" });
   if (host.editor) renderRelationEditor(main, host, graph, host.editor);
   if (host.state.lens === "path") renderPath(main, host, graph, view.focus.id);
-  else renderFocusedGraph(main, host, graph, view);
+  else renderOutline(main, host, graph, view);
   if (host.state.lens !== "path") {
     const scope = main.createDiv({ cls: "los-atlas-focused-scope" });
     scope.createDiv({ cls: "los-micro", attr: { role: "status" }, text: subgraphSummary(graph, view) });
     const further = conceptDisclosure(scope, host, `${view.focus.id}:explore`, "Explore further");
     button(further, "Show further connections", () => host.go({ depth: 2 }), "quiet");
-    renderOutline(conceptDisclosure(main, host, `${view.focus.id}:outline`, "Text outline"), host, graph, view);
   }
   const inspectedId = host.concepts.inspections?.get(view.focus.id);
   const inspected = inspectedId && graph.conceptById.has(inspectedId) ? neighbourhood(graph, inspectedId, { depth: host.state.depth, includeSemanticNeighbours: host.state.lens === "semantic" }) : view;
@@ -37130,219 +37470,6 @@ function renderAtlas(root, host) {
   renderInspector2(inspectorRegion, host, graph, inspected);
   renderAtlasTools(root, host, graph);
 }
-
-// src/features/atlas/board-merge.ts
-var RESERVED_PREFIXES = ["los-concept-", "los-rel-", "los-evidence-", "los-scope-", "los-group-"];
-function isReserved(id) {
-  return RESERVED_PREFIXES.some((prefix) => id.startsWith(prefix));
-}
-function validGeometry(node) {
-  return ["x", "y", "width", "height"].every((key) => {
-    const value = node[key];
-    return typeof value === "number" && Number.isFinite(value);
-  }) && node.width > 0 && node.height > 0;
-}
-function idsOf(items) {
-  const ids = [];
-  for (const item of items ?? []) {
-    if (typeof item.id !== "string" || !item.id) return null;
-    if (ids.includes(item.id)) return null;
-    ids.push(item.id);
-  }
-  return ids;
-}
-function mergeBoards(previousManagedIds, working, nextTemplate) {
-  const workingNodes = working.nodes ?? [];
-  const workingEdges = working.edges ?? [];
-  const templateNodes = nextTemplate.nodes ?? [];
-  const templateEdges = nextTemplate.edges ?? [];
-  const workingNodeIds = idsOf(workingNodes);
-  const templateNodeIds = idsOf(templateNodes);
-  const workingEdgeIds = idsOf(workingEdges);
-  const templateEdgeIds = idsOf(templateEdges);
-  if (!workingNodeIds || !templateNodeIds || !workingEdgeIds || !templateEdgeIds) {
-    return { ok: false, reason: "Board contains duplicate or missing object ids." };
-  }
-  const previous = new Set(previousManagedIds);
-  const templateSet = new Set(templateNodeIds);
-  for (const node of [...workingNodes, ...templateNodes]) {
-    if (!validGeometry(node)) {
-      return { ok: false, reason: `Board object ${String(node.id)} has invalid geometry.` };
-    }
-  }
-  for (const id of workingNodeIds) {
-    if (isReserved(id) && !previous.has(id) && !templateSet.has(id)) {
-      return { ok: false, reason: `Board contains an unknown reserved object: ${id}.` };
-    }
-  }
-  const workingById = new Map(workingNodes.map((node) => [node.id, node]));
-  const templateById = new Map(templateNodes.map((node) => [node.id, node]));
-  const merged = /* @__PURE__ */ new Map();
-  for (const id of templateNodeIds) {
-    const template = templateById.get(id);
-    const current = workingById.get(id);
-    const node = { ...template };
-    if (current) {
-      node.x = current.x;
-      node.y = current.y;
-      node.width = current.width;
-      node.height = current.height;
-      if (template.type === "file" && current.file === template.file && typeof current.portal === "boolean") {
-        node.portal = current.portal;
-      }
-    }
-    merged.set(id, node);
-  }
-  const authoredEdges = workingEdges.filter(
-    (edge) => !previous.has(edge.id) && !templateEdgeIds.includes(edge.id)
-  );
-  const referenced = /* @__PURE__ */ new Set();
-  for (const edge of authoredEdges) {
-    referenced.add(String(edge.fromNode));
-    referenced.add(String(edge.toNode));
-  }
-  for (const node of workingNodes) {
-    const id = node.id;
-    if (merged.has(id)) continue;
-    const authored = !previous.has(id);
-    const retired = previous.has(id) && referenced.has(id);
-    if (authored) {
-      merged.set(id, { ...node });
-    } else if (retired) {
-      merged.set(id, { ...node, losRetired: true });
-    }
-  }
-  const edges = [];
-  for (const edge of templateEdges) edges.push({ ...edge });
-  for (const edge of authoredEdges) {
-    if (!merged.has(String(edge.fromNode)) || !merged.has(String(edge.toNode))) {
-      return { ok: false, reason: `Authored edge ${String(edge.id)} references a missing board object.` };
-    }
-    edges.push({ ...edge });
-  }
-  const nodes = [];
-  for (const node of workingNodes) {
-    const id = node.id;
-    if (merged.has(id)) nodes.push(merged.get(id));
-  }
-  for (const id of templateNodeIds) {
-    if (!workingById.has(id)) nodes.push(merged.get(id));
-  }
-  const canvas = {
-    ...working,
-    ...Object.fromEntries(Object.entries(nextTemplate).filter(([key]) => key !== "nodes" && key !== "edges" && !(key in working))),
-    nodes,
-    edges
-  };
-  const retiredIds = nodes.filter((node) => node.losRetired === true).map((node) => node.id);
-  return { ok: true, canvas, managedIds: [...templateNodeIds, ...templateEdgeIds, ...retiredIds] };
-}
-function parseBoard(text4) {
-  try {
-    const value = JSON.parse(text4);
-    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-    if (value.nodes !== void 0 && !Array.isArray(value.nodes)) return null;
-    if (value.edges !== void 0 && !Array.isArray(value.edges)) return null;
-    return value;
-  } catch {
-    return null;
-  }
-}
-function serializeBoard(canvas) {
-  return JSON.stringify(canvas) + "\n";
-}
-function sidecarFor(templateSha256, managedIds) {
-  return { schema_version: 1, template_sha256: templateSha256, managed_ids: [...managedIds] };
-}
-function parseSidecar(text4) {
-  try {
-    const value = JSON.parse(text4);
-    if (!value || value.schema_version !== 1 || typeof value.template_sha256 !== "string" || !Array.isArray(value.managed_ids)) return null;
-    return value;
-  } catch {
-    return null;
-  }
-}
-
-// src/features/atlas/board-controller.ts
-function sidecarPath(entry) {
-  return `boards/atlas/.state/${entry.kind}/${entry.id}.json`;
-}
-function advancedBoardAvailable(settingEnabled, pluginEnabled) {
-  return settingEnabled && pluginEnabled;
-}
-var BoardController = class {
-  constructor(port) {
-    this.port = port;
-  }
-  lane = Promise.resolve();
-  enqueue(task) {
-    const run = this.lane.then(task, task);
-    this.lane = run.then(() => void 0, () => void 0);
-    return run;
-  }
-  openBoard(entry, templateText) {
-    return this.enqueue(() => this.openBoardNow(entry, templateText));
-  }
-  refreshBoard(entry, templateText, previewText) {
-    return this.enqueue(() => this.refreshBoardNow(entry, templateText, previewText));
-  }
-  async openBoardNow(entry, templateText) {
-    const existing = await this.port.read(entry.working_path);
-    if (existing !== null) {
-      await this.port.openLeaf(entry.working_path);
-      return { ok: true, action: "opened" };
-    }
-    const template = parseBoard(templateText);
-    if (!template) return { ok: false, reason: "Board template is unavailable." };
-    await this.port.create(entry.working_path, templateText);
-    const managed = [...template.nodes ?? [], ...template.edges ?? []].map((node) => String(node.id));
-    await this.port.create(sidecarPath(entry), JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n");
-    await this.port.openLeaf(entry.working_path);
-    return { ok: true, action: "created" };
-  }
-  async refreshBoardNow(entry, templateText, previewText) {
-    if (await this.port.managedCanvasOpen([entry.working_path])) {
-      return {
-        ok: false,
-        reason: "Close the board before refreshing it, and leave the Atlas pane open."
-      };
-    }
-    const template = parseBoard(templateText);
-    if (!template) return { ok: false, reason: "Board template is unavailable." };
-    const sidecarText = await this.port.read(sidecarPath(entry));
-    const sidecar = sidecarText ? parseSidecar(sidecarText) : null;
-    if (!sidecar) {
-      return {
-        ok: false,
-        reason: "Board ownership cannot be verified. Reopen it and review before refreshing."
-      };
-    }
-    let failure = null;
-    let managed = [];
-    const wrote = await this.port.process(entry.working_path, (latest) => {
-      if (latest !== previewText) {
-        failure = "Board changed. Reopen it and review before refreshing.";
-        return null;
-      }
-      const working = parseBoard(latest);
-      if (!working) {
-        failure = "Board is malformed; nothing was written.";
-        return null;
-      }
-      const merged = mergeBoards(sidecar.managed_ids, working, template);
-      if (!merged.ok) {
-        failure = merged.reason;
-        return null;
-      }
-      managed = merged.managedIds;
-      return serializeBoard(merged.canvas);
-    });
-    if (!wrote) return { ok: false, reason: failure ?? "Board refresh was refused." };
-    await this.port.process(sidecarPath(entry), () => JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n");
-    return { ok: true, action: "refreshed" };
-  }
-};
 
 // src/infrastructure/atlas-board-vault.ts
 var import_obsidian5 = require("obsidian");
@@ -37471,190 +37598,314 @@ function firstProjectedModuleId(value) {
   return null;
 }
 
-// src/features/atlas/atlas-model.ts
-var UNGROUPED = "ungrouped";
-var regionTitle = (catalog, id) => id === UNGROUPED ? "Not yet grouped" : domainLabel(catalog, id);
-function buildConceptMap(catalog, notes, graph) {
-  const tally2 = /* @__PURE__ */ new Map();
-  for (const note2 of notes) {
-    const bucket = noteDomain(note2);
-    for (const id of asStrings(note2.concepts)) {
-      if (!graph.conceptById.get(id)?.record) continue;
-      const counts = tally2.get(id) ?? /* @__PURE__ */ new Map();
-      counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
-      tally2.set(id, counts);
-    }
-  }
-  const rank = domainRank(catalog);
-  const regionOf = /* @__PURE__ */ new Map();
-  for (const concept of graph.concepts) {
-    if (!concept.record) continue;
-    const counts = tally2.get(concept.id);
-    const best = counts && [...counts.entries()].sort(([a, x], [b, y]) => y - x || rank(a) - rank(b) || compareStrings(a, b))[0]?.[0];
-    regionOf.set(concept.id, best ?? UNGROUPED);
-  }
-  const touched = new Set(graph.edges.flatMap((edge) => [edge.from, edge.to]));
-  const members = /* @__PURE__ */ new Map();
-  for (const row3 of catalog) members.set(row3.id, []);
-  for (const [concept, region] of regionOf) {
-    if (!members.has(region)) members.set(region, []);
-    members.get(region).push(concept);
-  }
-  const labelOf = (id) => graph.conceptById.get(id)?.label ?? id;
-  const regions = [...members.entries()].map(([id, concepts]) => ({
-    id,
-    title: regionTitle(catalog, id),
-    concepts: [...concepts].sort((a, b) => compareStrings(labelOf(a), labelOf(b))),
-    linked: concepts.filter((concept) => touched.has(concept)).length
-  }));
-  const pairs = /* @__PURE__ */ new Map();
-  for (const edge of graph.edges) {
-    if (edge.layer === "unrecognized") continue;
-    const from = regionOf.get(edge.from), to = regionOf.get(edge.to);
-    if (!from || !to || from === to) continue;
-    const [a, b] = [from, to].sort(compareStrings);
-    const key = `${a}\0${b}`;
-    pairs.set(key, { a, b, count: (pairs.get(key)?.count ?? 0) + 1 });
-  }
-  return { regions, regionOf, memberships: new Map([...tally2].map(([id, counts]) => [id, new Set(counts.keys())])), links: [...pairs.values()] };
-}
-function browsingRegion(map, graph, id) {
-  const drawing = map.regions.find((row3) => row3.id === id);
-  if (!drawing) return null;
-  if (id === UNGROUPED) return drawing;
-  const labelOf = (concept) => graph.conceptById.get(concept)?.label ?? concept;
-  const concepts = [...map.memberships].filter(([, domains]) => domains.has(id)).map(([concept]) => concept).sort((a, b) => compareStrings(labelOf(a), labelOf(b)));
-  const touched = new Set(graph.edges.flatMap((edge) => [edge.from, edge.to]));
-  return { id, title: drawing.title, concepts, linked: concepts.filter((concept) => touched.has(concept)).length };
-}
-function studyOrderLayout(members, graph) {
-  const inside = new Set(members);
-  const edges = graph.edges.filter((edge) => edge.layer === "strict" && (inside.has(edge.studyFrom) || inside.has(edge.studyTo)));
-  const nodes = new Set(edges.flatMap((edge) => [edge.studyFrom, edge.studyTo]));
-  const beyondOnly = new Set([...nodes].filter((id) => !inside.has(id) && edges.every((edge) => edge.studyFrom !== id)));
-  const column = new Map([...nodes].map((id) => [id, 0]));
-  const orderable = edges.filter((edge) => !beyondOnly.has(edge.studyTo));
-  for (let pass = 0; pass <= nodes.size; pass += 1) {
-    let moved = false;
-    for (const edge of orderable) {
-      const next = (column.get(edge.studyFrom) ?? 0) + 1;
-      if (next > (column.get(edge.studyTo) ?? 0) && next < nodes.size) {
-        column.set(edge.studyTo, next);
-        moved = true;
-      }
-    }
-    if (!moved) break;
-  }
-  for (let pass = 0; pass <= nodes.size; pass += 1) {
-    let moved = false;
-    for (const id of nodes) {
-      if (beyondOnly.has(id)) continue;
-      const after2 = orderable.filter((edge) => edge.studyFrom === id).map((edge) => column.get(edge.studyTo) ?? 0);
-      const incoming = orderable.some((edge) => edge.studyTo === id);
-      if (after2.length && !incoming) {
-        const next = Math.min(...after2) - 1;
-        if (next > (column.get(id) ?? 0)) {
-          column.set(id, next);
-          moved = true;
-        }
-      }
-    }
-    if (!moved) break;
-  }
-  const internalMax = Math.max(0, ...[...nodes].filter((id) => !beyondOnly.has(id)).map((id) => column.get(id) ?? 0));
-  const beyond = beyondOnly.size ? internalMax + 1 : null;
-  if (beyond !== null) for (const id of beyondOnly) column.set(id, beyond);
-  const lanes = [];
-  const labelOf = (id) => graph.conceptById.get(id)?.label ?? id;
-  for (const id of [...nodes].sort((a, b) => compareStrings(labelOf(a), labelOf(b)))) {
-    const at = column.get(id) ?? 0;
-    (lanes[at] ??= []).push(id);
-  }
-  const rowOf2 = /* @__PURE__ */ new Map();
-  const place = () => lanes.forEach((lane) => lane?.forEach((id, index) => rowOf2.set(id, index)));
-  const pull = (lane, neighbours) => {
-    if (!lane) return;
-    const weight = new Map(lane.map((id) => {
-      const rows2 = neighbours(id).map((other) => rowOf2.get(other) ?? 0);
-      return [id, rows2.length ? rows2.reduce((sum, value) => sum + value, 0) / rows2.length : rowOf2.get(id) ?? 0];
-    }));
-    lane.sort((a, b) => (weight.get(a) ?? 0) - (weight.get(b) ?? 0));
-    lane.forEach((id, index) => rowOf2.set(id, index));
-  };
-  const before = (id) => edges.filter((edge) => edge.studyTo === id).map((edge) => edge.studyFrom);
-  const after = (id) => edges.filter((edge) => edge.studyFrom === id).map((edge) => edge.studyTo);
-  place();
-  for (let sweep = 0; sweep < 4; sweep += 1) {
-    for (let index = 1; index < lanes.length; index += 1) pull(lanes[index], before);
-    for (let index = lanes.length - 2; index >= 0; index -= 1) pull(lanes[index], after);
-  }
-  const finalRow = /* @__PURE__ */ new Map();
-  lanes.forEach((lane) => {
-    let floor = 0;
-    lane?.forEach((id) => {
-      const rows2 = before(id).map((other) => finalRow.get(other)).filter((row4) => row4 !== void 0);
-      const wanted = rows2.length ? Math.round(rows2.reduce((sum, value) => sum + value, 0) / rows2.length) : floor;
-      const row3 = Math.max(floor, wanted);
-      finalRow.set(id, row3);
-      floor = row3 + 1;
-    });
+// src/features/home/focus.ts
+function renderContinue(view, root) {
+  const {
+    pointer: pointer2,
+    unit,
+    map,
+    stage,
+    moduleId: unitModuleId,
+    module: module2
+  } = resolveResumeTarget(view.plugin.store);
+  const wrap = root.createDiv({
+    cls: "los-continue"
   });
-  return {
-    placed: [...nodes].map((id) => ({
-      id,
-      column: column.get(id) ?? 0,
-      row: finalRow.get(id) ?? 0,
-      visiting: !inside.has(id)
-    })),
-    edges,
-    columns: lanes.length,
-    beyond,
-    unlinked: members.filter((id) => !nodes.has(id))
-  };
+  if (!unit || !stage || !pointer2.unit_id || !pointer2.stage_id) {
+    empty(
+      wrap,
+      "Nothing to resume yet",
+      "Open Learn and choose a module or project.",
+      "Open Learn",
+      () => view.plugin.nav.openLearn()
+    );
+    return;
+  }
+  wrap.createDiv({
+    cls: "los-kicker",
+    text: "Continue learning"
+  });
+  const body = wrap.createDiv({
+    cls: "los-continue-body"
+  });
+  const copy = body.createDiv({
+    cls: "los-continue-copy"
+  });
+  copy.createDiv({
+    cls: "los-continue-module",
+    text: `${module2 ? asLabel(module2) : unitModuleId ?? "Unknown module"} \xB7 ${asLabel(unit)}`
+  });
+  copy.createEl("h2", {
+    text: asLabel(stage)
+  });
+  const stages = asRecords(map?.stages);
+  const position = stages.findIndex(
+    (row3) => asString(row3.id) === pointer2.stage_id
+  );
+  const meta = copy.createDiv({
+    cls: "los-continue-meta"
+  });
+  if (stages.length) {
+    meta.createSpan({
+      text: `Stage ${position >= 0 ? position + 1 : 1} of ${stages.length}`
+    });
+  }
+  const estimate = asText(
+    stage.estimate_minutes
+  );
+  if (estimate) {
+    meta.createSpan({
+      text: `${estimate} min planned`
+    });
+  }
+  copy.createDiv({
+    cls: "los-continue-context",
+    text: "Your selected stage, exact resources, and open working state are kept together."
+  });
+  const actions = body.createDiv({
+    cls: "los-actions"
+  });
+  button(
+    actions,
+    "Continue session",
+    () => view.plugin.nav.openUnit(
+      pointer2.unit_id,
+      pointer2.stage_id
+    ),
+    "cta"
+  );
 }
-function moduleOverlap(graph) {
-  const shared = /* @__PURE__ */ new Map();
-  for (const [concept, modules] of graph.modulesByConcept) {
-    if (!graph.conceptById.get(concept)?.record) continue;
-    for (const a of modules) {
-      for (const b of modules) {
-        if (a >= b) continue;
-        const key = `${a}\0${b}`;
-        shared.set(key, [...shared.get(key) ?? [], concept]);
-      }
+function todayItems(view) {
+  const items = [];
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const upcoming = view.plugin.store.rows("academic_deadlines").filter(
+    (row3) => {
+      const boundary = asString(row3.end_date) ?? asString(
+        row3.start_date
+      ) ?? "";
+      return boundary >= today;
     }
+  ).sort(
+    (left, right) => {
+      const leftDate = asString(
+        left.start_date
+      ) ?? asString(
+        left.end_date
+      ) ?? "";
+      const rightDate = asString(
+        right.start_date
+      ) ?? asString(
+        right.end_date
+      ) ?? "";
+      return compareStrings(
+        leftDate,
+        rightDate
+      );
+    }
+  );
+  for (const deadline of upcoming.slice(0, 2)) {
+    const moduleId = asString(deadline.module_id) ?? firstProjectedModuleId(
+      deadline.modules
+    );
+    const kind = asString(deadline.kind);
+    const label = asString(deadline.label);
+    const title2 = kind === "registration-window" ? label ?? asLabel(deadline) : asString(deadline.title) ?? label ?? asLabel(deadline);
+    const startDate = asString(deadline.start_date);
+    const endDate = asString(deadline.end_date);
+    const date = endDate && startDate && endDate !== startDate ? `${startDate} \u2192 ${endDate}` : startDate ?? endDate ?? "Date pending";
+    const registrationState = asString(
+      deadline.registration_state
+    );
+    const registrationDetail = registrationState && registrationState !== "registered" ? ` \xB7 ${registrationState}` : "";
+    items.push({
+      title: title2,
+      detail: `${date}${registrationDetail}`,
+      actionLabel: moduleId ? "Open module" : "",
+      action: moduleId ? () => view.plugin.nav.openModule(
+        moduleId
+      ) : null
+    });
   }
-  return shared;
+  const reviewItems = view.plugin.store.reviewItems();
+  const reviewCount = reviewItems.length;
+  if (reviewCount) {
+    const categories = /* @__PURE__ */ new Map();
+    for (const item of reviewItems) {
+      const category = asString(item.category) ?? "other";
+      categories.set(
+        category,
+        (categories.get(category) ?? 0) + 1
+      );
+    }
+    const details = [...categories.entries()].map(
+      ([category, count4]) => `${count4} ${category.replaceAll("-", " ")}`
+    );
+    items.push({
+      title: `${reviewCount} decision${reviewCount === 1 ? "" : "s"} waiting`,
+      detail: details.join(" \xB7 "),
+      actionLabel: "Open review",
+      action: () => view.plugin.nav.openReview()
+    });
+  }
+  return items;
 }
-var overlapKey = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
-function layoutLectureMap(ideas) {
-  const order = new Map(ideas.map((idea, index) => [idea.id, index]));
-  const links = ideas.flatMap((idea) => [...new Set(idea.buildsOn)].filter((from) => from !== idea.id && order.has(from)).map((from) => ({ from, to: idea.id })));
-  const column = new Map(ideas.map((idea) => [idea.id, 0]));
-  for (let pass = 0; pass < ideas.length; pass += 1) {
-    let moved = false;
-    for (const link of links) {
-      const next = (column.get(link.from) ?? 0) + 1;
-      if (next > (column.get(link.to) ?? 0) && next < ideas.length) {
-        column.set(link.to, next);
-        moved = true;
-      }
-    }
-    if (!moved) break;
+function renderToday(view, root) {
+  const sectionEl = section(
+    root,
+    "Today",
+    "Only items likely to affect the next decision."
+  );
+  const items = todayItems(view);
+  if (!items.length) {
+    empty(
+      sectionEl,
+      "Nothing time-sensitive",
+      "Continue the active learning session when you are ready."
+    );
+    return;
   }
-  const width = ideas.length ? Math.max(...column.values()) + 1 : 0;
-  const row3 = /* @__PURE__ */ new Map();
-  const columns = [];
-  for (let at = 0; at < width; at += 1) {
-    const weight = (id) => {
-      const rows2 = links.filter((link) => link.to === id).map((link) => row3.get(link.from)).filter((value) => value !== void 0);
-      return rows2.length ? rows2.reduce((sum, value) => sum + value, 0) / rows2.length : 0;
-    };
-    const here = ideas.filter((idea) => column.get(idea.id) === at).sort((a, b) => weight(a.id) - weight(b.id) || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-    here.forEach((idea, index) => row3.set(idea.id, index));
-    columns.push(here.map((idea) => idea.id));
+  const list3 = sectionEl.createDiv({
+    cls: "los-home-list"
+  });
+  for (const item of items.slice(0, 4)) {
+    view.renderHomeRow(
+      list3,
+      item
+    );
   }
-  return { columns, links };
+}
+
+// src/features/stage-resources.ts
+var TRIAGE_HEADING = {
+  "required-now": "Do this",
+  "helpful-now": "If you get stuck",
+  deferred: "Depth \u2014 not now",
+  "reference-only": "Reference \u2014 preserved, not reading for this stage"
+};
+function triageSummary(resources) {
+  const count4 = (rank) => resources.filter(
+    (resource) => resource.scopeTriage === rank
+  ).length;
+  const required2 = count4("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
+  const stuck = count4("helpful-now");
+  const preserved = count4("deferred") + count4("reference-only");
+  const parts = [];
+  if (required2) parts.push(`${required2} required now`);
+  if (stuck) parts.push(`${stuck} if stuck`);
+  if (preserved) parts.push(`${preserved} for reference`);
+  return parts.join(" \xB7 ");
+}
+function currentWorkResource(resources) {
+  return resources.find((resource) => resource.isEntry === true) ?? null;
+}
+var MATERIAL_TYPE_ICON = {
+  "course-material": "presentation",
+  exercise: "pencil-line",
+  solutions: "clipboard-check",
+  exam: "graduation-cap",
+  book: "book-open",
+  paper: "newspaper",
+  video: "play",
+  website: "globe",
+  documentation: "file-text",
+  code: "code",
+  course: "library",
+  article: "file-text"
+};
+function normaliseMaterialType(declared) {
+  switch (declared) {
+    case "course-material":
+      return "course-material";
+    case "exercise":
+    case "practice":
+    case "practise":
+    case "problem-set":
+    case "homework":
+    case "quiz":
+      return "exercise";
+    case "solutions":
+      return "solutions";
+    case "exam":
+      return "exam";
+    case "book":
+    case "textbook":
+      return "book";
+    case "paper":
+      return "paper";
+    case "video":
+      return "video";
+    case "website":
+    case "web":
+    case "web-page":
+    case "webpage":
+      return "website";
+    case "documentation":
+    case "docs":
+      return "documentation";
+    case "code":
+      return "code";
+    case "course":
+      return "course";
+    default:
+      return "article";
+  }
+}
+function materialTypeIcon(type) {
+  return MATERIAL_TYPE_ICON[normaliseMaterialType((type ?? "").toLowerCase())];
+}
+var angleDetailSequence = 0;
+function whyThisOne(copy, detailText, fillFoot) {
+  const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
+  const detail = copy.createDiv({
+    cls: "los-resource-angle-detail",
+    text: detailText,
+    attr: { hidden: "", id: detailId }
+  });
+  const foot = copy.createDiv({ cls: "los-resource-foot" });
+  fillFoot?.(foot);
+  let expanded = false;
+  const toggle = button(
+    foot,
+    "\u25B8 Why this one",
+    () => {
+      expanded = !expanded;
+      toggle.setText(`${expanded ? "\u25BE" : "\u25B8"} Why this one`);
+      toggle.setAttr("aria-expanded", String(expanded));
+      if (expanded) detail.removeAttribute("hidden");
+      else detail.setAttr("hidden", "");
+    },
+    "quiet"
+  );
+  toggle.addClass("los-resource-angle-trigger");
+  toggle.setAttrs({ "aria-controls": detailId, "aria-expanded": "false" });
+}
+function renderMaterialCautions(parent, record7) {
+  for (const asset of Array.isArray(record7.requires_assets) ? record7.requires_assets : []) {
+    if (!isRecord(asset) || typeof asset.name !== "string") continue;
+    const part2 = asText(asset.needed_for);
+    const origin = asText(asset.obtain_from);
+    parent.createDiv({ cls: "los-micro", text: `${asset.material_uri ? "Required file" : "Not registered locally"}: ${asset.name}` + (part2 ? ` \u2014 needed for ${part2}` : "") + (origin ? `. Obtain from ${origin}.` : ".") });
+  }
+  if (Array.isArray(record7.exposes_solutions_for) && record7.exposes_solutions_for.length) {
+    parent.createDiv({ cls: "los-micro", text: "Contains related task solutions. Read after your attempt, and report prior exposure before using those tasks as independent evidence." });
+  }
+}
+
+// src/designs/study-desk/unit-mode.ts
+var modesByHost = /* @__PURE__ */ new WeakMap();
+function modesFor(host) {
+  let modes = modesByHost.get(host);
+  if (!modes) {
+    modes = /* @__PURE__ */ new Map();
+    modesByHost.set(host, modes);
+  }
+  return modes;
+}
+function unitMode(host, unitId) {
+  return modesByHost.get(host)?.get(unitId) ?? "plan";
+}
+function setUnitMode(host, unitId, mode) {
+  modesFor(host).set(unitId, mode);
 }
 
 // src/features/module/model.ts
@@ -38198,41 +38449,6 @@ function sideGroup(parent, title2) {
   return group2;
 }
 
-// src/infrastructure/resource-target.ts
-function isFileShapedPath(value) {
-  if (typeof value !== "string") return false;
-  const path = value.trim().split(/[?#]/, 1)[0] ?? "";
-  const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
-  return /^[^./][^/]*\.[^./]+$/.test(name);
-}
-function isDirectMaterialFileTarget(record7) {
-  return record7.material_exists === true && isFileShapedPath(record7.material_path);
-}
-var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
-function pageDestination(record7) {
-  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
-  if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
-  const locator = typeof record7.locator === "string" ? record7.locator : "";
-  const match = QUALIFIED_PAGES.exec(locator);
-  if (!match) return null;
-  const first = Number(match[1]);
-  const last = match[2] ? Number(match[2]) : null;
-  if (!Number.isInteger(first) || first < 1) return null;
-  if (last !== null && (!Number.isInteger(last) || last <= first)) {
-    return { page: first, label: `physical page ${first}` };
-  }
-  return {
-    page: first,
-    label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
-  };
-}
-function hasDirectResourceTarget(record7) {
-  if (isDirectMaterialFileTarget(record7)) return true;
-  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
-  if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
-  return safeWebUrl(record7.url) !== null;
-}
-
 // src/features/unit/model.ts
 var ARTIFACT_LABELS = [
   [
@@ -38493,1201 +38709,6 @@ function fallbackRecord(id) {
     type: "record",
     title: id
   };
-}
-
-// src/features/atlas/module-map.ts
-function moduleMap(store, moduleId) {
-  const record7 = store.get(moduleId);
-  const module2 = record7 ? readModuleRecord(record7) : null;
-  if (!record7 || !module2) return null;
-  const ordered = orderModuleUnits(module2, store.unitsFor(moduleId).map(normalizeUnitRecord).filter(nonNull));
-  const units = ordered.map((row3) => readUnitRecord(row3.record, row3.id)).filter(nonNull);
-  const blocks = units.filter((unit) => unit.kind === "exam-block");
-  const lectures = units.filter((unit) => unit.kind !== "exam-block");
-  const drawn = lectures.some((unit) => unit.knowledgeNodes.length) ? lectures : blocks;
-  const rows2 = drawn.filter((unit) => unit.knowledgeNodes.length).map((unit) => ({ unit, label: unitLabel(unit.record, record7), ideas: unit.knowledgeNodes }));
-  if (!rows2.length) return null;
-  return {
-    moduleId,
-    rows: rows2,
-    examBlocks: drawn === lectures ? blocks : [],
-    unmapped: drawn.filter((unit) => !unit.knowledgeNodes.length),
-    ideas: rows2.reduce((sum, row3) => sum + row3.ideas.length, 0)
-  };
-}
-function moduleMaps(store) {
-  return store.modules().map((module2) => asString(module2.id)).filter(nonNull).map((id) => moduleMap(store, id)).filter(nonNull);
-}
-function moduleMapFacts(map) {
-  return `${plural(map.rows.length, "lecture")} \xB7 ${plural(map.ideas, "idea")}`;
-}
-function mapProgressTag(store, unitId) {
-  const projected = store.mapForUnit(unitId);
-  if (!projected) return null;
-  const stages = readStudyMap(projected).stages;
-  const { done, total } = stageProgress(stages);
-  if (!total || !done) return null;
-  if (done === total) return { text: "Studied", tone: "success" };
-  return { text: `In progress \xB7 ${done} of ${plural(total, "stage")}`, tone: "accent" };
-}
-var SVG3 = "http://www.w3.org/2000/svg";
-var sequence2 = 0;
-function mountIdeaLinks(host, canvases, prefix = "sd-mm") {
-  const first = canvases[0]?.canvas;
-  const doc = first?.ownerDocument;
-  const win = doc?.defaultView;
-  if (!first || !doc?.createElementNS || !win || typeof first.getBoundingClientRect !== "function") return;
-  let frame = 0;
-  let disposed = false;
-  const layers = canvases.map(({ canvas, links }) => {
-    const svg = doc.createElementNS(SVG3, "svg");
-    svg.setAttribute("class", `${prefix}-links`);
-    svg.setAttribute("aria-hidden", "true");
-    canvas.prepend(svg);
-    return { canvas, links, svg, marker: `${prefix}-arrow-${++sequence2}` };
-  });
-  const draw = () => {
-    frame = 0;
-    if (disposed) return;
-    for (const { canvas, links, svg, marker } of layers) {
-      if (!canvas.isConnected) continue;
-      svg.replaceChildren();
-      const defs = doc.createElementNS(SVG3, "defs");
-      const head = doc.createElementNS(SVG3, "marker");
-      for (const [key, value] of Object.entries({ id: marker, viewBox: "0 0 8 8", refX: "6.5", refY: "4", markerWidth: "8", markerHeight: "8", markerUnits: "userSpaceOnUse", orient: "auto" })) head.setAttribute(key, value);
-      const chevron3 = doc.createElementNS(SVG3, "path");
-      chevron3.setAttribute("d", "M 2 1 L 6.5 4 L 2 7");
-      chevron3.setAttribute("class", `${prefix}-arrowhead`);
-      head.append(chevron3);
-      defs.append(head);
-      svg.append(defs);
-      const base = canvas.getBoundingClientRect();
-      const box = (node) => {
-        const rect = node.getBoundingClientRect();
-        const left = rect.left - base.left + canvas.scrollLeft, top = rect.top - base.top + canvas.scrollTop;
-        return { left, top, right: left + rect.width, bottom: top + rect.height, width: rect.width };
-      };
-      const nodes = new Map(Array.from(canvas.querySelectorAll("[data-idea]")).map((node) => [node.getAttribute("data-idea"), box(node)]));
-      const boxes = [...nodes.values()];
-      svg.setAttribute("width", String(Math.ceil(Math.max(0, ...boxes.map((node) => node.right))) + 4));
-      svg.setAttribute("height", String(Math.ceil(Math.max(0, ...boxes.map((node) => node.bottom))) + 15));
-      let under = 0;
-      for (const link of links) {
-        const a = nodes.get(link.from), b = nodes.get(link.to);
-        if (!a || !b || !a.width || !b.width || b.left <= a.right) continue;
-        const x1 = a.right + 2, y1 = (a.top + a.bottom) / 2, x2 = b.left - 3, y2 = (b.top + b.bottom) / 2;
-        const between = [...nodes.values()].filter((node) => node.left > a.right && node.right < b.left);
-        const yAt = (x) => y1 + (y2 - y1) * (x - x1) / (x2 - x1);
-        const blocked = between.some((node) => {
-          const top = Math.min(yAt(node.left), yAt(node.right)), bottom = Math.max(yAt(node.left), yAt(node.right));
-          return bottom >= node.top - 4 && top <= node.bottom + 4;
-        });
-        let d = `M ${x1} ${y1} L ${x2} ${y2}`;
-        if (blocked) {
-          const below = Math.max(...between.map((node) => node.bottom)) + 5 + Math.min(under, 2) * 4;
-          under += 1;
-          d = `M ${x1} ${y1} C ${x1 + 12} ${y1}, ${x1 + 10} ${below}, ${x1 + 22} ${below} L ${x2 - 22} ${below} C ${x2 - 10} ${below}, ${x2 - 12} ${y2}, ${x2} ${y2}`;
-        }
-        const path = doc.createElementNS(SVG3, "path");
-        path.setAttribute("d", d);
-        path.setAttribute("class", `${prefix}-link`);
-        path.setAttribute("marker-end", `url(#${marker})`);
-        svg.append(path);
-      }
-    }
-  };
-  const schedule = () => {
-    if (!disposed && !frame) frame = win.requestAnimationFrame(draw);
-  };
-  const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
-  for (const { canvas } of layers) observer?.observe(canvas);
-  win.addEventListener("resize", schedule);
-  schedule();
-  host.addRenderCleanup(() => {
-    disposed = true;
-    if (frame) win.cancelAnimationFrame(frame);
-    observer?.disconnect();
-    win.removeEventListener("resize", schedule);
-  });
-}
-
-// src/designs/study-desk/module-map.ts
-var headings = 0;
-var landing = /* @__PURE__ */ new WeakMap();
-function openModuleMap(host, moduleId, unitId = null) {
-  if (unitId) landing.set(host, unitId);
-  else landing.delete(host);
-  host.go({ concept: null, module: moduleId, lens: "prerequisites" });
-}
-function leaveModuleMap(host) {
-  landing.delete(host);
-  Object.assign(host.concepts, { domain: null, subdomain: null, browseAll: false, recentsOnly: false });
-  host.go({ concept: null, module: null, lens: "prerequisites" });
-}
-function renderModuleMap(root, host, map) {
-  const { store, nav } = host.plugin;
-  const module2 = store.get(map.moduleId);
-  const short = moduleName(module2);
-  const head = root.createDiv({ cls: "sd-title-row" });
-  const copy = head.createDiv({ cls: "sd-title-copy" });
-  copy.createEl("h1", { cls: "sd-title", text: moduleLongTitle(module2) });
-  copy.createDiv({ cls: "sd-facts", text: `The module at a glance \xB7 ${plural(map.rows.length, "lecture")} \xB7 ${map.ideas} ideas from your lecture maps` });
-  renderAtlasVariants(head.createDiv({ cls: "sd-title-tools" }), nav, "concepts", (target2) => host.go(target2));
-  const sheet = root.createDiv({ cls: "sd-sheet sd-mm-sheet" });
-  const title2 = sheet.createDiv({ cls: "sd-mm-head" });
-  title2.createEl("h2", { cls: "sd-mm-title", text: "The module at a glance" });
-  title2.createSpan({ cls: "sd-mm-subtitle", text: "lectures top to bottom, in course order \xB7 ideas left to right: an arrow means \u201Cbuilds on\u201D" });
-  const guide = sheet.createDiv({ cls: "sd-mm-guide" });
-  for (const [label, text4] of [
-    ["How to read it", "One row per lecture, in course order. Inside a row, an arrow means the idea on the right builds on the one on the left. Nothing moves between visits, so places stay familiar."],
-    ["Revise with it", "Cover a row and say each idea in a sentence, then open the lecture to check. Start with the lectures you studied longest ago."],
-    ["Not drawn yet", "Links between lectures. Your lecture maps link ideas inside one lecture only; concept pages show the Atlas\u2019s links across lectures."]
-  ]) {
-    const column = sideGroup(guide, label);
-    column.createEl("p", { cls: "sd-mm-note", text: text4 });
-  }
-  const here = landing.get(host) ?? null;
-  let landed = null;
-  const lectures = sheet.createDiv({ cls: "sd-mm-lectures" });
-  const canvases = [];
-  for (const [index, row3] of map.rows.entries()) {
-    const lecture = lectures.createDiv({ cls: `sd-mm-lecture${row3.unit.id === here ? " is-here" : ""}`, attr: { "data-unit": row3.unit.id } });
-    if (row3.unit.id === here) landed = lecture;
-    const line = lecture.createDiv({ cls: "sd-mm-lecture-head" });
-    line.createSpan({ cls: "sd-mm-number", text: (row3.label.number ?? String(index + 1)).padStart(2, "0") });
-    const heading2 = `sd-mm-lecture-${++headings}`;
-    line.createEl("h3", { cls: "sd-mm-lecture-title", text: row3.label.title, attr: { id: heading2 } });
-    const tag2 = mapProgressTag(store, row3.unit.id);
-    if (tag2) line.createSpan({ cls: `sd-tag is-${tag2.tone}`, text: tag2.text });
-    line.createSpan({ cls: "sd-mat-flex" });
-    textLink(line, "Open lecture", () => nav.openUnit(row3.unit.id)).addClass("sd-mm-open");
-    if (row3.unit.knowledgeSummary) {
-      lecture.createDiv({ cls: "sd-mm-summary", text: row3.unit.knowledgeSummary, attr: { title: row3.unit.knowledgeSummary } });
-    }
-    const layout = layoutLectureMap(row3.ideas);
-    const byId = new Map(row3.ideas.map((idea) => [idea.id, idea]));
-    const canvas = lecture.createDiv({ cls: "sd-mm-ideas", attr: { role: "group", "aria-labelledby": heading2 } });
-    for (const column of layout.columns) {
-      const stack2 = canvas.createDiv({ cls: "sd-mm-column", attr: { role: "list" } });
-      for (const id of column) {
-        const idea = byId.get(id);
-        if (!idea) continue;
-        const node = stack2.createDiv({ cls: "sd-mm-idea", attr: { role: "listitem", "data-idea": id, title: idea.summary } });
-        node.createSpan({ text: idea.title });
-        const before = layout.links.filter((link) => link.to === id).map((link) => byId.get(link.from)?.title).filter(nonNull);
-        if (before.length) node.createSpan({ cls: "los-sr-only", text: `, builds on ${before.join(" and ")}` });
-      }
-    }
-    canvases.push({ canvas, links: layout.links });
-  }
-  if (map.examBlocks.length || map.unmapped.length) {
-    const foot = sheet.createDiv({ cls: "sd-mm-foot" });
-    for (const unit of map.examBlocks) {
-      const note2 = foot.createDiv({ cls: "sd-mm-foot-line" });
-      note2.createSpan({ text: `${short} ${unitLabel(unit.record, module2).place.replace(/^./, (first) => first.toLowerCase())} is an exam block, not a lecture, so it has no row here. ` });
-      textLink(note2, "Open it", () => nav.openUnit(unit.id));
-    }
-    if (map.unmapped.length) {
-      foot.createDiv({ cls: "sd-mm-foot-line", text: `No idea map yet: ${map.unmapped.map((unit) => unitLabel(unit.record, module2).place).join(", ")}.` });
-    }
-  }
-  mountIdeaLinks(host, canvases, "sd-mm");
-  const target = landed;
-  if (target && typeof target.scrollIntoView === "function") {
-    root.ownerDocument?.defaultView?.requestAnimationFrame(() => target.scrollIntoView({ block: "center" }));
-  }
-}
-
-// src/designs/study-desk/atlas.ts
-var REGION_PLACES = {
-  "cross-domain": { x: 29, y: 1, w: 22, h: 23, cover: "stone", designed: 10 },
-  programming: { x: 75, y: 1, w: 20, h: 16, cover: "moss", designed: 4 },
-  mathematics: { x: 1, y: 21, w: 26, h: 34, cover: "teal", designed: 23 },
-  "machine-learning": { x: 32, y: 29, w: 37, h: 48, cover: "wine", designed: 36 },
-  systems: { x: 73, y: 25, w: 22, h: 28, cover: "plum", designed: 11 },
-  algorithms: { x: 1, y: 63, w: 26, h: 34, cover: "ochre", designed: 23 },
-  "data-systems": { x: 73, y: 62, w: 22, h: 26, cover: "slate", designed: 12 }
-};
-var shortModule = (host, id) => moduleShort(host.plugin.store.get(id));
-var shortModules = (host, graph, concept) => modulesFor(graph, concept).map((module2) => shortModule(host, module2.id));
-var coverFor = (id) => REGION_PLACES[id]?.cover ?? "stone";
-function studyConcept(host) {
-  const { store } = host.plugin;
-  const { stage, unit, module: module2 } = resolveResumeTarget(store);
-  const id = asStrings(stage?.concepts)[0];
-  if (!stage || !id || !store.get(id)) return null;
-  return { id, facts: [unit ? unitLabel(unit, module2).place : "", asLabel(stage)].filter(Boolean).join(" \xB7 ") };
-}
-function chooseRegion(host, id) {
-  if (host.state.concept || host.state.lens !== "prerequisites") {
-    host.showConceptOverview(id);
-    return;
-  }
-  Object.assign(host.concepts, { domain: id, subdomain: null, selected: null, recentsOnly: false, browseAll: false, visibleLimit: 30 });
-  host.query = "";
-  host.render();
-}
-function focus(host, id) {
-  host.go({ concept: id, lens: "prerequisites" });
-}
-function renderSearch2(parent, host, placeholder) {
-  const wrap = parent.createDiv({ cls: "sd-atlas-search" });
-  const field2 = wrap.createEl("label", { cls: "sd-search" });
-  icon(field2.createSpan({ cls: "sd-search-glyph" }), "search");
-  const input = field2.createEl("input", {
-    cls: "sd-search-input",
-    attr: { type: "search", placeholder, "aria-label": placeholder }
-  });
-  input.value = host.query;
-  const results = wrap.createDiv({ cls: "sd-search-results", attr: { "aria-live": "polite" } });
-  const draw = () => {
-    results.empty();
-    const query = host.query.trim();
-    if (!query) return;
-    const rows2 = host.plugin.store.search(query, ["concept"]).slice(0, 8);
-    if (!rows2.length) results.createDiv({ cls: "sd-row-facts sd-search-none", text: `No concept matches \u201C${query}\u201D.` });
-    for (const record7 of rows2) {
-      const id = asString(record7.id);
-      if (id) deskRow(results, "sd-search-row", `Open ${asLabel(record7)}`, () => {
-        host.query = "";
-        focus(host, id);
-      }).createSpan({ text: asLabel(record7) });
-    }
-  };
-  input.addEventListener("input", () => {
-    host.query = input.value;
-    draw();
-  });
-  draw();
-}
-function pageHead(parent, title2, facts) {
-  const head = parent.createDiv({ cls: "sd-title-row" });
-  const copy = head.createDiv({ cls: "sd-title-copy" });
-  copy.createEl("h1", { cls: "sd-title", text: title2 });
-  if (facts) copy.createDiv({ cls: "sd-facts", text: facts });
-  return head.createDiv({ cls: "sd-title-tools" });
-}
-function concretePlace(id, count4) {
-  const place = REGION_PLACES[id];
-  if (!place) return null;
-  const scale = Math.min(1.12, Math.max(0.82, Math.sqrt(Math.max(count4, 1) / place.designed)));
-  const w = place.w * scale, h = place.h * scale;
-  return { x: place.x + (place.w - w) / 2, y: place.y + (place.h - h) / 2, w, h };
-}
-function gapMidpoint(a, b) {
-  const from = { x: a.x + a.w / 2, y: a.y + a.h / 2 }, to = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
-  const exit = (box) => {
-    const scale = Math.min(
-      Math.abs(to.x - from.x) ? box.w / 2 / Math.abs(to.x - from.x) : Infinity,
-      Math.abs(to.y - from.y) ? box.h / 2 / Math.abs(to.y - from.y) : Infinity
-    );
-    return scale;
-  };
-  const start2 = exit(a), end = 1 - exit(b);
-  const middle = start2 < end ? (start2 + end) / 2 : 0.5;
-  return { x: from.x + (to.x - from.x) * middle, y: from.y + (to.y - from.y) * middle };
-}
-function renderMiniMap(parent, map, here) {
-  const mini = parent.createDiv({ cls: "sd-minimap", attr: { "aria-hidden": "true" } });
-  for (const region of map.regions) {
-    const place = concretePlace(region.id, region.concepts.length);
-    if (!place) continue;
-    mini.createDiv({
-      cls: `sd-minimap-region${region.id === here ? " is-here" : ""}`,
-      attr: {
-        "data-cover": coverFor(region.id),
-        style: `left:${place.x}%;top:${place.y}%;width:${place.w}%;height:${place.h}%`
-      }
-    });
-  }
-}
-function renderViewTabs(parent, host, active) {
-  const tabs = parent.createDiv({ cls: "los-filter-tabs", attr: { role: "group", "aria-label": "How to see these concepts" } });
-  enableButtonGroupKeyboardNavigation(tabs);
-  const tab = (key, label, choose) => {
-    const control = button(tabs, label, () => {
-      if (key !== active) choose();
-    }, "quiet");
-    control.addClass("los-filter-tab");
-    control.toggleClass("is-active", key === active);
-    control.setAttr("aria-pressed", String(key === active));
-  };
-  const toList = (browseAll) => {
-    if (host.state.lens !== "prerequisites") {
-      host.showConceptOverview(null, browseAll);
-      return;
-    }
-    Object.assign(host.concepts, { browseAll, domain: null, visibleLimit: 30 });
-    host.render();
-  };
-  tab("map", "Map", () => toList(false));
-  tab("list", "List", () => toList(true));
-  tab("bridges", "Across modules", () => host.go({ concept: null, lens: "bridges" }));
-}
-function renderAtlasIntro(root, host) {
-  const tools = pageHead(root, "Atlas", null);
-  renderAtlasVariants(tools, host.plugin.nav, "concepts", (target) => host.go(target));
-  renderSearch2(tools, host, "Find a concept, e.g. logistic regression");
-  return tools;
-}
-function renderSideColumn(parent, context) {
-  const { host, graph } = context;
-  const side = parent.createDiv({ cls: "sd-side" });
-  const study = studyConcept(host);
-  if (study) {
-    const group2 = sideGroup(side, "From your study");
-    const row3 = deskRow(group2, "sd-side-row", `Open ${conceptOf(graph, study.id).label}`, () => focus(host, study.id));
-    row3.createEl("strong", { text: conceptOf(graph, study.id).label });
-    row3.createDiv({ cls: "sd-row-facts", text: study.facts });
-  }
-  const recent = host.plugin.settings.atlasRecentConcepts.filter((id) => graph.conceptById.get(id)?.record).slice(0, 3);
-  if (recent.length) {
-    const group2 = sideGroup(side, "Recent");
-    for (const id of recent) deskRow(group2, "sd-side-row", `Open ${conceptOf(graph, id).label}`, () => focus(host, id)).createEl("strong", { text: conceptOf(graph, id).label });
-  }
-  const ask = sideGroup(side, "Ask the Atlas");
-  const question = (title2, detail, go) => {
-    const row3 = deskRow(ask, "sd-side-row", title2, go);
-    row3.createEl("strong", { text: title2 });
-    row3.createDiv({ cls: "sd-row-facts", text: detail });
-  };
-  const overlap = [...graph.modulesByConcept.values()].filter((modules) => modules.length > 1).length;
-  const touched = new Set(graph.edges.flatMap((edge) => [edge.from, edge.to]));
-  const concepts = graph.concepts.filter((concept) => concept.record);
-  question("What must I know first?", "Open a concept, then Path to it", () => {
-    if (host.state.lens !== "prerequisites") {
-      host.showConceptOverview(null, true);
-      return;
-    }
-    Object.assign(host.concepts, { browseAll: true, domain: null, visibleLimit: 30 });
-    host.render();
-  });
-  question("Where do modules overlap?", `${plural(overlap, "concept")} in two or more`, () => host.go({ concept: null, lens: "bridges" }));
-  question("What has no links yet?", `${concepts.filter((concept) => !touched.has(concept.id)).length} of ${concepts.length} concepts`, () => host.go({ concept: null, lens: "diagnostics" }));
-  question("Which records need care?", "Open Diagnostics", () => host.plugin.nav.openDiagnostics());
-  const maps = moduleMaps(host.plugin.store);
-  if (maps.length) {
-    const revise = sideGroup(side, "Revise a module");
-    for (const map of maps) {
-      const label = `${moduleName(host.plugin.store.get(map.moduleId))} module map`;
-      const row3 = deskRow(revise, "sd-side-row", `Open the ${label}`, () => openModuleMap(host, map.moduleId));
-      row3.createEl("strong", { text: label });
-      row3.createDiv({ cls: "sd-row-facts", text: moduleMapFacts(map) });
-    }
-  }
-}
-function renderMap(root, context) {
-  const { host, graph, map } = context;
-  renderAtlasIntro(root, host);
-  const layout = root.createDiv({ cls: "sd-atlas-layout" });
-  const sheet = layout.createDiv({ cls: "sd-sheet sd-map-sheet" });
-  renderViewTabs(sheet, host, "map");
-  const study = studyConcept(host);
-  const degree = (id) => graph.edges.filter((edge) => edge.from === id || edge.to === id).length;
-  const canvas = sheet.createDiv({ cls: "sd-map-canvas", attr: { role: "group", "aria-label": "Regions of your knowledge" } });
-  const placed = map.regions.filter((region) => REGION_PLACES[region.id]);
-  const centre = (region) => {
-    const place = concretePlace(region.id, region.concepts.length);
-    return { x: place.x + place.w / 2, y: place.y + place.h / 2 };
-  };
-  const doc = canvas.ownerDocument;
-  if (doc?.createElementNS) {
-    const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("class", "sd-map-lines");
-    svg.setAttribute("viewBox", "0 0 100 100");
-    svg.setAttribute("preserveAspectRatio", "none");
-    svg.setAttribute("aria-hidden", "true");
-    for (const link of map.links) {
-      const a = placed.find((region) => region.id === link.a), b = placed.find((region) => region.id === link.b);
-      if (!a || !b) continue;
-      const from = centre(a), to = centre(b);
-      const line = doc.createElementNS("http://www.w3.org/2000/svg", "line");
-      for (const [key, value] of Object.entries({ x1: from.x, y1: from.y, x2: to.x, y2: to.y })) line.setAttribute(key, String(value));
-      svg.append(line);
-    }
-    canvas.append(svg);
-  }
-  for (const region of placed) {
-    const place = concretePlace(region.id, region.concepts.length);
-    const card = canvas.createDiv({
-      cls: `sd-region${region.concepts.length ? "" : " is-empty"}`,
-      attr: {
-        "data-cover": coverFor(region.id),
-        "data-region": region.id,
-        style: `left:${place.x}%;top:${place.y}%;width:${place.w}%;height:${place.h}%`
-      }
-    });
-    const open = card.createEl("button", { cls: "sd-region-head is-clickable", attr: { type: "button", "aria-label": `Open region: ${region.title}, ${plural(region.concepts.length, "concept")}` } });
-    open.createEl("strong", { cls: "sd-heading", text: region.title });
-    open.createDiv({ cls: "sd-row-facts", text: region.linked ? `${plural(region.concepts.length, "concept")}, ${region.linked} linked` : `${plural(region.concepts.length, "concept")}, no links yet` });
-    open.addEventListener("click", () => chooseRegion(host, region.id));
-    const chips = card.createDiv({ cls: "sd-region-chips" });
-    const top = [...region.concepts].filter((id) => degree(id) > 0 && id !== study?.id).sort((a, b) => degree(b) - degree(a) || compareStrings(a, b)).slice(0, region.id === "machine-learning" ? 3 : 2);
-    for (const id of top) button(chips, conceptOf(graph, id).label, () => focus(host, id), "quiet").addClass("sd-chip-button");
-    if (study && region.concepts.includes(study.id)) {
-      const here = button(chips, `You are here: ${conceptOf(graph, study.id).label}`, () => focus(host, study.id), "quiet");
-      here.addClass("sd-chip-button");
-      here.addClass("is-here");
-    }
-  }
-  for (const link of map.links) {
-    const a = placed.find((region) => region.id === link.a), b = placed.find((region) => region.id === link.b);
-    if (!a || !b) continue;
-    const spot = gapMidpoint(concretePlace(a.id, a.concepts.length), concretePlace(b.id, b.concepts.length));
-    canvas.createDiv({
-      cls: "sd-map-badge",
-      text: plural(link.count, "link"),
-      attr: { style: `left:${spot.x}%;top:${spot.y}%` }
-    });
-  }
-  const other = map.regions.filter((region) => !REGION_PLACES[region.id] && region.concepts.length);
-  if (other.length) {
-    const rest = sheet.createDiv({ cls: "sd-map-rest" });
-    for (const region of other) {
-      const row3 = deskRow(rest, "sd-ungrouped", `Open ${region.title}`, () => chooseRegion(host, region.id));
-      row3.createEl("strong", { text: region.title });
-      row3.createSpan({ cls: "sd-row-facts", text: region.id === UNGROUPED ? `${plural(region.concepts.length, "concept")}, no linked note` : plural(region.concepts.length, "concept") });
-      chevron(row3);
-    }
-  }
-  sheet.createDiv({ cls: "sd-row-facts sd-map-foot", text: "Size shows how many concepts. Lines count authored links between regions. A concept is placed where most of its notes live, and it can have notes in more than one region. Nothing here measures what you know." });
-  renderSideColumn(layout, context);
-}
-function renderRegion(root, context, region) {
-  const { host, graph, map } = context;
-  const tools = pageHead(root, region.title, `${plural(region.concepts.length, "concept")}. Read left to right: what you need first, then what it leads to.`);
-  renderSearch2(tools, host, "Find in this region");
-  const layout = root.createDiv({ cls: "sd-atlas-layout is-wide" });
-  const sheet = layout.createDiv({ cls: "sd-sheet sd-region-sheet" });
-  const order = studyOrderLayout(region.concepts, graph);
-  if (!order.placed.length) {
-    sheet.createDiv({ cls: "sd-empty-state", text: "No preparation links are recorded in this region yet. That is a gap in the records, not a verdict on the ideas." });
-  } else {
-    sheet.createDiv({ cls: "sd-row-facts", text: "Arrow: study order. Pale: from another region." });
-    const scroll = sheet.createDiv({ cls: "sd-order-scroll" });
-    const canvas = scroll.createDiv({ cls: "sd-order-canvas", attr: { style: `--sd-columns:${order.columns}` } });
-    const labels = canvas.createDiv({ cls: "sd-order-labels" });
-    for (let column = 0; column < order.columns; column += 1) {
-      labels.createDiv({
-        cls: "sd-eyebrow",
-        text: column === order.beyond ? "Beyond this region" : column === 0 ? "First" : column === 1 ? "Then" : column === 2 ? "Leads to" : "After that"
-      });
-    }
-    const grid = canvas.createDiv({ cls: "sd-order-grid", attr: { role: "group", "aria-label": "Concepts in study order" } });
-    enableButtonGroupKeyboardNavigation(grid, "vertical");
-    const selected = host.concepts.selected;
-    for (const node of order.placed) {
-      const control = grid.createEl("button", {
-        cls: `sd-node is-clickable${node.visiting ? " is-visiting" : ""}${node.id === selected ? " is-selected" : ""}`,
-        text: conceptOf(graph, node.id).label,
-        attr: {
-          type: "button",
-          "data-atlas-concept": node.id,
-          "aria-pressed": String(node.id === selected),
-          style: `grid-column:${node.column + 1};grid-row:${node.row + 1}`
-        }
-      });
-      control.addEventListener("click", () => {
-        host.concepts.selected = node.id;
-        host.render();
-      });
-    }
-    mountEdges(canvas, host, graph, order.edges, (edge) => edge.studyFrom === selected || edge.studyTo === selected);
-  }
-  if (order.unlinked.length) {
-    const rest = sheet.createDiv({ cls: "sd-unlinked" });
-    rest.createEl("strong", { text: `${order.unlinked.length} ${order.placed.length ? "more " : ""}in this region ${order.unlinked.length === 1 ? "has" : "have"} no preparation links` });
-    const names = rest.createDiv({ cls: "sd-unlinked-names" });
-    for (const id of order.unlinked) textLink(names, conceptOf(graph, id).label, () => focus(host, id));
-  }
-  renderRegionSide(layout, context, region, map);
-}
-function renderRegionSide(layout, context, region, map) {
-  const { host, graph } = context;
-  const side = layout.createDiv({ cls: "sd-sheet sd-region-side" });
-  const id = host.concepts.selected;
-  if (id && graph.conceptById.get(id)) {
-    const before = (graph.prerequisiteEdges.get(id) ?? []).length;
-    const after = (graph.dependentEdges.get(id) ?? []).length;
-    const related = (graph.semanticEdges.get(id) ?? []).length;
-    side.createEl("h2", { cls: "sd-heading", text: conceptOf(graph, id).label });
-    side.createEl("p", { cls: "sd-note", text: [
-      before ? `Needs ${plural(before, "concept")} first.` : "Nothing recorded comes first.",
-      after ? `${plural(after, "concept")} build${after === 1 ? "s" : ""} on it.` : "Nothing recorded builds on it yet.",
-      related ? `${plural(related, "related link")}.` : ""
-    ].filter(Boolean).join(" ") });
-    button(side, "Focus on this", () => focus(host, id), "cta");
-    const known = buildConceptContext(host.plugin.store, id);
-    side.createDiv({ cls: "sd-row-facts", text: `${plural(known.notes.length, "note")} \xB7 ${plural(known.sources.length, "source")}` });
-  } else {
-    side.createEl("h2", { cls: "sd-heading", text: "Choose a concept" });
-    side.createEl("p", { cls: "sd-note", text: "Select one to see what it needs and what builds on it." });
-  }
-  const where = side.createDiv({ cls: "sd-where" });
-  where.createDiv({ cls: "sd-eyebrow", text: "Where you are" });
-  renderMiniMap(where, map, region.id);
-}
-function regionOfFor(context, id) {
-  const { host, map } = context;
-  const browse = host.concepts.domain;
-  if (browse && map.memberships.get(id)?.has(browse)) return browse;
-  return map.regionOf.get(id) ?? null;
-}
-function regionCrumb(context, id) {
-  const { host, map } = context;
-  const regionId = regionOfFor(context, id);
-  const region = map.regions.find((row3) => row3.id === regionId);
-  return region ? { label: region.title, go: () => host.showConceptOverview(region.id) } : null;
-}
-function conceptCard(parent, context, edge, id, focusId) {
-  const { host, graph, map } = context;
-  const card = parent.createEl("button", {
-    cls: "sd-node sd-focus-node is-clickable",
-    attr: { type: "button", "data-atlas-concept": id, "aria-label": `${relationPhrase(edge.type)}: ${conceptOf(graph, id).label}` }
-  });
-  card.createEl("strong", { text: conceptOf(graph, id).label });
-  const modules = shortModules(host, graph, id).join(" \xB7 ");
-  const elsewhere = map.regionOf.get(id) !== regionOfFor(context, focusId) ? map.regions.find((region) => region.id === map.regionOf.get(id))?.title : null;
-  const facts = [relationPhrase(edge.type), modules, elsewhere ? `from ${elsewhere}` : ""].filter(Boolean).join(" \xB7 ");
-  if (facts) card.createDiv({ cls: "sd-node-meta", text: facts });
-  card.addEventListener("click", () => focus(host, id));
-}
-function renderConcept(root, context, id) {
-  const { host, graph } = context;
-  const concept = conceptOf(graph, id);
-  const aliases = asStrings(concept.record?.aliases);
-  const modules = shortModules(host, graph, id).join(", ");
-  const tools = pageHead(root, concept.label, [aliases.length ? `Also called ${aliases.join(", ")}` : "", modules].filter(Boolean).join(" \xB7 ") || null);
-  const tabs = tools.createDiv({ cls: "los-filter-tabs", attr: { role: "group", "aria-label": "What to see about this concept" } });
-  enableButtonGroupKeyboardNavigation(tabs);
-  const lens = host.state.lens === "path" ? "path" : "connections";
-  for (const [key, label] of [["connections", "Connections"], ["path", "Path to it"]]) {
-    const control = button(tabs, label, () => {
-      if (key !== lens) host.go({ lens: key === "path" ? "path" : "prerequisites" });
-    }, "quiet");
-    control.addClass("los-filter-tab");
-    control.toggleClass("is-active", key === lens);
-    control.setAttr("aria-pressed", String(key === lens));
-  }
-  renderSearch2(tools, host, "Find a concept");
-  if (lens === "path") renderRoute(root, context, id);
-  else renderConnections2(root, context, id);
-}
-function renderConnections2(root, context, id) {
-  const { host, graph } = context;
-  const before = graph.prerequisiteEdges.get(id) ?? [];
-  const after = graph.dependentEdges.get(id) ?? [];
-  const semantic = graph.semanticEdges.get(id) ?? [];
-  const layout = root.createDiv({ cls: "sd-atlas-layout is-wide" });
-  const sheet = layout.createDiv({ cls: "sd-sheet sd-concept-sheet" });
-  if (!before.length && !after.length && !semantic.length) {
-    const gap = sheet.createDiv({ cls: "sd-empty-state" });
-    gap.createEl("h2", { cls: "sd-heading", text: "No links recorded for this concept" });
-    gap.createEl("p", { cls: "sd-reading", text: "That is a gap in your records, not a verdict on the idea. Its notes and sources are still here, and you can connect it to something you know." });
-    textLink(gap, "Connect this concept", () => {
-      host.editor = newDraft(id);
-      host.render();
-    });
-  } else {
-    const canvas = sheet.createDiv({ cls: "sd-focus-canvas" });
-    const lane = (title2) => {
-      const column = canvas.createDiv({ cls: "sd-focus-lane" });
-      column.createDiv({ cls: "sd-eyebrow", text: title2 });
-      return column;
-    };
-    const first = lane("You need first");
-    for (const edge of before) {
-      if (!edge.prerequisiteId) continue;
-      const need = first.createDiv({ cls: "sd-need" });
-      conceptCard(need, context, edge, edge.prerequisiteId, id);
-      if (edge.context) need.createDiv({ cls: "sd-need-why", text: edge.context });
-    }
-    if (!before.length) first.createDiv({ cls: "sd-node-gap", text: "Nothing recorded comes before this." });
-    const middle = lane("This concept");
-    const self = middle.createDiv({ cls: "sd-node sd-focus-node is-selected", attr: { "data-atlas-concept": id } });
-    self.createEl("strong", { text: conceptOf(graph, id).label });
-    const leads = lane("Leads to");
-    for (const edge of after) if (edge.dependentId) conceptCard(leads, context, edge, edge.dependentId, id);
-    if (!after.length) {
-      const gap = leads.createDiv({ cls: "sd-node-gap" });
-      gap.createEl("strong", { text: "Nothing recorded builds on this yet." });
-      gap.createDiv({ text: "That is the state of the notes, not a claim about the idea." });
-    }
-    mountEdges(canvas, host, graph, [...before, ...after]);
-    const related = sheet.createDiv({ cls: "sd-related" });
-    const head = related.createDiv({ cls: "sd-section-title" });
-    head.createEl("h2", { cls: "sd-heading", text: "Related, not an order" });
-    head.createSpan({ cls: "sd-row-facts", text: "These never change what comes first." });
-    if (!semantic.length) related.createEl("p", { cls: "sd-quiet", text: "No related ideas are recorded." });
-    for (const edge of semantic) {
-      const other = edge.from === id ? edge.to : edge.from;
-      const row3 = deskRow(related, "sd-related-row", `Open ${conceptOf(graph, other).label}`, () => focus(host, other));
-      row3.createSpan({ cls: "sd-related-kind", text: relationPhrase(edge.type) });
-      const copy = row3.createDiv({ cls: "sd-row-copy" });
-      copy.createEl("strong", { text: conceptOf(graph, other).label });
-      copy.createDiv({ cls: "sd-note", text: edge.context ?? "Authored without a rationale." });
-      chevron(row3);
-    }
-  }
-  if (host.editor) renderRelationEditor(sheet, host, graph, host.editor);
-  const foot = sheet.createDiv({ cls: "sd-focus-foot" });
-  const back = button(foot, "Back", () => host.conceptBack(), "tertiary");
-  back.disabled = !host.canConceptBack;
-  back.setAttrs({ "aria-label": "Back to previous concept", "data-los-tab": "concept-back" });
-  const forward = button(foot, "Forward", () => host.conceptForward(), "tertiary");
-  forward.disabled = !host.canConceptForward;
-  forward.setAttrs({ "aria-label": "Forward to next concept", "data-los-tab": "concept-forward" });
-  renderConceptSide(layout, context, id);
-}
-function renderConceptSide(layout, context, id) {
-  const { host, graph, map } = context;
-  const { store, nav } = host.plugin;
-  const side = layout.createDiv({ cls: "sd-sheet sd-concept-side" });
-  const known = buildConceptContext(store, id);
-  const reference = known.notes.find((note2) => asString(note2.role) === "reference") ?? null;
-  if (reference) button(side, "Open the reference", () => nav.openRecord(reference), "cta");
-  const list3 = (title2, rows2, visible = 3) => {
-    const group2 = sideGroup(side, `${title2} \xB7 ${rows2.length}`);
-    if (!rows2.length) group2.createEl("p", { cls: "sd-row-facts", text: "None recorded." });
-    for (const row3 of rows2.slice(0, visible)) textLink(group2, row3.label, row3.open).addClass("sd-link-quiet");
-    if (rows2.length > visible) {
-      const more = group2.createEl("details", { cls: "sd-all" });
-      more.createEl("summary", { cls: "sd-link-summary", text: `All ${rows2.length}` });
-      for (const row3 of rows2.slice(visible)) textLink(more, row3.label, row3.open).addClass("sd-link-quiet");
-    }
-  };
-  const units = store.of("unit").filter((unit) => {
-    const map2 = asString(unit.id) ? store.mapForUnit(asString(unit.id)) : null;
-    return (Array.isArray(map2?.stages) ? map2.stages : []).some((stage) => asStrings(stage.concepts).includes(id));
-  });
-  list3("Where you meet it", units.map((unit) => ({
-    label: unitLabel(unit, store.get(asString(unit.module_id) ?? "")).title,
-    open: () => nav.openUnit(asString(unit.id) ?? "")
-  })));
-  renderModuleSignposts(side, context, id, units);
-  list3("Notes", known.notes.map((note2) => ({ label: asLabel(note2), open: () => nav.openRecord(note2) })));
-  list3("Sources", known.sources.map((source) => ({ label: asLabel(source), open: () => nav.openSourceDetail(asString(source.id) ?? "") })));
-  const where = side.createDiv({ cls: "sd-where" });
-  where.createDiv({ cls: "sd-eyebrow", text: "Where you are" });
-  renderMiniMap(where, map, map.regionOf.get(id) ?? null);
-  const view = neighbourhood(graph, id, { depth: host.state.depth, includeSemanticNeighbours: true });
-  renderInspector2(disclosure(side, "Where each link comes from, and questions", "sd-side-disclosure"), host, graph, view);
-  renderOutline(disclosure(side, "Full text outline", "sd-side-disclosure"), host, graph, view);
-  if (!host.editor) textLink(side, "Connect this concept", () => {
-    host.editor = newDraft(id);
-    host.render();
-  });
-}
-function renderModuleSignposts(side, context, id, units) {
-  const { host, graph } = context;
-  const { store } = host.plugin;
-  const teaches = (unitId) => {
-    const plan2 = store.mapForUnit(unitId);
-    return (Array.isArray(plan2?.stages) ? plan2.stages : []).some((stage) => asStrings(stage.concepts).includes(id));
-  };
-  const moduleIds = [.../* @__PURE__ */ new Set([
-    ...modulesFor(graph, id).map((module2) => module2.id),
-    ...units.map((unit) => asString(unit.module_id)).filter((moduleId) => Boolean(moduleId))
-  ])];
-  const maps = moduleIds.map((moduleId) => moduleMap(store, moduleId)).filter((map) => map !== null);
-  if (!maps.length) return;
-  const group2 = sideGroup(side, "See it in its module");
-  for (const map of maps) {
-    const row3 = map.rows.find((entry) => teaches(entry.unit.id)) ?? null;
-    const label = `${moduleName(host.plugin.store.get(map.moduleId))} module map`;
-    const position = row3 ? map.rows.indexOf(row3) + 1 : 0;
-    const where = !row3 ? "" : !row3.label.number ? row3.label.title : Number(row3.label.number) === position ? `${row3.label.place} of ${map.rows.length}` : row3.label.place;
-    const link = deskRow(group2, "sd-side-row sd-signpost", `Open the ${label}`, () => openModuleMap(host, map.moduleId, row3?.unit.id ?? null));
-    link.createEl("strong", { text: label });
-    link.createDiv({ cls: "sd-row-facts", text: [where, `all ${map.ideas} ideas, one row per lecture`].filter(Boolean).join(" \xB7 ") });
-  }
-}
-function renderRoute(root, context, id) {
-  const { host, graph, map } = context;
-  const { store } = host.plugin;
-  const path = strictPath(graph, id);
-  if (!path.ok) {
-    renderPath(root.createDiv({ cls: "sd-sheet" }), host, graph, id);
-    return;
-  }
-  const stops = path.layers.flat();
-  const line = root.createDiv({ cls: "sd-sheet sd-route-line" });
-  const track = line.createDiv({ cls: "sd-route-track", attr: { role: "list", "aria-label": `The route to ${conceptOf(graph, id).label}` } });
-  stops.forEach((stop) => {
-    const item = track.createDiv({ cls: `sd-route-point${stop.id === id ? " is-end" : ""}`, attr: { role: "listitem" } });
-    item.createSpan({ cls: "sd-route-dot", attr: { "aria-hidden": "true" } });
-    const open = item.createEl("button", { cls: "sd-route-name is-clickable", text: stop.label, attr: { type: "button" } });
-    open.addEventListener("click", () => host.go({ concept: stop.id, lens: "path" }));
-    const notes = linkedConceptNotes(store, stop.id).length;
-    item.createDiv({ cls: "sd-row-facts", text: [plural(notes, "note"), shortModules(host, graph, stop.id).join(", ")].filter(Boolean).join(" \xB7 ") });
-  });
-  const layout = root.createDiv({ cls: "sd-atlas-layout is-wide" });
-  const sheet = layout.createDiv({ cls: "sd-sheet" });
-  sheet.createEl("h2", { cls: "sd-heading", text: "Where to study each stop" });
-  if (stops.length === 1) sheet.createEl("p", { cls: "sd-quiet", text: "Nothing is recorded as coming before this concept, so the route is this one stop." });
-  for (const stop of stops) {
-    const row3 = deskRow(sheet, "sd-study-row", `Open ${stop.label}`, () => focus(host, stop.id));
-    row3.createEl("strong", { text: stop.label });
-    const units = store.of("unit").filter((unit) => {
-      const unitMap = asString(unit.id) ? store.mapForUnit(asString(unit.id)) : null;
-      return (Array.isArray(unitMap?.stages) ? unitMap.stages : []).some((stage) => asStrings(stage.concepts).includes(stop.id));
-    });
-    row3.createSpan({ cls: "sd-row-next", text: units.slice(0, 2).map((unit) => {
-      const module2 = store.get(asString(unit.module_id) ?? "");
-      return unitLabel(unit, module2).place;
-    }).join(" \xB7 ") || "No stage names it yet" });
-    chevron(row3);
-  }
-  const side = layout.createDiv({ cls: "sd-sheet sd-concept-side" });
-  side.createEl("h2", { cls: "sd-heading", text: "About this route" });
-  side.createEl("p", { cls: "sd-note", text: "This is the order your notes record. It shows what prepares what. It does not know what you have already understood." });
-  side.createEl("p", { cls: "sd-note", text: "Links that say \u201Crelated\u201D or \u201Ccontrasts with\u201D never join a route." });
-  renderMiniMap(side, map, map.regionOf.get(id) ?? null);
-  button(side, `Open ${conceptOf(graph, id).label}`, () => focus(host, id), "cta");
-}
-function renderList2(root, context) {
-  const { host, graph, map } = context;
-  renderAtlasIntro(root, host);
-  const layout = root.createDiv({ cls: "sd-atlas-layout" });
-  const sheet = layout.createDiv({ cls: "sd-sheet" });
-  renderViewTabs(sheet, host, "list");
-  const rows2 = graph.concepts.filter((concept) => concept.record);
-  const shown = rows2.slice(0, host.concepts.visibleLimit);
-  sheet.createDiv({ cls: "sd-row-facts", attr: { role: "status" }, text: `${shown.length} of ${plural(rows2.length, "concept")}, in title order` });
-  const list3 = sheet.createDiv({ cls: "sd-concept-list", attr: { role: "group", "aria-label": "Concepts" } });
-  enableButtonGroupKeyboardNavigation(list3, "vertical");
-  for (const concept of shown) {
-    const row3 = deskRow(list3, "sd-study-row", `Open ${concept.label}`, () => focus(host, concept.id));
-    row3.createEl("strong", { text: concept.label });
-    const region = map.regions.find((entry) => entry.id === map.regionOf.get(concept.id));
-    const links = graph.edges.filter((edge) => edge.from === concept.id || edge.to === concept.id).length;
-    row3.createSpan({ cls: "sd-row-next", text: [region?.title, plural(linkedConceptNotes(host.plugin.store, concept.id).length, "note"), links ? plural(links, "link") : "no links yet"].filter(Boolean).join(" \xB7 ") });
-    chevron(row3);
-  }
-  if (shown.length < rows2.length) {
-    button(sheet, `Show more \xB7 ${rows2.length - shown.length} remaining`, () => {
-      host.concepts.visibleLimit += 30;
-      host.render();
-    }, "quiet");
-  }
-  renderSideColumn(layout, context);
-}
-var overlapSelection = /* @__PURE__ */ new WeakMap();
-function renderOverlap(root, context) {
-  const { host, graph } = context;
-  renderAtlasIntro(root, host);
-  const layout = root.createDiv({ cls: "sd-atlas-layout" });
-  const sheet = layout.createDiv({ cls: "sd-sheet" });
-  renderViewTabs(sheet, host, "bridges");
-  sheet.createDiv({ cls: "sd-row-facts", text: "How many concepts two modules share. It says where a concept is taught, never that one module depends on another." });
-  const modules = graph.modules.filter((module2) => module2.conceptCount > 0);
-  const shared = moduleOverlap(graph);
-  const peak = Math.max(1, ...[...shared.values()].map((rows2) => rows2.length));
-  const selected = overlapSelection.get(host) ?? null;
-  const scroll = sheet.createDiv({ cls: "sd-grid-scroll" });
-  const table = scroll.createEl("table", { cls: "sd-overlap" });
-  const head = table.createEl("thead").createEl("tr");
-  head.createEl("th", { attr: { scope: "col" }, cls: "sd-grid-corner", text: "Module" });
-  for (const module2 of modules) head.createEl("th", { attr: { scope: "col", title: module2.label }, text: shortModule(host, module2.id) });
-  const body = table.createEl("tbody");
-  for (const row3 of modules) {
-    const tr = body.createEl("tr");
-    tr.createEl("th", { attr: { scope: "row", title: row3.label }, text: shortModule(host, row3.id) });
-    for (const column of modules) {
-      const td = tr.createEl("td");
-      if (row3.id === column.id) {
-        td.addClass("is-self");
-        continue;
-      }
-      const key = overlapKey(row3.id, column.id);
-      const rows2 = shared.get(key) ?? [];
-      if (!rows2.length) {
-        td.createSpan({ cls: "los-sr-only", text: "None shared" });
-        continue;
-      }
-      const cell = td.createEl("button", {
-        cls: `sd-overlap-cell is-clickable${selected === key ? " is-selected" : ""}`,
-        text: String(rows2.length),
-        attr: {
-          type: "button",
-          "aria-label": `${row3.label} and ${column.label} share ${plural(rows2.length, "concept")}`,
-          "aria-pressed": String(selected === key),
-          style: `--sd-share:${Math.round(12 + rows2.length / peak * 48)}%`
-        }
-      });
-      cell.addEventListener("click", () => {
-        overlapSelection.set(host, key);
-        host.render();
-      });
-    }
-  }
-  if (selected) {
-    const [a, b] = selected.split("\0");
-    const label = (id) => id ? shortModule(host, id) : "";
-    const rows2 = shared.get(selected) ?? [];
-    sheet.createEl("h2", { cls: "sd-heading", text: `${label(a)} and ${label(b)} \xB7 ${plural(rows2.length, "shared concept")}` });
-    for (const id of rows2) {
-      const row3 = deskRow(sheet, "sd-study-row", `Open ${conceptOf(graph, id).label}`, () => focus(host, id));
-      row3.createEl("strong", { text: conceptOf(graph, id).label });
-      chevron(row3);
-    }
-  } else {
-    sheet.createEl("p", { cls: "sd-quiet", text: "Choose a number to list the concepts behind it." });
-  }
-  renderSideColumn(layout, context);
-}
-function renderDeskAtlas(host) {
-  const lens = host.state.lens;
-  if (lens === "domains" || lens === "diagnostics") return false;
-  const graph = buildAtlasGraph(host.plugin.store);
-  if (!graph.concepts.length) return false;
-  const map = buildConceptMap(readDomainCatalog(host.plugin.store), host.plugin.store.of("note"), graph);
-  const context = { host, graph, map };
-  const conceptId = host.state.concept;
-  const glance = host.state.module && !conceptId && lens !== "bridges" ? moduleMap(host.plugin.store, host.state.module) : null;
-  const root = deskPage(host.contentEl, "atlas", host.plugin.store);
-  if (glance) {
-    deskHead(root, [{ label: "Atlas", go: () => leaveModuleMap(host) }, { label: moduleName(host.plugin.store.get(glance.moduleId)) }], host);
-    renderModuleMap(root, host, glance);
-    return true;
-  }
-  const atlas = { label: "Atlas", go: () => host.showConceptOverview(null) };
-  if (conceptId && lens !== "bridges") {
-    const crumb = regionCrumb(context, conceptId);
-    deskHead(root, [atlas, ...crumb ? [crumb] : [], { label: conceptOf(graph, conceptId).label }], host);
-    renderConcept(root, context, conceptId);
-    return true;
-  }
-  if (lens === "bridges") {
-    deskHead(root, [atlas, { label: "Across modules" }], host);
-    renderOverlap(root, context);
-    return true;
-  }
-  const region = map.regions.find((row3) => row3.id === host.concepts.domain);
-  if (region) {
-    const browse = browsingRegion(map, graph, region.id) ?? region;
-    deskHead(root, [atlas, { label: browse.title }], host);
-    renderRegion(root, context, browse);
-    return true;
-  }
-  if (host.concepts.browseAll) {
-    deskHead(root, [atlas, { label: "All concepts" }], host);
-    renderList2(root, context);
-    return true;
-  }
-  deskHead(root, [{ label: "Atlas" }], host);
-  renderMap(root, context);
-  return true;
-}
-
-// src/features/home/focus.ts
-function renderContinue(view, root) {
-  const {
-    pointer: pointer2,
-    unit,
-    map,
-    stage,
-    moduleId: unitModuleId,
-    module: module2
-  } = resolveResumeTarget(view.plugin.store);
-  const wrap = root.createDiv({
-    cls: "los-continue"
-  });
-  if (!unit || !stage || !pointer2.unit_id || !pointer2.stage_id) {
-    empty(
-      wrap,
-      "Nothing to resume yet",
-      "Open Learn and choose a module or project.",
-      "Open Learn",
-      () => view.plugin.nav.openLearn()
-    );
-    return;
-  }
-  wrap.createDiv({
-    cls: "los-kicker",
-    text: "Continue learning"
-  });
-  const body = wrap.createDiv({
-    cls: "los-continue-body"
-  });
-  const copy = body.createDiv({
-    cls: "los-continue-copy"
-  });
-  copy.createDiv({
-    cls: "los-continue-module",
-    text: `${module2 ? asLabel(module2) : unitModuleId ?? "Unknown module"} \xB7 ${asLabel(unit)}`
-  });
-  copy.createEl("h2", {
-    text: asLabel(stage)
-  });
-  const stages = asRecords(map?.stages);
-  const position = stages.findIndex(
-    (row3) => asString(row3.id) === pointer2.stage_id
-  );
-  const meta = copy.createDiv({
-    cls: "los-continue-meta"
-  });
-  if (stages.length) {
-    meta.createSpan({
-      text: `Stage ${position >= 0 ? position + 1 : 1} of ${stages.length}`
-    });
-  }
-  const estimate = asText(
-    stage.estimate_minutes
-  );
-  if (estimate) {
-    meta.createSpan({
-      text: `${estimate} min planned`
-    });
-  }
-  copy.createDiv({
-    cls: "los-continue-context",
-    text: "Your selected stage, exact resources, and open working state are kept together."
-  });
-  const actions = body.createDiv({
-    cls: "los-actions"
-  });
-  button(
-    actions,
-    "Continue session",
-    () => view.plugin.nav.openUnit(
-      pointer2.unit_id,
-      pointer2.stage_id
-    ),
-    "cta"
-  );
-}
-function todayItems(view) {
-  const items = [];
-  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const upcoming = view.plugin.store.rows("academic_deadlines").filter(
-    (row3) => {
-      const boundary = asString(row3.end_date) ?? asString(
-        row3.start_date
-      ) ?? "";
-      return boundary >= today;
-    }
-  ).sort(
-    (left, right) => {
-      const leftDate = asString(
-        left.start_date
-      ) ?? asString(
-        left.end_date
-      ) ?? "";
-      const rightDate = asString(
-        right.start_date
-      ) ?? asString(
-        right.end_date
-      ) ?? "";
-      return compareStrings(
-        leftDate,
-        rightDate
-      );
-    }
-  );
-  for (const deadline of upcoming.slice(0, 2)) {
-    const moduleId = asString(deadline.module_id) ?? firstProjectedModuleId(
-      deadline.modules
-    );
-    const kind = asString(deadline.kind);
-    const label = asString(deadline.label);
-    const title2 = kind === "registration-window" ? label ?? asLabel(deadline) : asString(deadline.title) ?? label ?? asLabel(deadline);
-    const startDate = asString(deadline.start_date);
-    const endDate = asString(deadline.end_date);
-    const date = endDate && startDate && endDate !== startDate ? `${startDate} \u2192 ${endDate}` : startDate ?? endDate ?? "Date pending";
-    const registrationState = asString(
-      deadline.registration_state
-    );
-    const registrationDetail = registrationState && registrationState !== "registered" ? ` \xB7 ${registrationState}` : "";
-    items.push({
-      title: title2,
-      detail: `${date}${registrationDetail}`,
-      actionLabel: moduleId ? "Open module" : "",
-      action: moduleId ? () => view.plugin.nav.openModule(
-        moduleId
-      ) : null
-    });
-  }
-  const reviewItems = view.plugin.store.reviewItems();
-  const reviewCount = reviewItems.length;
-  if (reviewCount) {
-    const categories = /* @__PURE__ */ new Map();
-    for (const item of reviewItems) {
-      const category = asString(item.category) ?? "other";
-      categories.set(
-        category,
-        (categories.get(category) ?? 0) + 1
-      );
-    }
-    const details = [...categories.entries()].map(
-      ([category, count4]) => `${count4} ${category.replaceAll("-", " ")}`
-    );
-    items.push({
-      title: `${reviewCount} decision${reviewCount === 1 ? "" : "s"} waiting`,
-      detail: details.join(" \xB7 "),
-      actionLabel: "Open review",
-      action: () => view.plugin.nav.openReview()
-    });
-  }
-  return items;
-}
-function renderToday(view, root) {
-  const sectionEl = section(
-    root,
-    "Today",
-    "Only items likely to affect the next decision."
-  );
-  const items = todayItems(view);
-  if (!items.length) {
-    empty(
-      sectionEl,
-      "Nothing time-sensitive",
-      "Continue the active learning session when you are ready."
-    );
-    return;
-  }
-  const list3 = sectionEl.createDiv({
-    cls: "los-home-list"
-  });
-  for (const item of items.slice(0, 4)) {
-    view.renderHomeRow(
-      list3,
-      item
-    );
-  }
-}
-
-// src/features/stage-resources.ts
-var TRIAGE_HEADING = {
-  "required-now": "Do this",
-  "helpful-now": "If you get stuck",
-  deferred: "Depth \u2014 not now",
-  "reference-only": "Reference \u2014 preserved, not reading for this stage"
-};
-function triageSummary(resources) {
-  const count4 = (rank) => resources.filter(
-    (resource) => resource.scopeTriage === rank
-  ).length;
-  const required2 = count4("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
-  const stuck = count4("helpful-now");
-  const preserved = count4("deferred") + count4("reference-only");
-  const parts = [];
-  if (required2) parts.push(`${required2} required now`);
-  if (stuck) parts.push(`${stuck} if stuck`);
-  if (preserved) parts.push(`${preserved} for reference`);
-  return parts.join(" \xB7 ");
-}
-function currentWorkResource(resources) {
-  return resources.find((resource) => resource.isEntry === true) ?? null;
-}
-var MATERIAL_TYPE_ICON = {
-  "course-material": "presentation",
-  exercise: "pencil-line",
-  solutions: "clipboard-check",
-  exam: "graduation-cap",
-  book: "book-open",
-  paper: "newspaper",
-  video: "play",
-  website: "globe",
-  documentation: "file-text",
-  code: "code",
-  course: "library",
-  article: "file-text"
-};
-function normaliseMaterialType(declared) {
-  switch (declared) {
-    case "course-material":
-      return "course-material";
-    case "exercise":
-    case "practice":
-    case "practise":
-    case "problem-set":
-    case "homework":
-    case "quiz":
-      return "exercise";
-    case "solutions":
-      return "solutions";
-    case "exam":
-      return "exam";
-    case "book":
-    case "textbook":
-      return "book";
-    case "paper":
-      return "paper";
-    case "video":
-      return "video";
-    case "website":
-    case "web":
-    case "web-page":
-    case "webpage":
-      return "website";
-    case "documentation":
-    case "docs":
-      return "documentation";
-    case "code":
-      return "code";
-    case "course":
-      return "course";
-    default:
-      return "article";
-  }
-}
-function materialTypeIcon(type) {
-  return MATERIAL_TYPE_ICON[normaliseMaterialType((type ?? "").toLowerCase())];
-}
-var angleDetailSequence = 0;
-function whyThisOne(copy, detailText, fillFoot) {
-  const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
-  const detail = copy.createDiv({
-    cls: "los-resource-angle-detail",
-    text: detailText,
-    attr: { hidden: "", id: detailId }
-  });
-  const foot = copy.createDiv({ cls: "los-resource-foot" });
-  fillFoot?.(foot);
-  let expanded = false;
-  const toggle = button(
-    foot,
-    "\u25B8 Why this one",
-    () => {
-      expanded = !expanded;
-      toggle.setText(`${expanded ? "\u25BE" : "\u25B8"} Why this one`);
-      toggle.setAttr("aria-expanded", String(expanded));
-      if (expanded) detail.removeAttribute("hidden");
-      else detail.setAttr("hidden", "");
-    },
-    "quiet"
-  );
-  toggle.addClass("los-resource-angle-trigger");
-  toggle.setAttrs({ "aria-controls": detailId, "aria-expanded": "false" });
-}
-function renderMaterialCautions(parent, record7) {
-  for (const asset of Array.isArray(record7.requires_assets) ? record7.requires_assets : []) {
-    if (!isRecord(asset) || typeof asset.name !== "string") continue;
-    const part2 = asText(asset.needed_for);
-    const origin = asText(asset.obtain_from);
-    parent.createDiv({ cls: "los-micro", text: `${asset.material_uri ? "Required file" : "Not registered locally"}: ${asset.name}` + (part2 ? ` \u2014 needed for ${part2}` : "") + (origin ? `. Obtain from ${origin}.` : ".") });
-  }
-  if (Array.isArray(record7.exposes_solutions_for) && record7.exposes_solutions_for.length) {
-    parent.createDiv({ cls: "los-micro", text: "Contains related task solutions. Read after your attempt, and report prior exposure before using those tasks as independent evidence." });
-  }
-}
-
-// src/designs/study-desk/unit-mode.ts
-var modesByHost = /* @__PURE__ */ new WeakMap();
-function modesFor(host) {
-  let modes = modesByHost.get(host);
-  if (!modes) {
-    modes = /* @__PURE__ */ new Map();
-    modesByHost.set(host, modes);
-  }
-  return modes;
-}
-function unitMode(host, unitId) {
-  return modesByHost.get(host)?.get(unitId) ?? "plan";
-}
-function setUnitMode(host, unitId, mode) {
-  modesFor(host).set(unitId, mode);
 }
 
 // src/features/home/study-work.ts
@@ -42485,18 +41506,18 @@ var MaterialComparisonModal = class extends import_obsidian10.Modal {
       }
       for (const type of groupMaterialsByType(visible, (row3) => row3.option.format)) {
         const typeKey = `${this.group}|${type.key}`;
-        const section3 = results.createEl("details", {
+        const section4 = results.createEl("details", {
           cls: "los-material-type-group",
           attr: { "data-material-type": type.key }
         });
-        typeSections.push(section3);
-        section3.open = Boolean(this.query.trim()) || this.expandedTypes.has(typeKey);
-        const summary = section3.createEl("summary", { cls: "los-material-type-summary" });
+        typeSections.push(section4);
+        section4.open = Boolean(this.query.trim()) || this.expandedTypes.has(typeKey);
+        const summary = section4.createEl("summary", { cls: "los-material-type-summary" });
         icon(summary.createSpan({ cls: "los-material-type-icon" }), type.icon);
         summary.createSpan({ cls: "los-material-type-label", text: type.label });
         summary.createSpan({ cls: "los-material-type-count", text: String(type.entries.length) });
         icon(summary.createSpan({ cls: "los-disclosure-chevron" }), "chevron-right");
-        const list3 = section3.createDiv({ cls: "los-material-type-list" });
+        const list3 = section4.createDiv({ cls: "los-material-type-list" });
         for (const { owner, option } of type.entries) {
           const rowKey = `${owner.id}|${option.routeId}`;
           const row3 = list3.createEl("details", { cls: "los-material-list-row", attr: { "data-route-id": option.routeId } });
@@ -42533,9 +41554,9 @@ var MaterialComparisonModal = class extends import_obsidian10.Modal {
             } else this.expandedMaterials.delete(rowKey);
           });
         }
-        section3.addEventListener("toggle", () => {
-          if (this.query.trim() || section3.isConnected === false || !typeSections.includes(section3)) return;
-          if (section3.open) this.expandedTypes.add(typeKey);
+        section4.addEventListener("toggle", () => {
+          if (this.query.trim() || section4.isConnected === false || !typeSections.includes(section4)) return;
+          if (section4.open) this.expandedTypes.add(typeKey);
           else this.expandedTypes.delete(typeKey);
         });
       }
@@ -43760,7 +42781,7 @@ function renderGroup(sheet, group2, context, state, shown, narrowed) {
   const whole = !narrowed || state.whole.has(key);
   const explicit = state.folded.get(key);
   const folded = explicit ?? Boolean(narrowed && !matches3.length && !whole);
-  const section3 = sheet.createDiv({ cls: "sd-purpose", attr: { "data-purpose": key, id: purposeAnchor(context.unit.id, key) } });
+  const section4 = sheet.createDiv({ cls: "sd-purpose", attr: { "data-purpose": key, id: purposeAnchor(context.unit.id, key) } });
   const best = total > 1 ? " Best first." : "";
   let counted = String(total);
   let says = `${group2.purpose.says}${best}`;
@@ -43768,13 +42789,13 @@ function renderGroup(sheet, group2, context, state, shown, narrowed) {
     counted = matches3.length === total ? String(total) : `${matches3.length} of ${total}`;
     says = matches3.length ? matches3.length === total ? `All ${total} match ${matchWords(narrowed)}.${best}` : `${matches3.length} match ${matchWords(narrowed)}. The other ${total - matches3.length} stay one click away.${best}` : `No match for ${matchWords(narrowed)}. Open the group to see all of them.`;
   }
-  groupHead(section3, group2, folded, counted, says, () => {
+  groupHead(section4, group2, folded, counted, says, () => {
     if (folded && narrowed && !matches3.length) state.whole.add(key);
     state.folded.set(key, !folded);
     context.refresh();
   });
   if (folded) return;
-  const body = section3.createDiv({ cls: "sd-purpose-body" });
+  const body = section4.createDiv({ cls: "sd-purpose-body" });
   const include = (material) => whole || shown(material);
   if (group2.showTypes) {
     for (const type of group2.types) {
@@ -43837,9 +42858,9 @@ function renderSide(side, state, context, groups, layout, shown, narrowed, all, 
           state.folded.set(group2.purpose.key, false);
           context.refresh();
         }
-        const section3 = root.querySelector?.(`#${id}`);
-        if (!section3 || !section3.getBoundingClientRect || !root.scrollTo) return;
-        const top = root.scrollTop + section3.getBoundingClientRect().top - root.getBoundingClientRect().top - pinned.offsetHeight - 8;
+        const section4 = root.querySelector?.(`#${id}`);
+        if (!section4 || !section4.getBoundingClientRect || !root.scrollTo) return;
+        const top = root.scrollTop + section4.getBoundingClientRect().top - root.getBoundingClientRect().top - pinned.offsetHeight - 8;
         const reducedMotion = root.ownerDocument.defaultView?.matchMedia("(prefers-reduced-motion: reduce)").matches;
         root.scrollTo({ top, behavior: reducedMotion ? "instant" : "smooth" });
       });
@@ -44105,10 +43126,10 @@ function renderPlan(context, mode) {
     });
     return;
   }
-  renderRoute2(main, context);
+  renderRoute(main, context);
   renderPlanSide(layout, context);
 }
-function renderRoute2(parent, context) {
+function renderRoute(parent, context) {
   const { studyMap } = context;
   const route2 = parent.createDiv({ cls: "sd-route", attr: { role: "list", "aria-label": "Stages in order" } });
   const here = studyMap.currentStageId;
@@ -44364,623 +43385,10 @@ var studyDeskScreens = {
   learn: renderDeskLearn,
   moduleList: renderDeskModuleList,
   moduleDetail: renderDeskModuleDetail,
-  unit: renderDeskUnit,
-  atlas: renderDeskAtlas
+  unit: renderDeskUnit
+  // Atlas is the shared list/inspector renderer in every design (P4 step 29):
+  // no design-owned graph screen, so the base view draws it, restyled.
 };
-
-// src/designs/focus/parts.ts
-function page(root, name, store) {
-  root.onscroll = null;
-  root.empty();
-  root.addClass("los-root", "focus-root");
-  root.setAttr("data-focus-screen", name);
-  manifestFreshness(root, store);
-  return root;
-}
-function commandBar(root, crumbs, view) {
-  const bar = root.createDiv({ cls: "focus-commandbar" });
-  const location = bar.createDiv({ cls: "focus-location" });
-  const { leaf, plugin: { router } } = view;
-  const history = location.createDiv({ cls: "focus-history", attr: { role: "group", "aria-label": "Navigation history" } });
-  for (const [direction, label, glyph] of [["back", "Back", "chevron-left"], ["forward", "Forward", "chevron-right"]]) {
-    const control = history.createEl("button", { cls: "focus-history-btn", attr: { type: "button", "aria-label": label } });
-    control.disabled = !router.paneHistoryAvailable(leaf, direction);
-    icon(control.createSpan({ attr: { "aria-hidden": "true" } }), glyph);
-    control.addEventListener("click", () => {
-      void router.movePaneHistory(leaf, direction);
-    });
-  }
-  const trail = location.createEl("nav", { cls: "focus-crumbs", attr: { "aria-label": "Location" } });
-  crumbs.forEach((crumb, index) => {
-    if (index) icon(trail.createSpan({ cls: "focus-crumb-sep", attr: { "aria-hidden": "true" } }), "chevron-right");
-    const last = index === crumbs.length - 1;
-    if (crumb.go && !last) {
-      trail.createEl("button", { cls: "focus-crumb is-clickable", text: crumb.label, attr: { type: "button" } }).addEventListener("click", () => crumb.go?.());
-    } else {
-      trail.createSpan({ cls: `focus-crumb${last ? " is-current" : ""}`, text: crumb.label, ...last ? { attr: { "aria-current": "page" } } : {} });
-    }
-  });
-  return bar.createDiv({ cls: "focus-toolbar-actions" });
-}
-function heading(parent, eyebrow, title2, detail = "") {
-  if (eyebrow) parent.createDiv({ cls: "focus-eyebrow", text: eyebrow });
-  parent.createEl("h1", { cls: "focus-title", text: title2 });
-  if (detail) parent.createEl("p", { cls: "focus-lede", text: detail });
-}
-function row(parent, label, action) {
-  const target = parent.createEl("button", { cls: "focus-row is-clickable", attr: { type: "button", "aria-label": label } });
-  target.addEventListener("click", () => action());
-  return target;
-}
-function chevron2(parent, glyph = "chevron-right") {
-  icon(parent.createSpan({ cls: "focus-chevron", attr: { "aria-hidden": "true" } }), glyph);
-}
-function stageBars2(parent, total, done, current = null) {
-  const capped = Math.min(10, total);
-  const filled = capped && total ? done === total ? capped : Math.min(capped - 1, Math.round(capped * done / total)) : 0;
-  const active = current !== null && capped && total ? Math.min(capped - 1, Math.round(capped * current / total)) : null;
-  const bars = parent.createDiv({ cls: "focus-bars", attr: { "aria-hidden": "true" } });
-  for (let index = 0; index < capped; index += 1) {
-    const state = index === active ? "is-current" : index < filled ? "is-done" : "";
-    bars.createSpan({ cls: `focus-bar ${state}`.trim() });
-  }
-  return bars;
-}
-function progress(parent, complete, total) {
-  const wrap = parent.createDiv({ cls: "focus-progress" });
-  const bar = wrap.createEl("progress", { attr: { max: String(Math.max(total, 1)), value: String(complete), "aria-label": "Recorded study stages" } });
-  bar.value = complete;
-  bar.max = Math.max(total, 1);
-  wrap.createSpan({ cls: "focus-muted", text: `${complete} of ${total} stages complete` });
-}
-function moduleRow2(parent, store, module2, open) {
-  const target = row(parent, `Open module: ${asLabel(module2)}`, open);
-  const id = asString(module2.id) ?? "";
-  target.addClass("focus-module-row");
-  target.setAttrs({ "data-record-id": id, "data-cover": coverOf(module2) });
-  target.createSpan({ cls: "focus-spine", attr: { "aria-hidden": "true" } });
-  const copy = target.createDiv({ cls: "focus-row-copy" });
-  copy.createEl("strong", { text: asLabel(module2) });
-  const units = store.unitsFor(id);
-  const stages = units.flatMap((unit) => asRecords(store.mapForUnit(asString(unit.id) ?? "")?.stages));
-  const { done, total } = stageProgress(stages);
-  copy.createSpan({ cls: "focus-muted", text: moduleFacts(store, module2) });
-  if (total) stageBars2(target, total, done);
-  const isDone = Boolean(total && done === total);
-  const stateText = isDone ? "Done" : done ? `${done} of ${total} stages complete` : moduleState(store, module2) || "Open module";
-  target.createSpan({ cls: `focus-row-state${isDone ? " is-complete" : ""}`, text: stateText });
-  chevron2(target);
-  return target;
-}
-function textLink2(parent, label, go) {
-  const link = button(parent, label, go, "tertiary");
-  link.addClass("focus-link");
-  return link;
-}
-function sideCard(parent, title2, pill) {
-  const card = parent.createDiv({ cls: "focus-dock-card" });
-  const head = card.createDiv({ cls: "focus-section-head" });
-  head.createDiv({ cls: "focus-eyebrow", text: title2 });
-  if (pill) head.createSpan({ cls: `focus-pill${pill.tone ? ` is-${pill.tone}` : ""}`, text: pill.text });
-  return card;
-}
-
-// src/designs/focus/atlas.ts
-var landing2 = /* @__PURE__ */ new WeakMap();
-var overlapSelection2 = /* @__PURE__ */ new WeakMap();
-var revisionHeadings = 0;
-function focusConcept(host, id) {
-  host.go({ concept: id, lens: "prerequisites" });
-}
-function chooseRegion2(host, id) {
-  if (host.state.concept || host.state.lens !== "prerequisites") {
-    host.showConceptOverview(id);
-    return;
-  }
-  Object.assign(host.concepts, { domain: id, subdomain: null, selected: null, recentsOnly: false, browseAll: false, visibleLimit: 30 });
-  host.query = "";
-  host.render();
-}
-function openRevisionMap(host, moduleId, unitId = null) {
-  if (unitId) landing2.set(host, unitId);
-  else landing2.delete(host);
-  host.go({ concept: null, module: moduleId, lens: "prerequisites" });
-}
-function leaveRevisionMap(host) {
-  landing2.delete(host);
-  Object.assign(host.concepts, { domain: null, subdomain: null, browseAll: false, recentsOnly: false });
-  host.go({ concept: null, module: null, lens: "prerequisites" });
-}
-function renderSearchBox(parent, host, placeholder) {
-  const wrap = parent.createDiv({ cls: "focus-search-field" });
-  icon(wrap.createSpan({ attr: { "aria-hidden": "true" } }), "search");
-  const input = wrap.createEl("input", {
-    cls: "focus-search",
-    attr: { type: "search", placeholder, "aria-label": placeholder }
-  });
-  input.value = host.query;
-  const results = parent.createDiv({ cls: "focus-module-list", attr: { "aria-live": "polite" } });
-  const draw = () => {
-    results.empty();
-    const query = host.query.trim();
-    if (!query) return;
-    const hits = host.plugin.store.search(query, ["concept"]).slice(0, 8);
-    if (!hits.length) {
-      results.createDiv({ cls: "focus-muted", text: `No concept matches \u201C${query}\u201D.` });
-      return;
-    }
-    for (const record7 of hits) {
-      const id = asString(record7.id);
-      if (!id) continue;
-      const item = row(results, `Open ${asLabel(record7)}`, () => {
-        host.query = "";
-        focusConcept(host, id);
-      });
-      item.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: asLabel(record7) });
-      chevron2(item);
-    }
-  };
-  input.addEventListener("input", () => {
-    host.query = input.value;
-    draw();
-  });
-  draw();
-}
-function renderConceptFlowCard(parent, context, edge, otherId, focusId) {
-  const { host, graph } = context;
-  const concept = conceptOf(graph, otherId);
-  const label = `${concept.label} \u2014 ${relationPhrase(edge.type)}`;
-  const card = parent.createEl("button", {
-    cls: "focus-atlas-card is-clickable",
-    attr: { type: "button", "aria-label": label, "data-atlas-concept": otherId }
-  });
-  card.createEl("strong", { text: concept.label });
-  const modules = modulesFor(graph, otherId).map((mod) => moduleShort(host.plugin.store.get(mod.id))).join(", ");
-  const sub = [relationPhrase(edge.type), modules].filter(Boolean).join(" \xB7 ");
-  card.createSpan({ cls: "focus-muted", text: sub });
-  if (edge.from === focusId && edge.layer !== "strict") card.addClass("is-soft");
-  card.addEventListener("click", () => focusConcept(host, otherId));
-}
-function renderModuleSignposts2(side, context, id, units) {
-  const { host, graph } = context;
-  const { store } = host.plugin;
-  const teaches = (unitId) => {
-    const plan2 = store.mapForUnit(unitId);
-    return (Array.isArray(plan2?.stages) ? plan2.stages : []).some((stage) => asStrings(stage.concepts).includes(id));
-  };
-  const moduleIds = [.../* @__PURE__ */ new Set([
-    ...modulesFor(graph, id).map((module2) => module2.id),
-    ...units.map((unit) => asString(unit.module_id)).filter((moduleId) => Boolean(moduleId))
-  ])];
-  const maps = moduleIds.map((moduleId) => moduleMap(store, moduleId)).filter((m) => m !== null);
-  if (!maps.length) return;
-  const card = sideCard(side, "See it in its module");
-  card.addClass("is-signpost");
-  const list3 = card.createDiv({ cls: "focus-dock-list" });
-  for (const map of maps) {
-    const rowHit = map.rows.find((entry) => teaches(entry.unit.id)) ?? null;
-    const label = `${moduleName(store.get(map.moduleId))} module map`;
-    const pos = rowHit ? map.rows.indexOf(rowHit) + 1 : 0;
-    const where = !rowHit ? "" : !rowHit.label.number ? rowHit.label.title : Number(rowHit.label.number) === pos ? `${rowHit.label.place} of ${map.rows.length}` : rowHit.label.place;
-    const btn = list3.createEl("button", { cls: "focus-dock-item is-clickable", attr: { type: "button" } });
-    btn.createEl("strong", { text: label });
-    btn.createSpan({ cls: "focus-muted", text: [where, `all ${map.ideas} ideas, one row per lecture`].filter(Boolean).join(" \xB7 ") });
-    btn.addEventListener("click", () => openRevisionMap(host, map.moduleId, rowHit?.unit.id ?? null));
-  }
-}
-function renderConceptDetail(root, context, id) {
-  const { host, graph, map } = context;
-  const { store, nav } = host.plugin;
-  const concept = conceptOf(graph, id);
-  const aliases = asStrings(concept.record?.aliases);
-  const modules = modulesFor(graph, id).map((m) => moduleShort(store.get(m.id))).join(", ");
-  const body = root.createDiv({ cls: "focus-page" });
-  const head = body.createDiv({ cls: "focus-page-head" });
-  const copy = head.createDiv({ cls: "focus-heading-copy" });
-  heading(copy, "Concept", concept.label, [aliases.length ? `Also called ${aliases.join(", ")}` : "", modules].filter(Boolean).join(" \xB7 "));
-  const tools = body.createDiv({ cls: "focus-filters" });
-  const lens = host.state.lens === "path" ? "path" : "connections";
-  filterTabs(
-    tools,
-    "What to see about this concept",
-    [["connections", "Connections"], ["path", "Path to it"]],
-    lens,
-    (next) => {
-      if (next !== lens) host.go({ lens: next === "path" ? "path" : "prerequisites" });
-    }
-  );
-  renderSearchBox(tools, host, "Find a concept");
-  if (lens === "path") {
-    const path = strictPath(graph, id);
-    const sheet2 = body.createDiv({ cls: "focus-atlas-sheet" });
-    if (!path.ok) {
-      renderPath(sheet2, host, graph, id);
-      return;
-    }
-    const stops = path.layers.flat();
-    heading(sheet2, "Prerequisite route", `Path to ${concept.label}`, "Concepts in strict build order.");
-    const list3 = sheet2.createDiv({ cls: "focus-module-list" });
-    for (const [idx, stop] of stops.entries()) {
-      const target = row(list3, `Open ${stop.label}`, () => host.go({ concept: stop.id, lens: "path" }));
-      if (stop.id === id) target.addClass("is-current");
-      target.createSpan({ cls: "focus-stage-number focus-mono", text: String(idx + 1).padStart(2, "0") });
-      const rowCopy = target.createDiv({ cls: "focus-row-copy" });
-      rowCopy.createEl("strong", { text: stop.label });
-      const notes = linkedConceptNotes(store, stop.id).length;
-      rowCopy.createSpan({ cls: "focus-muted", text: `${plural(notes, "note")} \xB7 ${modulesFor(graph, stop.id).map((m) => moduleShort(store.get(m.id))).join(", ") || "No module"}` });
-      chevron2(target);
-    }
-    button(sheet2, `Inspect ${concept.label} connections`, () => focusConcept(host, id), "cta");
-    return;
-  }
-  const before = graph.prerequisiteEdges.get(id) ?? [];
-  const after = graph.dependentEdges.get(id) ?? [];
-  const semantic = graph.semanticEdges.get(id) ?? [];
-  const layout = body.createDiv({ cls: "focus-atlas-layout" });
-  const sheet = layout.createDiv({ cls: "focus-atlas-sheet" });
-  if (!before.length && !after.length && !semantic.length) {
-    const gap = sheet.createDiv({ cls: "focus-atlas-gap" });
-    gap.createEl("strong", { text: "No links recorded for this concept" });
-    gap.createEl("p", { cls: "focus-muted", text: "Its notes and sources are still available on the right, and you can connect it to another concept." });
-    button(gap, "Connect this concept", () => {
-      host.editor = newDraft(id);
-      host.render();
-    }, "quiet");
-  } else {
-    const flow = sheet.createDiv({ cls: "focus-atlas-flow" });
-    const lane = (eyebrow) => {
-      const col = flow.createDiv({ cls: "focus-atlas-lane" });
-      col.createDiv({ cls: "focus-eyebrow", text: eyebrow });
-      return col;
-    };
-    const first = lane("1. You need first");
-    for (const edge of before) {
-      if (!edge.prerequisiteId) continue;
-      const need = first.createDiv({ cls: "focus-need" });
-      renderConceptFlowCard(need, context, edge, edge.prerequisiteId, id);
-      if (edge.context) need.createDiv({ cls: "focus-need-why", text: edge.context });
-    }
-    if (!before.length) first.createDiv({ cls: "focus-atlas-gap", text: "Nothing recorded comes before this." });
-    const middle = lane("2. This concept");
-    const self = middle.createDiv({
-      cls: "focus-atlas-card is-selected",
-      attr: { "data-atlas-concept": id }
-    });
-    self.createEl("strong", { text: concept.label });
-    const region = map.regions.find((r) => r.id === map.regionOf.get(id));
-    if (region) self.createSpan({ cls: "focus-muted", text: region.title });
-    const leads = lane("3. Leads to");
-    for (const edge of after) {
-      if (edge.dependentId) renderConceptFlowCard(leads, context, edge, edge.dependentId, id);
-    }
-    if (!after.length) leads.createDiv({ cls: "focus-atlas-gap", text: "Nothing recorded builds on this yet." });
-    mountEdges(flow, host, graph, [...before, ...after]);
-    const related = sheet.createDiv({ cls: "focus-module-group" });
-    const relHead = related.createDiv({ cls: "focus-section-head" });
-    relHead.createDiv({ cls: "focus-eyebrow", text: "Related, not an order" });
-    relHead.createSpan({ cls: "focus-muted", text: "Semantic bridges never change prerequisites." });
-    if (!semantic.length) related.createEl("p", { cls: "focus-muted", text: "No related ideas are recorded." });
-    for (const edge of semantic) {
-      const other = edge.from === id ? edge.to : edge.from;
-      const item = row(related, `Open ${conceptOf(graph, other).label}`, () => focusConcept(host, other));
-      item.createSpan({ cls: "focus-pill", text: relationPhrase(edge.type) });
-      const rCopy = item.createDiv({ cls: "focus-row-copy" });
-      rCopy.createEl("strong", { text: conceptOf(graph, other).label });
-      rCopy.createSpan({ cls: "focus-muted", text: edge.context ?? "Authored without a rationale." });
-      chevron2(item);
-    }
-  }
-  if (host.editor) renderRelationEditor(sheet, host, graph, host.editor);
-  const foot = sheet.createDiv({ cls: "focus-section-head" });
-  const navBtns = foot.createDiv({ cls: "focus-nearby" });
-  const back = button(navBtns, "Back", () => host.conceptBack(), "quiet");
-  back.disabled = !host.canConceptBack;
-  const forward = button(navBtns, "Forward", () => host.conceptForward(), "quiet");
-  forward.disabled = !host.canConceptForward;
-  if (!host.editor) {
-    textLink2(foot, "Connect this concept", () => {
-      host.editor = newDraft(id);
-      host.render();
-    });
-  }
-  const side = layout.createDiv({ cls: "focus-home-dock" });
-  const known = buildConceptContext(store, id);
-  const reference = known.notes.find((note2) => asString(note2.role) === "reference") ?? null;
-  if (reference) button(side, "Open the reference", () => nav.openRecord(reference), "cta");
-  const units = store.of("unit").filter((unit) => {
-    const unitMap = asString(unit.id) ? store.mapForUnit(asString(unit.id)) : null;
-    return (Array.isArray(unitMap?.stages) ? unitMap.stages : []).some((stage) => asStrings(stage.concepts).includes(id));
-  });
-  const listCard = (title2, items) => {
-    const card = sideCard(side, `${title2} \xB7 ${items.length}`);
-    if (!items.length) {
-      card.createEl("p", { cls: "focus-muted", text: "None recorded." });
-      return;
-    }
-    for (const item of items.slice(0, 4)) textLink2(card, item.label, item.open);
-    if (items.length > 4) {
-      const more = disclosure(card, `All ${items.length}`);
-      for (const item of items.slice(4)) textLink2(more, item.label, item.open);
-    }
-  };
-  listCard("Where you meet it", units.map((unit) => ({
-    label: unitLabel(unit, store.get(asString(unit.module_id) ?? "")).title,
-    open: () => nav.openUnit(asString(unit.id) ?? "")
-  })));
-  renderModuleSignposts2(side, context, id, units);
-  listCard("Notes", known.notes.map((n) => ({ label: asLabel(n), open: () => nav.openRecord(n) })));
-  listCard("Sources", known.sources.map((s) => ({ label: asLabel(s), open: () => nav.openSourceDetail(asString(s.id) ?? "") })));
-  const view = neighbourhood(graph, id, { depth: host.state.depth, includeSemanticNeighbours: true });
-  renderInspector2(disclosure(side, "Where each link comes from, and questions"), host, graph, view);
-  renderOutline(disclosure(side, "Full text outline"), host, graph, view);
-}
-function renderAtlasModuleMap(root, host, map) {
-  const { store, nav } = host.plugin;
-  const module2 = store.get(map.moduleId);
-  const short = moduleName(module2);
-  const body = root.createDiv({ cls: "focus-page" });
-  const head = body.createDiv({ cls: "focus-page-head" });
-  heading(
-    head.createDiv({ cls: "focus-heading-copy" }),
-    "Module revision map",
-    moduleLongTitle(module2),
-    `${plural(map.rows.length, "lecture")} \xB7 ${map.ideas} ideas from your lecture maps \xB7 left to right shows builds-on order.`
-  );
-  const here = landing2.get(host) ?? null;
-  let landed = null;
-  const sheet = body.createDiv({ cls: "focus-atlas-sheet" });
-  const lectures = sheet.createDiv({ cls: "focus-mm-lectures" });
-  const canvases = [];
-  for (const [index, entry] of map.rows.entries()) {
-    const lecture = lectures.createDiv({
-      cls: `focus-mm-lecture${entry.unit.id === here ? " is-here" : ""}`,
-      attr: { "data-unit": entry.unit.id }
-    });
-    if (entry.unit.id === here) landed = lecture;
-    const line = lecture.createDiv({ cls: "focus-mm-lecture-head" });
-    line.createSpan({ cls: "focus-mm-number focus-mono", text: (entry.label.number ?? String(index + 1)).padStart(2, "0") });
-    const headingId = `focus-mm-lecture-${++revisionHeadings}`;
-    line.createEl("h3", { text: entry.label.title, attr: { id: headingId } });
-    const tag2 = mapProgressTag(store, entry.unit.id);
-    if (tag2) line.createSpan({ cls: `focus-pill is-${tag2.tone}`, text: tag2.text });
-    textLink2(line, "Open lecture", () => nav.openUnit(entry.unit.id));
-    if (entry.unit.knowledgeSummary) lecture.createDiv({ cls: "focus-muted", text: entry.unit.knowledgeSummary });
-    const layout = layoutLectureMap(entry.ideas);
-    const byId = new Map(entry.ideas.map((idea) => [idea.id, idea]));
-    const canvas = lecture.createDiv({ cls: "focus-mm-ideas", attr: { role: "group", "aria-labelledby": headingId } });
-    for (const column of layout.columns) {
-      const stack2 = canvas.createDiv({ cls: "focus-mm-column", attr: { role: "list" } });
-      for (const id of column) {
-        const idea = byId.get(id);
-        if (!idea) continue;
-        const node = stack2.createDiv({ cls: "focus-mm-idea", attr: { role: "listitem", "data-idea": id, title: idea.summary } });
-        node.createSpan({ text: idea.title });
-        const before = layout.links.filter((link) => link.to === id).map((link) => byId.get(link.from)?.title).filter(nonNull);
-        if (before.length) node.createSpan({ cls: "los-sr-only", text: `, builds on ${before.join(" and ")}` });
-      }
-    }
-    canvases.push({ canvas, links: layout.links });
-  }
-  if (map.examBlocks.length || map.unmapped.length) {
-    const foot = sheet.createDiv({ cls: "focus-dock-list" });
-    for (const unit of map.examBlocks) {
-      const note2 = foot.createDiv({ cls: "focus-muted" });
-      note2.createSpan({ text: `${short} ${unitLabel(unit.record, module2).place.toLowerCase()} is an exam block. ` });
-      textLink2(note2, "Open it", () => nav.openUnit(unit.id));
-    }
-    if (map.unmapped.length) {
-      foot.createDiv({ cls: "focus-muted", text: `No idea map yet: ${map.unmapped.map((unit) => unitLabel(unit.record, module2).place).join(", ")}.` });
-    }
-  }
-  mountIdeaLinks(host, canvases, "focus-mm");
-  const target = landed;
-  if (target && typeof target.scrollIntoView === "function") {
-    root.ownerDocument?.defaultView?.requestAnimationFrame(() => target.scrollIntoView({ block: "center" }));
-  }
-}
-function renderRegionOrder(root, context, region) {
-  const { host, graph } = context;
-  const body = root.createDiv({ cls: "focus-page" });
-  const head = body.createDiv({ cls: "focus-page-head" });
-  heading(
-    head.createDiv({ cls: "focus-heading-copy" }),
-    "Region study order",
-    region.title,
-    `${plural(region.concepts.length, "concept")} \xB7 ${plural(region.linked, "linked")}. Left to right shows prerequisite order.`
-  );
-  button(head, "All Atlas areas", () => chooseRegion2(host, null), "quiet");
-  const sheet = body.createDiv({ cls: "focus-atlas-sheet" });
-  const layout = studyOrderLayout(region.concepts, graph);
-  if (layout.placed.length) {
-    const columns = sheet.createDiv({ cls: "focus-study-columns" });
-    for (let colIdx = 0; colIdx < layout.columns; colIdx += 1) {
-      const here = layout.placed.filter((item) => item.column === colIdx).sort((a, b) => a.row - b.row);
-      if (!here.length) continue;
-      const col = columns.createDiv({ cls: "focus-study-col" });
-      col.createDiv({
-        cls: "focus-eyebrow",
-        text: layout.beyond === colIdx ? "Unlocks next" : `Step ${colIdx + 1}`
-      });
-      for (const item of here) {
-        const c = conceptOf(graph, item.id);
-        const btn = col.createEl("button", { cls: "focus-atlas-card is-clickable", attr: { type: "button" } });
-        btn.createEl("strong", { text: c.label });
-        if (item.visiting) btn.createSpan({ cls: "focus-muted", text: "Outside region" });
-        btn.addEventListener("click", () => focusConcept(host, item.id));
-      }
-    }
-  }
-  if (layout.unlinked.length) {
-    sheet.createDiv({ cls: "focus-eyebrow", text: `Other concepts in ${region.title} \xB7 ${layout.unlinked.length}` });
-    const list3 = sheet.createDiv({ cls: "focus-module-list" });
-    for (const id of layout.unlinked) {
-      const c = conceptOf(graph, id);
-      const item = row(list3, `Open ${c.label}`, () => focusConcept(host, id));
-      item.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: c.label });
-      chevron2(item);
-    }
-  }
-}
-function renderOverlap2(root, context) {
-  const { host, graph } = context;
-  const { store } = host.plugin;
-  const body = root.createDiv({ cls: "focus-page" });
-  const head = body.createDiv({ cls: "focus-page-head" });
-  heading(head.createDiv({ cls: "focus-heading-copy" }), "Across modules", "Shared concepts", "Where modules touch the same ideas without implying module order.");
-  const sheet = body.createDiv({ cls: "focus-atlas-sheet" });
-  const modules = graph.modules.filter((m) => m.conceptCount > 0);
-  const shared = moduleOverlap(graph);
-  const selected = overlapSelection2.get(host) ?? null;
-  const list3 = sheet.createDiv({ cls: "focus-module-list" });
-  for (let i = 0; i < modules.length; i += 1) {
-    for (let j = i + 1; j < modules.length; j += 1) {
-      const a = modules[i];
-      const b = modules[j];
-      const key = overlapKey(a.id, b.id);
-      const concepts = shared.get(key) ?? [];
-      if (!concepts.length) continue;
-      const item = row(list3, `${a.label} and ${b.label}`, () => {
-        overlapSelection2.set(host, key);
-        host.render();
-      });
-      if (selected === key) item.addClass("is-current");
-      const copy = item.createDiv({ cls: "focus-row-copy" });
-      copy.createEl("strong", { text: `${moduleShort(store.get(a.id))} \u2194 ${moduleShort(store.get(b.id))}` });
-      copy.createSpan({ cls: "focus-muted", text: `${a.label} \xB7 ${b.label}` });
-      item.createSpan({ cls: "focus-row-state", text: plural(concepts.length, "shared concept") });
-      chevron2(item);
-    }
-  }
-  if (selected) {
-    const concepts = shared.get(selected) ?? [];
-    sheet.createDiv({ cls: "focus-eyebrow", text: `Shared ideas \xB7 ${concepts.length}` });
-    for (const id of concepts) {
-      const c = conceptOf(graph, id);
-      const hit = row(sheet, `Open ${c.label}`, () => focusConcept(host, id));
-      hit.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: c.label });
-      chevron2(hit);
-    }
-  }
-}
-function renderAtlasOverview(root, context) {
-  const { host, graph, map } = context;
-  const { store } = host.plugin;
-  const body = root.createDiv({ cls: "focus-page" });
-  const head = body.createDiv({ cls: "focus-page-head" });
-  heading(
-    head.createDiv({ cls: "focus-heading-copy" }),
-    "Knowledge graph",
-    "Atlas",
-    `${plural(graph.concepts.filter((c) => c.record).length, "concept")} \xB7 ${plural(graph.edges.filter((e) => e.layer === "strict").length, "prerequisite link")}.`
-  );
-  const tools = body.createDiv({ cls: "focus-filters" });
-  const navGroup = tools.createDiv({ cls: "focus-nearby" });
-  button(navGroup, "Across modules", () => host.go({ concept: null, lens: "bridges" }), "quiet");
-  button(navGroup, "All concepts", () => {
-    host.concepts.browseAll = true;
-    host.render();
-  }, "quiet");
-  renderSearchBox(tools, host, "Search concepts");
-  const layout = body.createDiv({ cls: "focus-atlas-layout" });
-  const sheet = layout.createDiv({ cls: "focus-atlas-sheet" });
-  if (host.concepts.browseAll) {
-    const bar = sheet.createDiv({ cls: "focus-section-head" });
-    bar.createEl("h2", { text: "All concepts" });
-    textLink2(bar, "Back to regions", () => {
-      host.concepts.browseAll = false;
-      host.render();
-    });
-    const rows2 = graph.concepts.filter((c) => c.record);
-    const shown = rows2.slice(0, host.concepts.visibleLimit);
-    const list3 = sheet.createDiv({ cls: "focus-module-list", attr: { role: "group", "aria-label": "Concepts" } });
-    enableButtonGroupKeyboardNavigation(list3, "vertical");
-    for (const c of shown) {
-      const target = row(list3, `Open ${c.label}`, () => focusConcept(host, c.id));
-      target.createDiv({ cls: "focus-row-copy" }).createEl("strong", { text: c.label });
-      chevron2(target);
-    }
-    if (shown.length < rows2.length) {
-      button(sheet, `Show more \xB7 ${rows2.length - shown.length} remaining`, () => {
-        host.concepts.visibleLimit += 30;
-        host.render();
-      }, "quiet");
-    }
-  } else {
-    sheet.createEl("h2", { text: "Study areas" });
-    const grid = sheet.createDiv({ cls: "focus-atlas-regions" });
-    for (const region of map.regions) {
-      if (!region.concepts.length) continue;
-      const card = grid.createEl("button", { cls: "focus-region-card is-clickable", attr: { type: "button" } });
-      card.createEl("strong", { text: region.title });
-      card.createSpan({ cls: "focus-muted", text: `${plural(region.concepts.length, "concept")} \xB7 ${region.linked} linked` });
-      card.addEventListener("click", () => chooseRegion2(host, region.id));
-    }
-  }
-  const side = layout.createDiv({ cls: "focus-home-dock" });
-  const maps = moduleMaps(store);
-  if (maps.length) {
-    const rev = sideCard(side, "Module revision maps", { text: `${maps.length}` });
-    const list3 = rev.createDiv({ cls: "focus-dock-list" });
-    for (const entry of maps) {
-      const mod = store.get(entry.moduleId);
-      const item = list3.createEl("button", { cls: "focus-dock-item is-clickable", attr: { type: "button" } });
-      item.createEl("strong", { text: moduleName(mod) });
-      item.createSpan({ cls: "focus-muted", text: moduleMapFacts(entry) });
-      item.addEventListener("click", () => openRevisionMap(host, entry.moduleId));
-    }
-  }
-}
-function renderFocusAtlas(host) {
-  const lens = host.state.lens;
-  if (lens === "domains" || lens === "diagnostics") return false;
-  const graph = buildAtlasGraph(host.plugin.store);
-  if (!graph.concepts.length) return false;
-  const map = buildConceptMap(readDomainCatalog(host.plugin.store), host.plugin.store.of("note"), graph);
-  const context = { host, graph, map };
-  const conceptId = host.state.concept;
-  const glance = host.state.module && !conceptId && lens !== "bridges" ? moduleMap(host.plugin.store, host.state.module) : null;
-  const root = page(host.contentEl, "atlas", host.plugin.store);
-  if (glance) {
-    const barActions2 = commandBar(root, [
-      { label: "Atlas", go: () => leaveRevisionMap(host) },
-      { label: moduleName(host.plugin.store.get(glance.moduleId)) }
-    ], host);
-    renderAtlasVariants(barActions2, host.plugin.nav, "concepts", (target) => host.go(target));
-    renderAtlasModuleMap(root, host, glance);
-    return true;
-  }
-  const atlasCrumb = { label: "Atlas", go: () => host.showConceptOverview(null) };
-  if (conceptId && lens !== "bridges") {
-    const regionId = map.regionOf.get(conceptId);
-    const region2 = map.regions.find((r) => r.id === regionId);
-    const barActions2 = commandBar(root, [
-      atlasCrumb,
-      ...region2 ? [{ label: region2.title, go: () => chooseRegion2(host, region2.id) }] : [],
-      { label: conceptOf(graph, conceptId).label }
-    ], host);
-    renderAtlasVariants(barActions2, host.plugin.nav, "concepts", (target) => host.go(target));
-    renderConceptDetail(root, context, conceptId);
-    return true;
-  }
-  if (lens === "bridges") {
-    const barActions2 = commandBar(root, [atlasCrumb, { label: "Across modules" }], host);
-    renderAtlasVariants(barActions2, host.plugin.nav, "concepts", (target) => host.go(target));
-    renderOverlap2(root, context);
-    return true;
-  }
-  const region = map.regions.find((row3) => row3.id === host.concepts.domain);
-  if (region) {
-    const browse = browsingRegion(map, graph, region.id) ?? region;
-    const barActions2 = commandBar(root, [atlasCrumb, { label: browse.title }], host);
-    renderAtlasVariants(barActions2, host.plugin.nav, "concepts", (target) => host.go(target));
-    renderRegionOrder(root, context, browse);
-    return true;
-  }
-  const barActions = commandBar(root, [{ label: "Atlas" }], host);
-  renderAtlasVariants(barActions, host.plugin.nav, "concepts", (target) => host.go(target));
-  renderAtlasOverview(root, context);
-  return true;
-}
 
 // src/features/home/elsewhere.ts
 function elsewhereRows(view) {
@@ -45188,6 +43596,127 @@ function consumeFocusUnitHint(unitId) {
   return mode;
 }
 
+// src/features/atlas/module-map.ts
+function moduleMap(store, moduleId) {
+  const record7 = store.get(moduleId);
+  const module2 = record7 ? readModuleRecord(record7) : null;
+  if (!record7 || !module2) return null;
+  const ordered = orderModuleUnits(module2, store.unitsFor(moduleId).map(normalizeUnitRecord).filter(nonNull));
+  const units = ordered.map((row3) => readUnitRecord(row3.record, row3.id)).filter(nonNull);
+  const blocks = units.filter((unit) => unit.kind === "exam-block");
+  const lectures = units.filter((unit) => unit.kind !== "exam-block");
+  const drawn = lectures.some((unit) => unit.knowledgeNodes.length) ? lectures : blocks;
+  const rows2 = drawn.filter((unit) => unit.knowledgeNodes.length).map((unit) => ({ unit, label: unitLabel(unit.record, record7), ideas: unit.knowledgeNodes }));
+  if (!rows2.length) return null;
+  return {
+    moduleId,
+    rows: rows2,
+    examBlocks: drawn === lectures ? blocks : [],
+    unmapped: drawn.filter((unit) => !unit.knowledgeNodes.length),
+    ideas: rows2.reduce((sum, row3) => sum + row3.ideas.length, 0)
+  };
+}
+function moduleMapFacts(map) {
+  return `${plural(map.rows.length, "lecture")} \xB7 ${plural(map.ideas, "idea")}`;
+}
+
+// src/designs/focus/parts.ts
+function page(root, name, store) {
+  root.onscroll = null;
+  root.empty();
+  root.addClass("los-root", "focus-root");
+  root.setAttr("data-focus-screen", name);
+  manifestFreshness(root, store);
+  return root;
+}
+function commandBar(root, crumbs, view) {
+  const bar = root.createDiv({ cls: "focus-commandbar" });
+  const location = bar.createDiv({ cls: "focus-location" });
+  const { leaf, plugin: { router } } = view;
+  const history = location.createDiv({ cls: "focus-history", attr: { role: "group", "aria-label": "Navigation history" } });
+  for (const [direction, label, glyph] of [["back", "Back", "chevron-left"], ["forward", "Forward", "chevron-right"]]) {
+    const control = history.createEl("button", { cls: "focus-history-btn", attr: { type: "button", "aria-label": label } });
+    control.disabled = !router.paneHistoryAvailable(leaf, direction);
+    icon(control.createSpan({ attr: { "aria-hidden": "true" } }), glyph);
+    control.addEventListener("click", () => {
+      void router.movePaneHistory(leaf, direction);
+    });
+  }
+  const trail = location.createEl("nav", { cls: "focus-crumbs", attr: { "aria-label": "Location" } });
+  crumbs.forEach((crumb, index) => {
+    if (index) icon(trail.createSpan({ cls: "focus-crumb-sep", attr: { "aria-hidden": "true" } }), "chevron-right");
+    const last = index === crumbs.length - 1;
+    if (crumb.go && !last) {
+      trail.createEl("button", { cls: "focus-crumb is-clickable", text: crumb.label, attr: { type: "button" } }).addEventListener("click", () => crumb.go?.());
+    } else {
+      trail.createSpan({ cls: `focus-crumb${last ? " is-current" : ""}`, text: crumb.label, ...last ? { attr: { "aria-current": "page" } } : {} });
+    }
+  });
+  return bar.createDiv({ cls: "focus-toolbar-actions" });
+}
+function heading(parent, eyebrow, title2, detail = "") {
+  if (eyebrow) parent.createDiv({ cls: "focus-eyebrow", text: eyebrow });
+  parent.createEl("h1", { cls: "focus-title", text: title2 });
+  if (detail) parent.createEl("p", { cls: "focus-lede", text: detail });
+}
+function row(parent, label, action) {
+  const target = parent.createEl("button", { cls: "focus-row is-clickable", attr: { type: "button", "aria-label": label } });
+  target.addEventListener("click", () => action());
+  return target;
+}
+function chevron2(parent, glyph = "chevron-right") {
+  icon(parent.createSpan({ cls: "focus-chevron", attr: { "aria-hidden": "true" } }), glyph);
+}
+function stageBars2(parent, total, done, current = null) {
+  const capped = Math.min(10, total);
+  const filled = capped && total ? done === total ? capped : Math.min(capped - 1, Math.round(capped * done / total)) : 0;
+  const active = current !== null && capped && total ? Math.min(capped - 1, Math.round(capped * current / total)) : null;
+  const bars = parent.createDiv({ cls: "focus-bars", attr: { "aria-hidden": "true" } });
+  for (let index = 0; index < capped; index += 1) {
+    const state = index === active ? "is-current" : index < filled ? "is-done" : "";
+    bars.createSpan({ cls: `focus-bar ${state}`.trim() });
+  }
+  return bars;
+}
+function progress(parent, complete, total) {
+  const wrap = parent.createDiv({ cls: "focus-progress" });
+  const bar = wrap.createEl("progress", { attr: { max: String(Math.max(total, 1)), value: String(complete), "aria-label": "Recorded study stages" } });
+  bar.value = complete;
+  bar.max = Math.max(total, 1);
+  wrap.createSpan({ cls: "focus-muted", text: `${complete} of ${total} stages complete` });
+}
+function moduleRow2(parent, store, module2, open) {
+  const target = row(parent, `Open module: ${asLabel(module2)}`, open);
+  const id = asString(module2.id) ?? "";
+  target.addClass("focus-module-row");
+  target.setAttrs({ "data-record-id": id, "data-cover": coverOf(module2) });
+  target.createSpan({ cls: "focus-spine", attr: { "aria-hidden": "true" } });
+  const copy = target.createDiv({ cls: "focus-row-copy" });
+  copy.createEl("strong", { text: asLabel(module2) });
+  const units = store.unitsFor(id);
+  const stages = units.flatMap((unit) => asRecords(store.mapForUnit(asString(unit.id) ?? "")?.stages));
+  const { done, total } = stageProgress(stages);
+  copy.createSpan({ cls: "focus-muted", text: moduleFacts(store, module2) });
+  if (total) stageBars2(target, total, done);
+  const isDone = Boolean(total && done === total);
+  const stateText = isDone ? "Done" : done ? `${done} of ${total} stages complete` : moduleState(store, module2) || "Open module";
+  target.createSpan({ cls: `focus-row-state${isDone ? " is-complete" : ""}`, text: stateText });
+  chevron2(target);
+  return target;
+}
+function textLink2(parent, label, go) {
+  const link = button(parent, label, go, "tertiary");
+  link.addClass("focus-link");
+  return link;
+}
+function sideCard(parent, title2, pill) {
+  const card = parent.createDiv({ cls: "focus-dock-card" });
+  const head = card.createDiv({ cls: "focus-section-head" });
+  head.createDiv({ cls: "focus-eyebrow", text: title2 });
+  if (pill) head.createSpan({ cls: `focus-pill${pill.tone ? ` is-${pill.tone}` : ""}`, text: pill.text });
+  return card;
+}
+
 // src/designs/focus/modules.ts
 var AREAS3 = [
   ["all", "All"],
@@ -45322,9 +43851,9 @@ function renderModulesCatalog(view, state, initialQuery = "", onQuery) {
     ];
     for (const [title2, rows2] of groups) {
       if (!rows2.length) continue;
-      const section3 = listCol.createDiv({ cls: "focus-module-group" });
-      section3.createDiv({ cls: "focus-eyebrow", text: `${title2} \xB7 ${rows2.length}` });
-      appendRows(section3, rows2);
+      const section4 = listCol.createDiv({ cls: "focus-module-group" });
+      section4.createDiv({ cls: "focus-eyebrow", text: `${title2} \xB7 ${rows2.length}` });
+      appendRows(section4, rows2);
     }
     if (closedRows.length) {
       const closed = listCol.createEl("details", { cls: "focus-closed-modules" });
@@ -46632,11 +45161,11 @@ function materials(root, context) {
         for (const owner of owners) {
           const routes = visible.filter((entry) => entry.owner.id === owner.id);
           if (!routes.length) continue;
-          const section3 = results.createDiv({ cls: "focus-course-unit" });
-          section3.createEl("h2", { text: owner.title });
+          const section4 = results.createDiv({ cls: "focus-course-unit" });
+          section4.createEl("h2", { text: owner.title });
           for (const { option } of routes) {
             renderRouteCard(
-              section3,
+              section4,
               option,
               option.sourceId ? view.plugin.store.get(option.sourceId) : null,
               {
@@ -46648,7 +45177,7 @@ function materials(root, context) {
               { missingLocationLabel: "Location needed" }
             );
           }
-          button(section3, "Go to lecture", () => leaveForLecture(context, owner.id), "quiet");
+          button(section4, "Go to lecture", () => leaveForLecture(context, owner.id), "quiet");
         }
       },
       "Purpose"
@@ -46666,14 +45195,14 @@ function materials(root, context) {
         for (const [key, label, parent] of [["required", "Required now", needed], ["stuck", "If stuck", needed], ["reference", "Depth & reference", reference]]) {
           const all = stage.resources.filter((resource) => triageGroup(resource) === key);
           const resources = visible.filter((resource) => triageGroup(resource) === key);
-          const section3 = parent.createDiv({ cls: `focus-material-group is-${key}` });
-          section3.createEl("h2", {
+          const section4 = parent.createDiv({ cls: `focus-material-group is-${key}` });
+          section4.createEl("h2", {
             cls: "focus-eyebrow",
             text: `${label} \xB7 ${resources.length}${resources.length === all.length ? "" : ` of ${all.length}`}`
           });
-          for (const resource of resources) materialCard(section3, context, resource, key === "required");
+          for (const resource of resources) materialCard(section4, context, resource, key === "required");
           if (!resources.length) {
-            section3.createEl("p", {
+            section4.createEl("p", {
               cls: "focus-muted",
               text: all.length ? "No matches here. Clear the filters to restore this group." : "No materials in this group."
             });
@@ -46738,8 +45267,9 @@ var focusScreens = {
   learn: renderFocusLearn,
   moduleList: renderFocusModules,
   moduleDetail: renderFocusModule,
-  unit: renderFocusUnit,
-  atlas: renderFocusAtlas
+  unit: renderFocusUnit
+  // Atlas is the shared list/inspector renderer in every design (P4 step 29):
+  // no design-owned graph screen, so the base view draws it, restyled.
 };
 
 // src/designs/registry.ts
@@ -46827,6 +45357,145 @@ var AtlasView = class extends import_obsidian13.ItemView {
   remainderOpen = false;
   edgeId = null;
   editor = null;
+  filters = { ...EMPTY_FILTERS };
+  relationAction = null;
+  inspectorOrigin = null;
+  focusInspector = false;
+  restoreFocus = false;
+  openEvidence(relationId, ordinal) {
+    openEvidenceBinding({
+      store: this.plugin.store,
+      openMaterialPath: (path, destination) => this.plugin.openMaterialPath(path, destination),
+      notify: (message2) => new import_obsidian13.Notice(message2)
+    }, relationId, ordinal);
+  }
+  /** The exact stored row for one projected edge, via `atlas.context`. */
+  async exactRow(edge) {
+    try {
+      const value = await this.plugin.gateway.atlasContext(edge.from, {
+        expectedSnapshot: this.plugin.store.snapshotId
+      });
+      const rows2 = Array.isArray(value?.relations) ? value.relations : [];
+      const match = rows2.find((row3) => {
+        const candidate2 = row3;
+        return Boolean(candidate2) && candidate2?.from === edge.from && candidate2?.type === edge.type && candidate2?.to === edge.to;
+      });
+      return match ?? null;
+    } catch {
+      return null;
+    }
+  }
+  editRelation(edge) {
+    void (async () => {
+      const exact = await this.exactRow(edge);
+      if (!exact && isDecorated(edge)) {
+        new import_obsidian13.Notice("The exact stored connection could not be read, so it was not opened for editing.");
+        return;
+      }
+      this.editor = editDraft(edge, exact ?? void 0);
+      this.render();
+    })();
+  }
+  async togglePin(edge) {
+    const exact = await this.exactRow(edge);
+    if (!exact && isDecorated(edge)) {
+      new import_obsidian13.Notice("The exact stored connection could not be read, so nothing was pinned or unpinned.");
+      return;
+    }
+    const old = exact ?? rowOf(edge);
+    await this.changeRelations([{
+      action: "replace",
+      old,
+      new: { ...old, pinned: !edge.pinned }
+    }]);
+  }
+  startRelationAction(edge, kind) {
+    this.edgeId = edge.id;
+    this.relationAction = {
+      edgeId: edge.id,
+      kind,
+      reason: "",
+      sourceId: "",
+      materialRelpath: "",
+      fileSha256: "",
+      page: "",
+      quote: "",
+      error: null
+    };
+    this.render();
+  }
+  async submitRelationAction() {
+    const action = this.relationAction;
+    if (!action) return;
+    const graph = buildAtlasGraph(this.plugin.store);
+    const projected = graph.relationByIdentity.get(action.edgeId);
+    if (!projected) {
+      this.relationAction = { ...action, error: "That connection is no longer published." };
+      this.render();
+      return;
+    }
+    const reason = action.reason.trim();
+    if ((action.kind === "veto" || action.kind === "retract") && (reason.length < 1 || reason.length > 400)) {
+      this.relationAction = { ...action, error: "Give a reason of 1\u2013400 characters." };
+      this.render();
+      return;
+    }
+    const needsBinding = action.kind === "restore" && projected.status === "vetoed";
+    const page2 = Number(action.page);
+    if (needsBinding && (!action.sourceId.trim() || !action.materialRelpath.trim() || !/^[0-9a-f]{64}$/.test(action.fileSha256.trim()) || !Number.isInteger(page2) || page2 < 1 || !action.quote.trim())) {
+      this.relationAction = {
+        ...action,
+        error: "Restoring a vetoed connection needs one complete evidence binding from a previously unused source."
+      };
+      this.render();
+      return;
+    }
+    const exact = await this.exactRow(projected);
+    if (!exact && isDecorated(projected)) {
+      this.relationAction = { ...action, error: "The exact stored connection could not be read." };
+      this.render();
+      return;
+    }
+    const old = exact ?? rowOf(projected);
+    const next = { ...old };
+    if (action.kind === "veto") {
+      next.status = "vetoed";
+      next.status_reason = reason;
+    } else if (action.kind === "retract") {
+      next.status = "retracted";
+      next.status_reason = reason;
+    } else {
+      next.status = "active";
+      delete next.status_reason;
+      if (needsBinding) {
+        const evidence2 = Array.isArray(old.evidence) ? [...old.evidence] : [];
+        evidence2.push({
+          source_id: action.sourceId.trim(),
+          material_relpath: action.materialRelpath.trim(),
+          file_sha256: action.fileSha256.trim(),
+          page: page2,
+          quote: action.quote.trim()
+        });
+        next.evidence = evidence2;
+      }
+    }
+    const applied = await this.write(
+      () => this.plugin.gateway.changeConceptRelations(
+        [{ action: "replace", old, new: next }],
+        this.plugin.store.artifactGuard(RELATION_REGISTRY)
+      ),
+      (message2) => {
+        if (this.relationAction) this.relationAction.error = message2;
+      }
+    );
+    if (applied) {
+      this.relationAction = null;
+      this.edgeId = action.edgeId;
+      this.render();
+    } else {
+      this.render();
+    }
+  }
   mutationPending = false;
   renderCleanups = [];
   conceptAttention = /* @__PURE__ */ new Map();
@@ -47082,7 +45751,17 @@ var AtlasView = class extends import_obsidian13.ItemView {
     const doc = this.contentEl.ownerDocument ?? globalThis.document;
     const focused = doc?.activeElement;
     const historyKey = focused && this.contentEl.contains(focused) ? focused.getAttribute("data-los-tab") : null;
+    const filterKey = focused && this.contentEl.contains(focused) ? focused.getAttribute("data-atlas-filter") : null;
     withRenderFocus(this.contentEl, () => this.renderContent());
+    if (filterKey) {
+      const now2 = doc.activeElement;
+      if (!now2 || now2 === doc.body || !now2.isConnected) {
+        const replacement = Array.from(
+          this.contentEl.querySelectorAll("[data-atlas-filter]")
+        ).find((node) => node.getAttribute("data-atlas-filter") === filterKey);
+        replacement?.focus({ preventScroll: true });
+      }
+    }
     if (historyKey === "concept-back" || historyKey === "concept-forward") {
       const now2 = doc.activeElement;
       if (!now2 || now2 === focused || now2 === doc.body || !now2.isConnected) {
@@ -47311,7 +45990,7 @@ var BoundaryView = class extends import_obsidian14.ItemView {
         }
       });
       const results = sources.createDiv();
-      const renderSources3 = () => {
+      const renderSources2 = () => {
         results.empty();
         const query = foldCase(search.value.trim());
         const groups = /* @__PURE__ */ new Map();
@@ -47355,8 +46034,8 @@ var BoundaryView = class extends import_obsidian14.ItemView {
           }
         }
       };
-      search.addEventListener("input", renderSources3);
-      renderSources3();
+      search.addEventListener("input", renderSources2);
+      renderSources2();
     }
     const assessments = this.mastersDashboard.comparisons.flatMap((comparison) => comparison.source_assessments);
     if (assessments.length) {
@@ -48103,12 +46782,12 @@ function readUsefulSection(value) {
   if (!isRecord(value)) {
     return null;
   }
-  const section3 = asText(value.section);
-  if (!section3) {
+  const section4 = asText(value.section);
+  if (!section4) {
     return null;
   }
   return {
-    section: section3,
+    section: section4,
     note: asText(value.note)
   };
 }
@@ -48126,7 +46805,7 @@ function readEvaluation(value) {
   const usefulSections = Array.isArray(
     value.useful_sections
   ) ? value.useful_sections.map(readUsefulSection).filter(
-    (section3) => section3 !== null
+    (section4) => section4 !== null
   ) : [];
   if (!roles.length && !level && !audience.length && !prerequisites.length && !strengths.length && !weaknesses.length && !usefulSections.length) {
     return null;
@@ -50330,7 +49009,7 @@ function renderRow(view, list3, entry) {
   });
   return row3;
 }
-function renderList3(view, parent, entries2, focusSelection) {
+function renderList2(view, parent, entries2, focusSelection) {
   const parentPath = [...view.folderPath];
   const list3 = parent.createDiv({
     cls: "los-finder-list",
@@ -50573,7 +49252,7 @@ function renderFinder(view, root) {
         () => handleClear()
       );
     } else {
-      renderList3(view, body, entries3, focusSelection);
+      renderList2(view, body, entries3, focusSelection);
     }
     const panel = body.createDiv({
       cls: "los-finder-inspector",
@@ -51322,9 +50001,9 @@ var LibraryView = class extends import_obsidian18.ItemView {
     return coverage;
   }
   takeFolderFocus() {
-    const focus2 = this._focusSelection;
+    const focus = this._focusSelection;
     this._focusSelection = false;
-    return focus2;
+    return focus;
   }
   async openFolder(path, selected = null) {
     this.folderPath = [...path];
@@ -51461,7 +50140,7 @@ async function selectComponent(view, componentId) {
     }
   });
 }
-function renderSources2(view, root, module2) {
+function renderSources(view, root, module2) {
   const sourceMap = view.plugin.store.sourceMap(
     module2.id
   );
@@ -51876,7 +50555,7 @@ var ModuleView = class extends import_obsidian19.ItemView {
     await selectComponent(this, componentId);
   }
   renderSources(root, module2) {
-    renderSources2(this, root, module2);
+    renderSources(this, root, module2);
   }
 };
 
@@ -53379,7 +52058,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:4058a288b8e82afadc4caf956b85cb95bcf85e15072fa27b65506f1437839f16" : "unavailable";
+  return true ? "sha256:b0312bbafaac11748e096dae6a3a31a49d925e1867033b345b0374ae1a836a98" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;
@@ -54320,6 +52999,20 @@ Last response: ${result.error.message}`,
     return this.call(args);
   }
   /**
+   * Exact stored relation rows and questions for one concept (ADR-024).
+   *
+   * Relation writes bind the exact previous row, and the projection cannot
+   * supply it: Core projects absent optional fields as defaults, so a row
+   * rebuilt from the manifest would not match what is stored. This bounded
+   * read is the only source of `old` rows for decorated relations.
+   */
+  atlasContext(conceptId, options = {}) {
+    const args = ["atlas-context", conceptId];
+    if (options.expectedSnapshot) args.push("--expected-snapshot", options.expectedSnapshot);
+    args.push("--json");
+    return this.call(args);
+  }
+  /**
    * One exact route's identity, locator and availability. `extract` asks Core
    * for a bounded local excerpt; remote material is never fetched.
    */
@@ -54469,12 +53162,12 @@ function editClaim(host, draft) {
     evidence: []
   };
   const expansion = host.plugin.abilityHorizon.expansion(draft.abilityId);
-  const focus2 = expansion && "ability" in expansion ? expansion : null;
+  const focus = expansion && "ability" in expansion ? expansion : null;
   new AbilityClaimDraftModal(host.app, {
     ability: row3,
-    definition: focus2?.ability ?? null,
+    definition: focus?.ability ?? null,
     workspaces: abilityWorkspaces(host.plugin.store, row3),
-    workPointers: abilityWorkPointers(host.plugin.store, focus2),
+    workPointers: abilityWorkPointers(host.plugin.store, focus),
     existing: draft,
     save: (next) => host.plugin.saveAbilityDraftEdit(next),
     onSaved: () => host.render()
@@ -56191,6 +54884,20 @@ function registerApplication(plugin) {
   if (typeof window !== "undefined") {
     plugin.registerDomEvent(window, "focus", () => plugin.requestManifestRefresh({ ifChanged: true }));
   }
+  if (typeof plugin.registerObsidianProtocolHandler === "function") {
+    plugin.registerObsidianProtocolHandler(EVIDENCE_PROTOCOL_ACTION, (params) => {
+      const parsed = parseEvidenceParams(params);
+      if ("error" in parsed) {
+        plugin.notify(parsed.error);
+        return;
+      }
+      openEvidenceBinding({
+        store: plugin.store,
+        openMaterialPath: (path, destination) => plugin.openMaterialPath(path, destination),
+        notify: (message2) => plugin.notify(message2)
+      }, parsed.relationId, parsed.ordinal);
+    });
+  }
   plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
   plugin.addRibbonIcon("route", "Open LearningOS", () => plugin.nav.openHome());
   plugin.addCommand({ id: "open-home", name: "Open Home", callback: () => plugin.nav.openHome() });
@@ -57349,7 +56056,7 @@ var UnitNoteModal = class extends import_obsidian28.Modal {
   unrecordedCompletedStages(stages) {
     const already = new Set(
       asRecords(this.unit.note_sections).flatMap(
-        (section3) => Array.isArray(section3.stage_ids) ? section3.stage_ids.filter(
+        (section4) => Array.isArray(section4.stage_ids) ? section4.stage_ids.filter(
           (id) => typeof id === "string"
         ) : []
       )

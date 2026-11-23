@@ -11,6 +11,7 @@ const SUITE_NAMES = [
   'render-focus',
   'domain-atlas',
   'atlas-browser',
+  'atlas-parity',
   'active-leaf-navigation',
   'library-capture',
   'study-surfaces',

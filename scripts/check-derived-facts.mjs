@@ -84,7 +84,12 @@ function isNonCurriculumStatusAccess(node, relative, sourceFile) {
   const receiverText = node.expression.getText(sourceFile);
   return (relative === 'src/application/gateway-recovery.ts' && receiverText === 'payload')
     || (relative === 'src/features/unit/material-card.ts' && receiverText === 'state')
-    || (relative === 'src/features/unit/materials.ts' && receiverText === 'synthesis.freshness');
+    || (relative === 'src/features/unit/materials.ts' && receiverText === 'synthesis.freshness')
+    // Relation lifecycle is a published Core verdict (manifest `status` /
+    // `evidence_state`, ADR-024): the Atlas consumes it, it never derives it.
+    || (relative === 'src/features/atlas/graph.ts' && receiverText === 'edge')
+    || (relative === 'src/features/atlas/inspector.ts' && receiverText === 'edge')
+    || (relative === 'src/features/atlas/relation-editor.ts' && receiverText === 'edge');
 }
 
 function stringLiteralText(node) {

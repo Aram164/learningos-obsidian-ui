@@ -13,8 +13,14 @@ function browserDom(root) {
     });
     node.matches = (selector) => selector.split(',').some((part) => {
       part = part.trim();
+      const attr = part.match(/^\[([a-zA-Z-]+)(?:="([^"]*)")?\]$/);
+      if (attr) {
+        const value = node.getAttribute(attr[1]);
+        return attr[2] === undefined ? value !== null : value === attr[2];
+      }
       if (part === '[role="group"]') return node.getAttribute('role') === 'group';
       if (part === '[data-los-scroll]') return node.getAttribute('data-los-scroll') !== null;
+      if (/^[a-z][a-z0-9]*$/.test(part)) return node.tag === part;
       if (part === 'button') return node.tag === 'button';
       if (part === 'input[type="search"]') return node.tag === 'input' && node.getAttribute('type') === 'search';
       const match = part.match(/^(input|textarea)\.([a-z-]+)$/);

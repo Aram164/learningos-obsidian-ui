@@ -1108,10 +1108,7 @@ body.los-ui-focus {
   .los-atlas-place-rail, .los-domain-rail, .los-finder-sidebar { background: var(--los-paper); border-color: transparent; }
   .los-root :is(.los-atlas-domain-row, .los-atlas-browse-row, .los-domain-note-row) { background: var(--los-surface); border: 1px solid var(--los-rule); border-radius: 10px; padding: 14px; }
   .los-root :is(.los-atlas-domain-row, .los-atlas-browse-row):hover { border-color: var(--los-accent); }
-  .los-root :is(.los-atlas-browse-row, .los-atlas-node, .los-ability-list-row).is-selected { background: var(--los-selected); border-color: var(--los-accent); box-shadow: inset 3px 0 0 var(--los-accent); }
   .los-atlas-concept-preview, .los-domain-inspector, .los-atlas-inspector { background: var(--los-surface); border-color: var(--los-rule); border-radius: 12px; }
-  .los-root .los-atlas-canvas { background: var(--los-surface); border-color: var(--los-rule); border-radius: 12px; }
-  .los-root .los-atlas-node { border-color: var(--los-rule-strong); border-radius: 10px; }
   .los-ability-selection-dock { background: var(--los-selected); border-radius: 10px; border-color: var(--los-rule); }
   .los-ability-viewport { border-color: var(--los-rule); border-radius: 12px; }
   .los-review-split { grid-template-columns: minmax(200px, 280px) minmax(0, 1fr); gap: 20px; }

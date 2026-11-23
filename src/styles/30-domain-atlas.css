@@ -119,12 +119,6 @@
 .los-root .los-domain-picker { width: auto; max-width: 100%; min-height: 38px; flex: 0 1 180px; font-size: 13px; }
 .los-atlas-map-controls { display: flex; align-items: start; flex-wrap: wrap; gap: var(--los-3); }
 .los-atlas-map-controls .los-atlas-depth { display: flex; align-items: center; flex-wrap: wrap; max-width: 320px; }
-.los-atlas-map-workspace { --los-atlas-node: 120px; }
-.los-atlas-map-workspace .los-atlas-lanes { gap: var(--los-3); }
-.los-atlas-map-workspace .los-atlas-canvas { padding: var(--los-3); border: 1px solid var(--los-line); }
-.los-atlas-map-workspace .los-atlas-inspector { padding: var(--los-4); border: 1px solid var(--los-line); border-radius: var(--los-r-md); background: var(--los-surface); }
-.los-atlas-map-workspace .los-atlas-body { gap: var(--los-4); grid-template-columns: minmax(0, 1.6fr) minmax(250px, 1fr); }
-.los-atlas-map-workspace .los-atlas-focus-heading { margin: 0; }
 .los-domain-layout { grid-template-columns: 184px minmax(0, 1fr); gap: var(--los-4); }
 .los-domain-rail { position: sticky; top: 0; background: var(--los-sidebar); }
 .los-root .los-domain-choice { min-height: 54px; padding: var(--los-2); }
@@ -149,7 +143,6 @@
 .los-ability-selection-dock > div { flex-basis: 100%; }
 .los-root .los-ability-endcap { margin-top: 28px; }
 @container los-view (max-width: 1100px) {
-  .los-atlas-map-workspace .los-atlas-body { grid-template-columns: minmax(0, 1fr); }
 }
 @container los-view (max-width: 900px) {
   .los-atlas-browser-layout, .los-domain-layout { grid-template-columns: minmax(0, 1fr); }

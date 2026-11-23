@@ -10,9 +10,36 @@ import {
 export interface BoardCatalogEntry {
   kind: string;
   id: string;
+  title?: string;
+  parent_kind?: string | null;
+  parent_id?: string | null;
   template_path: string;
   working_path: string;
   sha256: string;
+  concept_count?: number;
+  relation_count?: number;
+}
+
+/**
+ * The board a plain Atlas opening means (P4 step 23): the named module when
+ * the route provides one, else the one explicitly current program/semester.
+ * Ambiguity yields null — the select then says "Choose a board".
+ */
+export function defaultBoardEntry(
+  catalog: readonly BoardCatalogEntry[],
+  moduleId: string | null,
+  currentSemester: { id?: unknown; program_id?: unknown } | null,
+): BoardCatalogEntry | null {
+  if (moduleId) {
+    const module = catalog.find((entry) => entry.kind === 'module' && entry.id === moduleId);
+    if (module) return module;
+  }
+  if (typeof currentSemester?.id === 'string' && typeof currentSemester?.program_id === 'string') {
+    const wanted = `${currentSemester.program_id}--${currentSemester.id}`;
+    const matches = catalog.filter((entry) => entry.kind === 'semester' && entry.id === wanted);
+    if (matches.length === 1) return matches[0] ?? null;
+  }
+  return null;
 }
 
 export interface BoardVaultPort {

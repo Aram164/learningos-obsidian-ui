@@ -1188,6 +1188,24 @@ export class GatewayClient {
   }
 
   /**
+   * Exact stored relation rows and questions for one concept (ADR-024).
+   *
+   * Relation writes bind the exact previous row, and the projection cannot
+   * supply it: Core projects absent optional fields as defaults, so a row
+   * rebuilt from the manifest would not match what is stored. This bounded
+   * read is the only source of `old` rows for decorated relations.
+   */
+  atlasContext(
+    conceptId: string,
+    options: { expectedSnapshot?: string | null } = {},
+  ) {
+    const args = ['atlas-context', conceptId];
+    if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
+    args.push('--json');
+    return this.call(args);
+  }
+
+  /**
    * One exact route's identity, locator and availability. `extract` asks Core
    * for a bounded local excerpt; remote material is never fetched.
    */

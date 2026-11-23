@@ -219,6 +219,12 @@ declare module 'obsidian' {
       command: Command,
     ): void;
 
+    /** Public protocol API: `obsidian://<action>?…` with string params only. */
+    registerObsidianProtocolHandler(
+      action: string,
+      handler: (params: Record<string, string>) => unknown,
+    ): void;
+
     loadData<T = unknown>():
       Promise<T>;
 

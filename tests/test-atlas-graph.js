@@ -676,36 +676,15 @@ assert.deepEqual(bridges(empty), []);
   );
 }
 
-/* A high-degree presentation remains bounded without changing authored scope. */
-const { conceptPlaneSlice } = load('src/features/atlas/presentation.ts');
+/* Text scope is never shortened by any presentation bound (P4 step 29:
+ * the picture slice is gone; the authored neighbourhood is the whole list). */
 const highDegreeRecords = [concept('concept-centre', 'Central concept'),
   ...Array.from({ length: 70 }, (_, i) => concept(`concept-many-${i}`, `Neighbour ${String(i).padStart(2, '0')}`))];
 const highDegreeGraph = buildAtlasGraph(storeOf({ records: highDegreeRecords,
   relations: highDegreeRecords.slice(1).map((row) => relation('concept-centre', 'requires', row.id)) }));
 const highDegreeView = neighbourhood(highDegreeGraph, 'concept-centre');
-const slice = conceptPlaneSlice(highDegreeView);
-assert.equal(slice.nodes.length, 5);
-assert.equal(slice.omitted.length, 66);
-assert.equal(slice.strictEdges.length, 4);
-assert.equal(highDegreeView.strictEdges.length, 70, 'presentation never shortens the authored text scope');
-assert.equal(new Set([...slice.nodes, ...slice.omitted].map((node) => node.concept.id)).size, 71);
-assert.ok(slice.strictEdges.every((edge) => slice.nodes.some((node) => node.concept.id === edge.from)
-  && slice.nodes.some((node) => node.concept.id === edge.to)));
-assert.deepEqual(conceptPlaneSlice(highDegreeView), slice, 'repeat layout uses identical identities');
-const crowdedBranches = [concept('concept-focus', 'Focus'),
-  ...Array.from({ length: 5 }, (_, i) => concept(`concept-parent-${i}`, `Parent ${i}`)),
-  ...Array.from({ length: 5 }, (_, i) => concept(`concept-ancestor-${i}`, `Ancestor ${4 - i}`))];
-const crowdedBranchGraph = buildAtlasGraph(storeOf({ records: crowdedBranches,
-  relations: Array.from({ length: 5 }, (_, i) => [
-    relation('concept-focus', 'requires', `concept-parent-${i}`),
-    relation(`concept-parent-${i}`, 'requires', `concept-ancestor-${i}`),
-  ]).flat() }));
-const branchSlice = conceptPlaneSlice(neighbourhood(crowdedBranchGraph, 'concept-focus', { depth: 2 }), 1);
-assert.deepEqual(branchSlice.nodes.map(node => node.concept.id),
-  ['concept-ancestor-0', 'concept-parent-0', 'concept-focus'],
-  'a bound keeps the actual visible path, even when distant labels sort before their omitted connector');
-assert.equal(branchSlice.strictEdges.length, 2);
-assert.equal(branchSlice.omitted.length, 8);
+assert.equal(highDegreeView.strictEdges.length, 70, 'the text scope carries every authored relation');
+assert.equal(highDegreeView.nodes.length, 71);
 const { linkedConceptNotes, buildConceptContext } = load('src/features/atlas/context.ts');
 const linkStore = {
   related: () => [{ rec: { id: 'note-b', type: 'note', title: 'B note' } },
@@ -716,5 +695,51 @@ const linkStore = {
 assert.deepEqual(linkedConceptNotes(linkStore, 'concept-centre').map((note) => note.id), ['note-a', 'note-b']);
 assert.deepEqual(linkedConceptNotes(linkStore, 'concept-centre'), buildConceptContext(linkStore, 'concept-centre').notes);
 assert.deepEqual(linkedConceptNotes({ related: () => [] }, 'concept-empty'), []);
+
+/* P4: lifecycle, evidence and the AND-composed list filters. Only active
+ * rows traverse; retracted/vetoed rows remain as history on both endpoints. */
+{
+  const { filterConcepts, filterRelations, EMPTY_FILTERS } = graphModule;
+  const lifecycle = buildAtlasGraph(storeOf({
+    records: [
+      { id: 'concept-a', type: 'concept', title: 'Alpha', aliases: ['first'] },
+      concept('concept-b', 'Beta'),
+      concept('concept-c', 'Gamma'),
+    ],
+    relations: [
+      { from: 'concept-a', type: 'requires', to: 'concept-b', context: null, source: null,
+        status: 'vetoed', status_reason: 'wrong direction', evidence: [], evidence_state: 'missing' },
+      { from: 'concept-a', type: 'derives', to: 'concept-c', context: null, source: null,
+        status: 'retracted', status_reason: 'superseded', evidence: [], evidence_state: 'missing' },
+      { from: 'concept-b', type: 'requires', to: 'concept-c', context: null, source: null,
+        pinned: true, evidence: [{
+          source_id: 'source-x', material_relpath: 'book.pdf', page: 29,
+          file_sha256: 'a'.repeat(64), quote: 'quoted text',
+        }], evidence_state: 'verified' },
+    ],
+  }));
+  assert.equal(lifecycle.prerequisiteEdges.get('concept-a'), undefined,
+    'a vetoed strict edge never orders');
+  assert.deepEqual((lifecycle.historyEdges.get('concept-a') ?? []).map((e) => e.status),
+    ['vetoed', 'retracted']);
+  assert.deepEqual((lifecycle.historyEdges.get('concept-c') ?? []).map((e) => e.id),
+    ['concept-a--derives--concept-c'], 'history is reachable from both endpoints');
+  const pinned = lifecycle.relationByIdentity.get('concept-b--requires--concept-c');
+  assert.equal(pinned.pinned, true);
+  assert.equal(pinned.evidenceState, 'verified');
+  assert.equal(pinned.evidence[0].page, 29);
+
+  const none = { ...EMPTY_FILTERS };
+  assert.equal(filterRelations(lifecycle, '', none).length, 1, 'filters see active rows only');
+  assert.equal(filterRelations(lifecycle, '', { ...none, evidence: 'verified' }).length, 1);
+  assert.equal(filterRelations(lifecycle, '', { ...none, evidence: 'missing' }).length, 0);
+  assert.equal(filterRelations(lifecycle, '', { ...none, layer: 'semantic' }).length, 0);
+  assert.equal(filterRelations(lifecycle, 'gamma', { ...none, type: 'requires' }).length, 1,
+    'query and type AND-compose');
+  assert.deepEqual(filterConcepts(lifecycle, 'first', none).map((c) => c.id), ['concept-a'],
+    'search covers aliases');
+  assert.deepEqual(filterConcepts(lifecycle, '', { ...none, type: 'requires' }).map((c) => c.id),
+    ['concept-b', 'concept-c'], 'a concept must touch a matching relation when filters are set');
+}
 
 console.log('Atlas graph OK: layers, direction, provenance, remainders, cycles, and determinism.');

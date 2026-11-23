@@ -90,12 +90,26 @@ export interface AtlasConcept {
   readonly label: string;
   /** Normalized label; the primary sort key, with `id` as the tiebreak. */
   readonly sortKey: string;
+  /** Authored aliases, searched alongside the label. */
+  readonly aliases: readonly string[];
   /**
    * Null when a relation or module edge names a concept the projection does
    * not carry. The concept still appears, under its identifier.
    */
   readonly record: ProjectionRecord | null;
 }
+
+/** One pinned PDF binding on a relation (Core evidence shape, ADR-024). */
+export interface EvidenceBinding {
+  readonly source_id: string;
+  readonly material_relpath: string;
+  readonly file_sha256: string;
+  readonly page: number;
+  readonly quote: string;
+}
+
+export type RelationStatus = 'active' | 'retracted' | 'vetoed';
+export type EvidenceState = 'verified' | 'missing' | 'stale' | 'disputed';
 
 export interface AtlasEdge {
   /**
@@ -118,6 +132,14 @@ export interface AtlasEdge {
   readonly prerequisiteId: string | null;
   /** Strict layer only: the concept it unlocks. */
   readonly dependentId: string | null;
+  /** Lifecycle of the authored row; only `active` traverses (ADR-024). */
+  readonly status: RelationStatus;
+  readonly origin: 'pilot' | 'aram';
+  readonly pinned: boolean;
+  readonly statusReason: string | null;
+  readonly evidenceDisputed: boolean;
+  readonly evidence: readonly EvidenceBinding[];
+  readonly evidenceState: EvidenceState;
 }
 
 export interface AtlasModule {
@@ -144,6 +166,8 @@ export interface AtlasGraph {
   readonly semanticEdges: ReadonlyMap<string, readonly AtlasEdge[]>;
   /** Edges whose type is in neither vocabulary, touching the key. */
   readonly unrecognizedEdges: ReadonlyMap<string, readonly AtlasEdge[]>;
+  /** Retracted/vetoed edges touching the key: history, never traversal. */
+  readonly historyEdges: ReadonlyMap<string, readonly AtlasEdge[]>;
   readonly modules: readonly AtlasModule[];
   readonly modulesByConcept: ReadonlyMap<string, readonly string[]>;
   readonly conceptsByModule: ReadonlyMap<string, readonly string[]>;
@@ -212,6 +236,22 @@ function toEdge(wire: RelationRecord): AtlasEdge {
   // prerequisite and the arrow runs the other way. The semantic layer keeps
   // the authored direction precisely because it claims no order.
   const strict = layer === 'strict';
+  const status: RelationStatus = relation.status === 'retracted' || relation.status === 'vetoed'
+    ? relation.status : 'active';
+  const evidence: EvidenceBinding[] = Array.isArray(relation.evidence)
+    ? relation.evidence.flatMap((binding): EvidenceBinding[] => {
+      const row = binding as Partial<EvidenceBinding>;
+      return typeof row.source_id === 'string' && typeof row.material_relpath === 'string'
+        && typeof row.file_sha256 === 'string' && typeof row.page === 'number'
+        && typeof row.quote === 'string'
+        ? [{ source_id: row.source_id, material_relpath: row.material_relpath,
+          file_sha256: row.file_sha256, page: row.page, quote: row.quote }]
+        : [];
+    })
+    : [];
+  const evidenceState: EvidenceState = ['disputed', 'stale', 'verified'].includes(
+    String(relation.evidence_state))
+    ? relation.evidence_state as EvidenceState : 'missing';
 
   return {
     id: edgeIdentity(relation),
@@ -225,6 +265,13 @@ function toEdge(wire: RelationRecord): AtlasEdge {
     studyTo: strict ? relation.from : relation.to,
     prerequisiteId: strict ? relation.to : null,
     dependentId: strict ? relation.from : null,
+    status,
+    origin: relation.origin === 'aram' ? 'aram' : 'pilot',
+    pinned: relation.pinned === true,
+    statusReason: relation.status_reason ?? null,
+    evidenceDisputed: relation.evidence_disputed === true,
+    evidence,
+    evidenceState,
   };
 }
 
@@ -240,10 +287,15 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
     // is kept under its identifier rather than dropped, so the edge stays
     // visible and the gap stays nameable.
     const label = record ? projectedLabel(record, id) : id;
+    const aliases = Array.isArray(record?.aliases)
+      ? record.aliases.filter((value: unknown): value is string =>
+        typeof value === 'string' && Boolean(value))
+      : [];
     const concept: AtlasConcept = {
       id,
       label,
       sortKey: normalizedSortKey(label),
+      aliases,
       record: record ?? null,
     };
     conceptById.set(id, concept);
@@ -261,6 +313,7 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
   const dependentEdges = new Map<string, AtlasEdge[]>();
   const semanticEdges = new Map<string, AtlasEdge[]>();
   const unrecognizedEdges = new Map<string, AtlasEdge[]>();
+  const historyEdges = new Map<string, AtlasEdge[]>();
   const resolvedSources = new Map<string, ProjectionRecord>();
 
   for (const relation of store.relations()) {
@@ -277,6 +330,14 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
     if (edge.source && !resolvedSources.has(edge.source)) {
       const record = store.get(edge.source);
       if (record) resolvedSources.set(edge.source, record);
+    }
+
+    // Only active rows traverse or order (ADR-024 step 7). Retracted and
+    // vetoed rows stay reachable as history on both endpoints.
+    if (edge.status !== 'active') {
+      push(historyEdges, edge.from, edge);
+      if (edge.to !== edge.from) push(historyEdges, edge.to, edge);
+      continue;
     }
 
     if (edge.layer === 'strict') {
@@ -378,6 +439,7 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
     dependentEdges,
     semanticEdges,
     unrecognizedEdges,
+    historyEdges,
     modules,
     modulesByConcept,
     conceptsByModule,
@@ -392,7 +454,7 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
 
 export function conceptOf(graph: AtlasGraph, id: string): AtlasConcept {
   return graph.conceptById.get(id)
-    ?? { id, label: id, sortKey: normalizedSortKey(id), record: null };
+    ?? { id, label: id, sortKey: normalizedSortKey(id), aliases: [], record: null };
 }
 
 export function conceptLabel(graph: AtlasGraph, id: string): string {
@@ -632,6 +694,7 @@ export function neighbourhood(
   const drawnUnrecognized: AtlasEdge[] = [];
 
   for (const edge of graph.edges) {
+    if (edge.status !== 'active') continue;
     const both = inside(edge.from) && inside(edge.to);
 
     if (edge.layer === 'strict') {
@@ -1081,4 +1144,76 @@ export function summarize(graph: AtlasGraph): AtlasSummary {
     modulesPublishing: graph.modules.filter((module) => module.conceptCount > 0).length,
     modules: graph.modules.length,
   };
+}
+
+/* -------------------------------------------------------------------------
+ * The keyboard-complete list: search and AND-composed filters (P4 step 25)
+ * ---------------------------------------------------------------------- */
+
+/** Every authored relation type, strict first: the Type filter vocabulary. */
+export const ALL_RELATION_TYPES: readonly string[] = [
+  ...STRICT_RELATION_TYPES, ...SEMANTIC_RELATION_TYPES,
+];
+
+export type LayerFilter = 'all' | 'strict' | 'semantic';
+export type EvidenceFilter = 'all' | EvidenceState;
+
+export interface AtlasFilters {
+  readonly layer: LayerFilter;
+  readonly type: string;
+  readonly evidence: EvidenceFilter;
+}
+
+export const EMPTY_FILTERS: AtlasFilters = { layer: 'all', type: 'all', evidence: 'all' };
+
+export function filtersActive(filters: AtlasFilters): boolean {
+  return filters.layer !== 'all' || filters.type !== 'all' || filters.evidence !== 'all';
+}
+
+function matchesQuery(graph: AtlasGraph, edge: AtlasEdge, needle: string): boolean {
+  if (!needle) return true;
+  const haystack = [
+    conceptLabel(graph, edge.from), conceptLabel(graph, edge.to),
+    edge.type, edge.from, edge.to,
+  ].join(' ').toLowerCase();
+  return needle.split(/\s+/).every((word) => haystack.includes(word));
+}
+
+/** Active relations matching every set dimension, in identity order. */
+export function filterRelations(
+  graph: AtlasGraph,
+  query: string,
+  filters: AtlasFilters,
+): readonly AtlasEdge[] {
+  const needle = foldCase(query.trim());
+  return graph.edges.filter((edge) => edge.status === 'active'
+    && (filters.layer === 'all' || edge.layer === filters.layer)
+    && (filters.type === 'all' || edge.type === filters.type)
+    && (filters.evidence === 'all' || edge.evidenceState === filters.evidence)
+    && matchesQuery(graph, edge, needle));
+}
+
+/**
+ * Concepts matching the search text over labels and aliases. When relation
+ * filters are set, a concept must also touch a matching relation, so the
+ * dimensions compose by AND rather than unioning two result sets.
+ */
+export function filterConcepts(
+  graph: AtlasGraph,
+  query: string,
+  filters: AtlasFilters,
+): readonly AtlasConcept[] {
+  const needle = foldCase(query.trim());
+  const touching = filtersActive(filters)
+    ? new Set(filterRelations(graph, '', filters)
+      .flatMap((edge) => [edge.from, edge.to]))
+    : null;
+  return graph.concepts.filter((concept) => {
+    if (!concept.record) return false;
+    if (touching && !touching.has(concept.id)) return false;
+    if (!needle) return true;
+    const haystack = [concept.label, concept.id, ...concept.aliases]
+      .join(' ').toLowerCase();
+    return needle.split(/\s+/).every((word) => haystack.includes(word));
+  });
 }

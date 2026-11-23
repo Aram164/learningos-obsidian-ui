@@ -73,6 +73,50 @@ export function draftRow(draft: RelationDraft): RelationRow {
   };
 }
 
+/** Whether the projected row carries ADR-024 decoration (Core `is_decorated`). */
+export function isDecorated(edge: AtlasEdge): boolean {
+  return edge.status !== 'active' || edge.pinned || edge.evidence.length > 0
+    || edge.evidenceDisputed || edge.statusReason !== null || edge.origin === 'aram';
+}
+
+/**
+ * The replacement row for an edit: the exact stored row with only the edited
+ * fields changed, so lifecycle and evidence decoration survive byte-exact.
+ */
+export function editedRow(draft: RelationDraft): RelationRow {
+  const base: Record<string, unknown> = { ...(draft.original ?? {}) };
+  delete base.context;
+  delete base.source;
+  return { ...base, ...draftRow(draft) } as RelationRow;
+}
+
+export interface RelationEligibility {
+  readonly edit: boolean;
+  readonly pin: boolean;
+  readonly unpin: boolean;
+  readonly veto: boolean;
+  readonly retract: boolean;
+  readonly restore: boolean;
+  readonly remove: boolean;
+}
+
+const NO_ACTIONS: RelationEligibility = {
+  edit: false, pin: false, unpin: false, veto: false,
+  retract: false, restore: false, remove: false,
+};
+
+/** Which lifecycle controls a row may offer (P4 step 26: never impossible ones). */
+export function relationEligibility(edge: AtlasEdge): RelationEligibility {
+  if (edge.pinned) return { ...NO_ACTIONS, unpin: true };
+  if (edge.status === 'vetoed') return { ...NO_ACTIONS, restore: true };
+  if (edge.status === 'retracted') return { ...NO_ACTIONS, edit: true, restore: true };
+  return {
+    ...NO_ACTIONS,
+    edit: true, pin: true, veto: true, retract: true,
+    remove: !isDecorated(edge),
+  };
+}
+
 /**
  * A blank connection. From a focused concept the known end is filled in and the
  * picker opens on the other; from the entry state neither is known yet.
@@ -92,7 +136,7 @@ export function newDraft(from = '', to = ''): RelationDraft {
   };
 }
 
-export function editDraft(edge: AtlasEdge): RelationDraft {
+export function editDraft(edge: AtlasEdge, original?: RelationRow): RelationDraft {
   return {
     mode: 'edit',
     from: edge.from,
@@ -100,7 +144,7 @@ export function editDraft(edge: AtlasEdge): RelationDraft {
     to: edge.to,
     context: edge.context ?? '',
     source: edge.source ?? '',
-    original: rowOf(edge),
+    original: original ?? rowOf(edge),
     picking: null,
     search: '',
     error: null,
@@ -382,10 +426,9 @@ export function renderRelationEditor(
     actions,
     draft.mode === 'add' ? 'Save this connection' : 'Save the change',
     () => {
-      const row = draftRow(draft);
       void host.changeRelations([draft.mode === 'add'
-        ? { action: 'add', new: row }
-        : { action: 'replace', old: draft.original as RelationRow, new: row }]);
+        ? { action: 'add', new: draftRow(draft) }
+        : { action: 'replace', old: draft.original as RelationRow, new: editedRow(draft) }]);
     },
   );
   save.addClass('los-atlas-editor-save');

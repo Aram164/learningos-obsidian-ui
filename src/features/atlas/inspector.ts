@@ -1,4 +1,4 @@
-import { button, empty, filterTabs } from '../../components';
+import { button, empty } from '../../components';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import type {
   ModuleConceptEvidence,
@@ -10,15 +10,18 @@ import {
 } from '../../projection/readers';
 import { buildConceptContext } from './context';
 import {
+  canonicalSentence,
   conceptLabel,
   evidenceFor,
   modulesFor,
   provenanceOf,
+  relationPhrase,
+  strictPath,
   type AtlasEdge,
   type AtlasGraph,
   type AtlasNeighbourhood,
 } from './graph';
-import { layerBadge } from './focused-graph';
+import { layerBadge } from './text-navigation';
 import {
   collectQuestions,
   questionsForConcept,
@@ -26,7 +29,10 @@ import {
   type AtlasQuestion,
 } from './questions';
 import { conceptDisclosure } from './disclosure';
-import { renderRemoveConnection } from './relation-editor';
+import {
+  relationEligibility,
+  rowOf,
+} from './relation-editor';
 import {
   contextSentence,
   edgeHeadline,
@@ -34,29 +40,19 @@ import {
   otherEnd,
   plural,
   provenanceSentence,
-  relationSentences,
 } from './narrative';
-import type { AtlasHost, AtlasInspectorTab } from './ports';
+import type { AtlasHost } from './ports';
 
 /**
- * The concept inspector.
+ * The concept and relation inspectors (P4 step 26).
  *
- * A landmark and a live region, not a dialog. `makeModalAccessible` would be
- * wrong here twice over: it declares `role="dialog"` on the panel and marks the
- * rest of the workspace `inert`, and this panel is neither modal nor a trap —
- * the learner moves between the graph, the outline and the inspector freely,
- * and everything stays operable.
- *
- * The four tabs are attention, not navigation. They are working state on the
- * host, so switching one does not push history, while changing the lens does.
+ * A landmark and a live region, not a dialog. The concept inspector is one
+ * ordered list of sections — Definition, Prerequisites, Dependents, Related
+ * concepts, Path, Sources, Practice, Questions, History — so every essential
+ * fact is reachable by keyboard without a Canvas tab. The relation inspector
+ * offers exactly the lifecycle actions Core admits for that row, and no
+ * impossible control is ever rendered.
  */
-
-const TABS: ReadonlyArray<readonly [AtlasInspectorTab, string]> = [
-  ['summary', 'Summary'],
-  ['connections', 'Connections'],
-  ['evidence', 'Evidence'],
-  ['sources', 'Sources'],
-];
 
 function aliasesOf(record: ProjectionRecord | null): readonly string[] {
   return Array.isArray(record?.aliases)
@@ -66,176 +62,72 @@ function aliasesOf(record: ProjectionRecord | null): readonly string[] {
     : [];
 }
 
-/**
- * One relation row: the sentence, its provenance, and exactly one action.
- *
- * The provenance line is the only place in the interface where the three
- * states are distinguished, so none of them may be softened into another.
- */
-function connectionRow(
+function section(parent: HTMLElement, title: string): HTMLElement {
+  const wrap = parent.createDiv({ cls: 'los-atlas-inspector-section' });
+  wrap.createEl('h3', { cls: 'los-atlas-section-title', text: title });
+  return wrap;
+}
+
+function absence(parent: HTMLElement, text: string): void {
+  parent.createDiv({ cls: 'los-atlas-absence', text });
+}
+
+/** One relation row: a keyboard button that opens the relation inspector. */
+function relationRow(
   parent: HTMLElement,
   host: AtlasHost,
   graph: AtlasGraph,
   edge: AtlasEdge,
   conceptId: string,
 ): void {
-  const other = otherEnd(edge, conceptId);
-  const row = parent.createDiv({ cls: 'los-atlas-connection' });
+  const row = parent.createEl('button', {
+    cls: 'los-atlas-connection is-clickable',
+    attr: { type: 'button' },
+  });
   row.setAttribute('data-relation-id', edge.id);
+  row.setAttribute('data-row-key', `relation:${edge.id}`);
   row.toggleClass('is-selected', host.edgeId === edge.id);
-  const copy = row.createDiv({ cls: 'los-atlas-connection-copy' });
 
-  const headline = copy.createDiv({ cls: 'los-atlas-connection-title' });
+  const headline = row.createDiv({ cls: 'los-atlas-connection-title' });
   headline.createSpan({ text: edgeHeadline(graph, edge, conceptId) });
   layerBadge(headline, edge);
 
-  copy.createDiv({
+  row.createDiv({
     cls: 'los-micro',
-    text: relationSentences(graph, edge).join(' '),
+    text: `${moduleTrail(graph, otherEnd(edge, conceptId))} · ${provenanceSentence(provenanceOf(graph, edge))} · ${contextSentence(edge)} · evidence: ${edge.evidenceState}`,
   });
-
-  const provenance = provenanceOf(graph, edge);
-  const line = copy.createDiv({ cls: 'los-atlas-provenance' });
-  line.addClass(`los-atlas-provenance--${provenance.state}`);
-  line.createSpan({
-    cls: 'los-micro',
-    text: `${moduleTrail(graph, other)} · ${provenanceSentence(provenance)} · ${contextSentence(edge)}`,
-  });
-
-  if (provenance.state === 'resolved') {
-    button(
-      line,
-      'Open source',
-      () => host.plugin.nav.openRecord(provenance.record),
-      'quiet',
-    );
-  }
-
-  if (provenance.state === 'unresolved') {
-    // Fail closed means name the identifier and stop. The relation stays
-    // drawn: dropping an authored prerequisite because its citation is broken
-    // would silently shorten a learning path, which is the one failure this
-    // screen must never produce.
-    copy.createDiv({
-      cls: 'los-micro los-atlas-unresolved',
-      text: `The relation is authored and still applies. No substitute source is offered for ${provenance.sourceId}.`,
-    });
-    button(
-      line,
-      'Open Diagnostics',
-      () => host.go({ lens: 'diagnostics' }),
-      'quiet',
-    );
-  }
-
   if (edge.context) {
-    copy.createDiv({ cls: 'los-atlas-connection-context', text: edge.context });
+    row.createDiv({ cls: 'los-atlas-connection-context', text: edge.context });
   }
-
-  const action = row.createDiv({ cls: 'los-atlas-connection-action' });
-  button(action, 'Explore from here', () => host.go({ concept: other }), 'quiet');
+  row.setAttrs({
+    'aria-label': `Inspect connection: ${canonicalSentence(graph, edge)}. Evidence ${edge.evidenceState}.`,
+  });
+  row.addEventListener('click', () => {
+    host.inspectorOrigin = `relation:${edge.id}`;
+    host.focusInspector = true;
+    host.inspectEdge(edge.id);
+  });
 }
 
-function renderConnections(
+function renderRelationGroup(
   parent: HTMLElement,
   host: AtlasHost,
   graph: AtlasGraph,
   conceptId: string,
+  edges: readonly AtlasEdge[],
+  emptyText: string,
 ): void {
-  const prerequisites = graph.prerequisiteEdges.get(conceptId) ?? [];
-  const dependents = graph.dependentEdges.get(conceptId) ?? [];
-  const semantic = graph.semanticEdges.get(conceptId) ?? [];
-  const unrecognized = graph.unrecognizedEdges.get(conceptId) ?? [];
-  const label = conceptLabel(graph, conceptId);
-
-  parent.createDiv({
-    cls: 'los-micro los-atlas-group-head',
-    text: `Prerequisites of ${label} · ${plural(prerequisites.length, 'authored', 'authored')}`,
-  });
-
-  if (prerequisites.length) {
-    const group = parent.createDiv({ cls: 'los-atlas-connections' });
-    for (const edge of prerequisites) {
-      connectionRow(group, host, graph, edge, conceptId);
-    }
-  } else {
-    parent.createDiv({
-      cls: 'los-atlas-absence',
-      text: 'No authored prerequisites. Absence, not a claim that none exist — and never a claim that the concept is foundational.',
-    });
+  if (!edges.length) {
+    absence(parent, emptyText);
+    return;
   }
-
-  parent.createDiv({
-    cls: 'los-micro los-atlas-group-head',
-    text: `Dependents · ${plural(dependents.length, 'authored', 'authored')}`,
-  });
-
-  if (dependents.length) {
-    const group = parent.createDiv({ cls: 'los-atlas-connections' });
-    for (const edge of dependents) {
-      connectionRow(group, host, graph, edge, conceptId);
-    }
-  } else {
-    parent.createDiv({
-      cls: 'los-atlas-absence',
-      text: 'No authored dependents. Nothing is inferred to fill this, and it does not mean the concept is advanced.',
-    });
-  }
-
-  if (semantic.length) {
-    const toggle = parent.createEl('button', {
-      cls: 'los-atlas-semantic-toggle is-clickable',
-      attr: { type: 'button' },
-    });
-    toggle.createDiv({
-      cls: 'los-atlas-connection-title',
-      text: plural(semantic.length, 'semantic link'),
-    });
-    toggle.createDiv({
-      cls: 'los-micro',
-      text: `${[...new Set(semantic.map((edge) => edge.type))].join(' · ')} — never in a path`,
-    });
-    toggle.setAttrs({ 'aria-expanded': String(host.semanticOpen) });
-    toggle.addEventListener('click', () => {
-      host.semanticOpen = !host.semanticOpen;
-      host.render();
-    });
-
-    if (host.semanticOpen) {
-      const group = parent.createDiv({ cls: 'los-atlas-connections' });
-      for (const edge of semantic) {
-        connectionRow(group, host, graph, edge, conceptId);
-      }
-    }
-  }
-
-  if (unrecognized.length) {
-    parent.createDiv({
-      cls: 'los-micro los-atlas-group-head',
-      text: `Outside the authored vocabulary · ${plural(unrecognized.length, 'relation')}`,
-    });
-    const group = parent.createDiv({ cls: 'los-atlas-connections' });
-    for (const edge of unrecognized) {
-      connectionRow(group, host, graph, edge, conceptId);
-    }
-  }
-
-  // ADR-016 decision 9 said this list was read-only and said so plainly,
-  // because a dead affordance is worse than a stated absence. ADR-017 supplies
-  // the governed capability that was missing, so the affordance is real now and
-  // the sentence changes with it.
-  parent.createDiv({
-    cls: 'los-micro los-atlas-authoring',
-    text: 'These are your connections. Select one to change or remove it, or connect two concepts from the graph — no AI is involved either way.',
-  });
+  const group = parent.createDiv({ cls: 'los-atlas-connections' });
+  enableButtonGroupKeyboardNavigation(group, 'vertical');
+  for (const edge of edges) relationRow(group, host, graph, edge, conceptId);
 }
 
 /**
  * The evidence drill-down: the authored tag that licenses each module chip.
- *
- * This is where an evidence claim can be interrogated. The screen makes claims
- * about how to spend weeks of study, and a claim the learner cannot open is one
- * they have to take on faith.
  */
 function renderEvidenceItem(
   parent: HTMLElement,
@@ -277,7 +169,7 @@ function renderEvidenceItem(
   }
 }
 
-function renderEvidence(
+function renderModuleEvidence(
   parent: HTMLElement,
   host: AtlasHost,
   graph: AtlasGraph,
@@ -286,10 +178,7 @@ function renderEvidence(
   const modules = modulesFor(graph, conceptId);
 
   if (!modules.length) {
-    parent.createDiv({
-      cls: 'los-atlas-absence',
-      text: 'No module publishes a stage tag or reviewed knowledge-map node for this concept. That records where teaching has been mapped, not whether the concept is relevant.',
-    });
+    absence(parent, 'No module publishes a stage tag or reviewed knowledge-map node for this concept. That records where teaching has been mapped, not whether the concept is relevant.');
     return;
   }
 
@@ -322,14 +211,7 @@ function renderEvidence(
   }
 }
 
-/**
- * Provenance, gathered.
- *
- * The relation sources first — the three states kept apart — then the notes and
- * reviewed source evaluations that already point at this concept. Neither of
- * the latter licenses a relation; they are other ways into the same records.
- */
-function renderSources(
+function renderRelationSources(
   parent: HTMLElement,
   host: AtlasHost,
   graph: AtlasGraph,
@@ -348,10 +230,7 @@ function renderSources(
   });
 
   if (!edges.length) {
-    parent.createDiv({
-      cls: 'los-atlas-absence',
-      text: 'No relation names this concept, so there is nothing to cite.',
-    });
+    absence(parent, 'No relation names this concept, so there is nothing to cite.');
   }
 
   for (const edge of edges) {
@@ -397,8 +276,12 @@ function renderSources(
         cls: 'los-item is-clickable',
         attr: { type: 'button' },
       });
+      item.setAttribute('data-note-id', projectedString(note.id) ?? '');
       item.createDiv({ cls: 'los-item-title', text: projectedLabel(note) });
-      item.createDiv({ cls: 'los-micro', text: 'Explicit concept backlink' });
+      item.createDiv({
+        cls: 'los-micro',
+        text: [noteMetadata(note), 'Explicit concept backlink'].filter(Boolean).join(' · '),
+      });
       item.addEventListener('click', () => host.plugin.nav.openRecord(note));
     }
   }
@@ -431,14 +314,13 @@ function renderSources(
  * The questions recorded against whatever is selected.
  *
  * Absence is stated rather than left blank, and it is stated as absence of a
- * *recorded question* — not as evidence that the thing is understood. Those are
- * different facts and the interface must not let one stand for the other.
+ * *recorded question* — not as evidence that the thing is understood.
  */
 function renderQuestionNote(
   parent: HTMLElement,
   host: AtlasHost,
   questions: readonly AtlasQuestion[],
-  absence: string,
+  absenceText: string,
 ): void {
   const band = parent.createDiv({ cls: 'los-atlas-questions' });
   const open = questions.filter((question) => question.state === 'open');
@@ -451,7 +333,7 @@ function renderQuestionNote(
   });
 
   if (!questions.length) {
-    band.createDiv({ cls: 'los-atlas-absence los-micro', text: absence });
+    band.createDiv({ cls: 'los-atlas-absence los-micro', text: absenceText });
     return;
   }
 
@@ -461,23 +343,20 @@ function renderQuestionNote(
     const row = list.createDiv({ cls: 'los-atlas-question-row' });
     row.toggleClass('is-resolved', question.state === 'resolved');
 
-    const open = row.createEl('button', {
+    const openButton = row.createEl('button', {
       cls: 'los-atlas-question-open is-clickable',
       attr: { type: 'button' },
     });
-    open.createDiv({ cls: 'los-atlas-record-title', text: question.title });
-    open.createDiv({
+    openButton.createDiv({ cls: 'los-atlas-record-title', text: question.title });
+    openButton.createDiv({
       cls: 'los-micro',
       text: question.state === 'open' ? 'Open' : 'Resolved',
     });
-    open.setAttrs({
+    openButton.setAttrs({
       'aria-label': `${question.title}. ${question.state}. Open the note.`,
     });
-    open.addEventListener('click', () => host.plugin.openVaultPath(question.path));
+    openButton.addEventListener('click', () => host.plugin.openVaultPath(question.path));
 
-    // Resolving is Aram's statement about his own question and nothing else.
-    // The wording says so, because "Done" beside a concept would read as a
-    // claim about the concept.
     const actions = row.createDiv({ cls: 'los-actions' });
     const resolving = question.state === 'open';
     const control = button(
@@ -493,56 +372,6 @@ function renderQuestionNote(
         : `Reopen “${question.title}”`,
     });
   }
-}
-
-function renderSummary(
-  parent: HTMLElement,
-  host: AtlasHost,
-  graph: AtlasGraph,
-  view: AtlasNeighbourhood,
-): void {
-  const concept = view.focus;
-
-  if (concept.record === null) {
-    parent.createDiv({
-      cls: 'los-atlas-absence',
-      text: `The projection carries no concept record for ${concept.id}. It is shown under its identifier because relations name it; nothing is invented to stand in for the record.`,
-    });
-  }
-
-  const facts = parent.createDiv({ cls: 'los-atlas-facts' });
-  for (const [term, value] of [
-    ['Taught in', moduleTrail(graph, concept.id)],
-    ['Prerequisites', plural(graph.prerequisiteEdges.get(concept.id)?.length ?? 0, 'authored', 'authored')],
-    ['Dependents', plural(graph.dependentEdges.get(concept.id)?.length ?? 0, 'authored', 'authored')],
-    ['Semantic', plural(graph.semanticEdges.get(concept.id)?.length ?? 0, 'authored', 'authored')],
-  ] as const) {
-    const fact = facts.createDiv({ cls: 'los-atlas-fact' });
-    fact.createDiv({ cls: 'los-micro', text: term });
-    fact.createDiv({ cls: 'los-atlas-fact-value', text: value });
-  }
-
-  renderQuestionNote(
-    parent,
-    host,
-    questionsForConcept(collectQuestions(host.plugin.store, graph), concept.id),
-    `No question recorded against ${concept.label}.`,
-  );
-
-  if (concept.record) {
-    const actions = parent.createDiv({ cls: 'los-actions' });
-    button(
-      actions,
-      'Open concept',
-      () => host.plugin.nav.openRecord(concept.record as ProjectionRecord),
-      'quiet',
-    );
-  }
-
-  parent.createDiv({
-    cls: 'los-micro',
-    text: 'Evidence records what exists, not what was understood.',
-  });
 }
 
 function noteMetadata(note: ProjectionRecord): string {
@@ -569,6 +398,256 @@ function renderLinkedNote(parent: HTMLElement, host: AtlasHost, note: Projection
   row.addEventListener('click', () => host.plugin.nav.openRecord(note));
 }
 
+/** Practice notes linked to the concept; verification counts join in P6. */
+function renderPractice(
+  parent: HTMLElement,
+  host: AtlasHost,
+  conceptId: string,
+): void {
+  const context = buildConceptContext(host.plugin.store, conceptId);
+  const practice = context.notes.filter((note) => {
+    const role = projectedString(note.role);
+    return role === 'exercise-bank' || role === 'mock-exam';
+  });
+  if (!practice.length) {
+    absence(parent, 'No exercise bank or mock exam is linked to this concept. Practice stays reachable from its source note; nothing is inferred from tags or titles.');
+    return;
+  }
+  const list = parent.createDiv({ cls: 'los-atlas-records' });
+  enableButtonGroupKeyboardNavigation(list, 'vertical');
+  for (const note of practice) renderLinkedNote(list, host, note);
+  parent.createDiv({
+    cls: 'los-micro',
+    text: 'Practice links back to the source note. No answer text, key or mastery score is shown here.',
+  });
+}
+
+function renderPathSection(
+  parent: HTMLElement,
+  host: AtlasHost,
+  graph: AtlasGraph,
+  conceptId: string,
+): void {
+  const path = strictPath(graph, conceptId);
+  if (!path.ok) {
+    const blocked = parent.createDiv({ cls: 'los-atlas-blocked' });
+    blocked.setAttrs({ role: 'alert' });
+    blocked.createDiv({
+      cls: 'los-atlas-blocked-title',
+      text: 'No learning order exists for this concept',
+    });
+    blocked.createDiv({
+      cls: 'los-atlas-blocked-body',
+      text: `These concepts require one another in a loop: ${path.cycle.join(' → ')}.`,
+    });
+    return;
+  }
+  if (path.total === 1) {
+    absence(parent, 'No authored prerequisites, so the path is this concept alone. That is a statement about the registry, not about difficulty.');
+    return;
+  }
+  const steps = parent.createEl('ol', { cls: 'los-atlas-path-steps' });
+  for (const layer of path.layers) {
+    for (const concept of layer) {
+      const item = steps.createEl('li', { cls: 'los-atlas-path-step' });
+      const control = item.createEl('button', {
+        cls: 'los-atlas-path-step-button is-clickable',
+        attr: { type: 'button' },
+        text: concept.label,
+      });
+      control.setAttribute('data-row-key', `concept:${concept.id}`);
+      const incoming = path.edges.find((edge) => edge.dependentId === concept.id);
+      item.createDiv({
+        cls: 'los-micro',
+        text: incoming ? `evidence: ${incoming.evidenceState}` : 'the concept itself',
+      });
+      control.addEventListener('click', () => {
+        host.inspectorOrigin = `concept:${concept.id}`;
+        host.focusInspector = true;
+        host.go({ concept: concept.id });
+      });
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * The relation inspector
+ * ---------------------------------------------------------------------- */
+
+function renderRelationActionForm(
+  parent: HTMLElement,
+  host: AtlasHost,
+  edge: AtlasEdge,
+): void {
+  const action = host.relationAction;
+  if (!action || action.edgeId !== edge.id) return;
+  const form = parent.createDiv({ cls: 'los-atlas-action-form' });
+  form.setAttrs({ role: 'group', 'aria-label': `${action.kind} this connection` });
+  form.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      host.relationAction = null;
+      host.render();
+    }
+  });
+
+  if (action.kind === 'veto' || action.kind === 'retract') {
+    form.createEl('label', { cls: 'los-micro', text: `Why is this connection being ${action.kind === 'veto' ? 'vetoed' : 'retracted'}? (1–400 characters)` });
+    const reason = form.createEl('textarea', {
+      cls: 'los-atlas-action-reason',
+      attr: { rows: '2', maxlength: '400' },
+    });
+    reason.value = action.reason;
+    reason.addEventListener('input', () => { action.reason = reason.value; });
+  } else if (edge.status === 'vetoed') {
+    form.createDiv({
+      cls: 'los-micro',
+      text: 'Restoring a vetoed connection needs fresh evidence from a previously unused registered source.',
+    });
+    const fields: Array<[string, string, (value: string) => void]> = [
+      ['Source ID', action.sourceId, (value) => { action.sourceId = value; }],
+      ['Material path (under materials/)', action.materialRelpath, (value) => { action.materialRelpath = value; }],
+      ['File SHA-256', action.fileSha256, (value) => { action.fileSha256 = value; }],
+      ['Physical PDF page', action.page, (value) => { action.page = value; }],
+      ['Quote (1–240 characters)', action.quote, (value) => { action.quote = value; }],
+    ];
+    for (const [label, value, set] of fields) {
+      form.createEl('label', { cls: 'los-micro', text: label });
+      const input = form.createEl('input', { cls: 'los-atlas-action-field', attr: { type: 'text', value } });
+      input.addEventListener('input', () => set(input.value));
+    }
+  } else {
+    form.createDiv({ cls: 'los-micro', text: 'This restores the connection as active. Its history stays recorded.' });
+  }
+
+  if (action.error) {
+    form.createDiv({ cls: 'los-atlas-editor-refusal los-micro', text: action.error })
+      .setAttrs({ role: 'alert' });
+  }
+
+  const actions = form.createDiv({ cls: 'los-actions' });
+  button(actions, action.kind === 'restore' ? 'Restore this connection' : `${action.kind === 'veto' ? 'Veto' : 'Retract'} this connection`,
+    () => { void host.submitRelationAction(); }, 'quiet');
+  button(actions, 'Cancel', () => {
+    host.relationAction = null;
+    host.render();
+  }, 'tertiary');
+}
+
+function renderRelationInspector(
+  panel: HTMLElement,
+  host: AtlasHost,
+  graph: AtlasGraph,
+  edge: AtlasEdge,
+): void {
+  panel.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && !host.relationAction) {
+      host.edgeId = null;
+      host.restoreFocus = true;
+      host.render();
+    }
+  });
+  panel.createDiv({ cls: 'los-micro', text: 'Selected connection' });
+  const heading = panel.createEl('h2', { text: canonicalSentence(graph, edge) });
+  heading.setAttrs({ tabindex: '-1', 'data-atlas-inspector-heading': 'true' });
+  layerBadge(panel, edge);
+
+  const facts = panel.createDiv({ cls: 'los-atlas-facts' });
+  const fact = (term: string, value: string) => {
+    const row = facts.createDiv({ cls: 'los-atlas-fact' });
+    row.createDiv({ cls: 'los-micro', text: term });
+    row.createDiv({ cls: 'los-atlas-fact-value', text: value });
+  };
+
+  const endpoint = (term: string, conceptId: string) => {
+    const row = facts.createDiv({ cls: 'los-atlas-fact' });
+    row.createDiv({ cls: 'los-micro', text: term });
+    const control = button(row, conceptLabel(graph, conceptId), () => {
+      host.inspectorOrigin = `concept:${conceptId}`;
+      host.focusInspector = true;
+      host.go({ concept: conceptId });
+    }, 'quiet');
+    control.setAttribute('data-row-key', `concept:${conceptId}`);
+  };
+  endpoint('From', edge.from);
+  fact('Type', `${relationPhrase(edge.type)} (${edge.type})`);
+  endpoint('To', edge.to);
+  fact('Context', edge.context ?? 'No context recorded. The schema permits that, and nothing is invented to fill it.');
+  const scopes = new Set([
+    ...modulesFor(graph, edge.from).map((module) => module.label),
+    ...modulesFor(graph, edge.to).map((module) => module.label),
+  ]);
+  fact('Affected scopes', scopes.size ? [...scopes].join(' · ') : 'No module evidence recorded for either endpoint');
+  fact('Status', edge.status === 'active'
+    ? 'active'
+    : `${edge.status}${edge.statusReason ? ` — ${edge.statusReason}` : ''}`);
+  if (edge.pinned) fact('Pinned', 'Only an exact unpin is accepted');
+  fact('Evidence', edge.evidenceDisputed
+    ? 'disputed' : edge.evidenceState);
+
+  if (edge.evidence.length) {
+    const bindings = panel.createDiv({ cls: 'los-atlas-bindings' });
+    bindings.createDiv({ cls: 'los-micro los-atlas-group-head', text: 'Evidence bindings' });
+    edge.evidence.forEach((binding, ordinal) => {
+      const item = bindings.createDiv({ cls: 'los-atlas-binding' });
+      item.createDiv({ cls: 'los-atlas-binding-quote', text: `“${binding.quote}”` });
+      item.createDiv({
+        cls: 'los-micro',
+        text: `${binding.source_id} · physical page ${binding.page}`,
+      });
+      button(item, 'Open evidence', () => host.openEvidence(edge.id, ordinal), 'quiet');
+    });
+  }
+
+  renderQuestionNote(
+    conceptDisclosure(panel, host, `${edge.id}:questions`, 'Questions about this connection'),
+    host,
+    questionsForRelation(collectQuestions(host.plugin.store, graph), edge.id),
+    'No question recorded against this connection.',
+  );
+
+  const eligibility = relationEligibility(edge);
+  const actions = panel.createDiv({ cls: 'los-actions los-atlas-relation-actions' });
+  if (eligibility.edit) {
+    button(actions, 'Edit', () => host.editRelation(edge), 'quiet')
+      .addClass('los-atlas-edit-connection');
+  }
+  if (eligibility.pin) {
+    button(actions, 'Pin', () => { void host.togglePin(edge); }, 'quiet');
+  }
+  if (eligibility.unpin) {
+    button(actions, 'Unpin', () => { void host.togglePin(edge); }, 'quiet');
+  }
+  if (eligibility.veto) {
+    button(actions, 'Veto', () => host.startRelationAction(edge, 'veto'), 'quiet');
+  }
+  if (eligibility.retract) {
+    button(actions, 'Retract', () => host.startRelationAction(edge, 'retract'), 'quiet');
+  }
+  if (eligibility.restore) {
+    button(actions, 'Restore', () => host.startRelationAction(edge, 'restore'), 'quiet');
+  }
+  if (eligibility.remove) {
+    button(actions, 'Remove', () => {
+      void host.changeRelations([{ action: 'remove', old: rowOf(edge) }]);
+    }, 'quiet').addClass('los-atlas-remove-connection');
+  }
+  renderRelationActionForm(panel, host, edge);
+  panel.createDiv({
+    cls: 'los-micro',
+    text: `Removing or retiring takes away the claim that ${canonicalSentence(graph, edge)}. Both concepts, their notes, materials and any question recorded about them stay exactly as they are.`,
+  });
+  button(panel, 'Close connection', () => {
+    host.edgeId = null;
+    host.relationAction = null;
+    host.restoreFocus = true;
+    host.render();
+  }, 'quiet');
+}
+
+/* -------------------------------------------------------------------------
+ * The concept inspector: sections in the specified order
+ * ---------------------------------------------------------------------- */
+
 export function renderInspector(
   parent: HTMLElement, host: AtlasHost, graph: AtlasGraph, view: AtlasNeighbourhood,
 ): void {
@@ -576,51 +655,78 @@ export function renderInspector(
   panel.setAttrs({ role: 'complementary', 'aria-label': `Notes and details for ${view.focus.label}` });
   const selectedEdge = host.edgeId ? graph.relationByIdentity.get(host.edgeId) : null;
   if (selectedEdge) {
-    panel.createDiv({ cls: 'los-micro', text: 'Selected connection' });
-    connectionRow(panel, host, graph, selectedEdge, selectedEdge.from);
-    renderQuestionNote(conceptDisclosure(panel, host, `${selectedEdge.id}:questions`,
-      'Questions about this connection'), host,
-      questionsForRelation(collectQuestions(host.plugin.store, graph), selectedEdge.id),
-      'No question recorded against this connection.');
-    renderRemoveConnection(panel, host, graph, selectedEdge);
-    button(panel, 'Close connection', () => { host.edgeId = null; host.tab = 'summary'; host.render(); }, 'quiet');
+    renderRelationInspector(panel, host, graph, selectedEdge);
     return;
   }
+
+  const concept = view.focus;
   panel.createDiv({ cls: 'los-micro', text: 'Selected concept' });
-  panel.createEl('h2', { text: view.focus.label });
-  const notes = buildConceptContext(host.plugin.store, view.focus.id).notes;
-  panel.createEl('h3', { text: `Linked notes · ${notes.length}` });
-  const list = panel.createDiv({ cls: 'los-atlas-records los-atlas-linked-notes' });
-  list.setAttribute('aria-label', 'Linked notes');
-  enableButtonGroupKeyboardNavigation(list, 'vertical');
-  for (const note of notes.slice(0, 2)) renderLinkedNote(list, host, note);
-  if (!notes.length) list.createDiv({ cls: 'los-micro', text: 'No notes explicitly linked to this concept.' });
-  if (notes.length > 2) {
-    const all = conceptDisclosure(panel, host, `${view.focus.id}:notes`, `Show all ${notes.length} linked notes`);
-    all.createDiv({ cls: 'los-micro', text: `${notes.length - 2} more notes; the first two remain above.` });
-    for (const note of notes.slice(2)) renderLinkedNote(all, host, note);
+  const heading = panel.createEl('h2', { text: concept.label });
+  heading.setAttrs({ tabindex: '-1', 'data-atlas-inspector-heading': 'true' });
+
+  const definition = section(panel, 'Definition');
+  if (concept.record === null) {
+    absence(definition, `The projection carries no concept record for ${concept.id}. It is shown under its identifier because relations name it; nothing is invented to stand in for the record.`);
+  } else {
+    const description = projectedString(concept.record.description);
+    definition.createDiv({
+      text: description ?? 'No definition is recorded for this concept. Its label and linked notes are what exists.',
+    });
+    const aliases = aliasesOf(concept.record);
+    if (aliases.length) {
+      definition.createDiv({ cls: 'los-micro', text: `Also called ${aliases.join(' · ')}` });
+    }
+    const actions = definition.createDiv({ cls: 'los-actions' });
+    button(
+      actions,
+      'Open card',
+      () => host.plugin.nav.openRecord(concept.record as ProjectionRecord),
+      'quiet',
+    );
   }
-  const actions = panel.createDiv({ cls: 'los-actions los-atlas-inspector-actions' });
-  const openDetails = (tab: AtlasInspectorTab) => {
-    host.tab = tab;
-    host.concepts.disclosures.set(`${view.focus.id}:details`, true);
-    host.render();
-  };
-  button(actions, 'Where it is taught', () => openDetails('evidence'), 'quiet');
-  button(actions, 'Questions', () => openDetails('summary'), 'quiet');
-  const details = conceptDisclosure(panel, host, `${view.focus.id}:details`, 'Concept details');
-  const aliases = aliasesOf(view.focus.record);
-  if (aliases.length) details.createDiv({ cls: 'los-micro', text: `Also called ${aliases.join(' · ')}` });
-  filterTabs<AtlasInspectorTab>(details, 'What to inspect about this concept', TABS, host.tab,
-    (value: AtlasInspectorTab) => { host.tab = value; host.render(); });
-  const detailBody = details.createDiv({ cls: 'los-atlas-inspector-body' });
-  enableButtonGroupKeyboardNavigation(detailBody, 'vertical');
-  switch (host.tab) {
-    case 'connections': renderConnections(detailBody, host, graph, view.focus.id); break;
-    case 'evidence': renderEvidence(detailBody, host, graph, view.focus.id); break;
-    case 'sources': renderSources(detailBody, host, graph, view.focus.id); break;
-    default: renderSummary(detailBody, host, graph, view); break;
-  }
+
+  const prerequisites = section(panel, 'Prerequisites');
+  renderRelationGroup(prerequisites, host, graph, concept.id,
+    graph.prerequisiteEdges.get(concept.id) ?? [],
+    'No authored prerequisites. Absence, not a claim that none exist — and never a claim that the concept is foundational.');
+
+  const dependents = section(panel, 'Dependents');
+  renderRelationGroup(dependents, host, graph, concept.id,
+    graph.dependentEdges.get(concept.id) ?? [],
+    'No authored dependents. Nothing is inferred to fill this, and it does not mean the concept is advanced.');
+
+  const related = section(panel, 'Related concepts');
+  const relatedEdges = [
+    ...(graph.semanticEdges.get(concept.id) ?? []),
+    ...(graph.unrecognizedEdges.get(concept.id) ?? []),
+  ];
+  renderRelationGroup(related, host, graph, concept.id, relatedEdges,
+    'No related concepts are recorded. Semantic relations explain; they never order learning.');
+
+  const pathSection = section(panel, 'Path');
+  renderPathSection(pathSection, host, graph, concept.id);
+
+  const sources = section(panel, 'Sources');
+  renderModuleEvidence(sources, host, graph, concept.id);
+  renderRelationSources(sources, host, graph, concept.id);
+
+  const practice = section(panel, 'Practice');
+  renderPractice(practice, host, concept.id);
+
+  const questions = section(panel, 'Questions');
+  renderQuestionNote(questions, host,
+    questionsForConcept(collectQuestions(host.plugin.store, graph), concept.id),
+    `No question recorded against ${concept.label}.`);
+
+  const history = section(panel, 'History');
+  renderRelationGroup(history, host, graph, concept.id,
+    graph.historyEdges.get(concept.id) ?? [],
+    'No retracted or vetoed connection touches this concept.');
+
+  panel.createDiv({
+    cls: 'los-micro',
+    text: 'Evidence records what exists, not what was understood.',
+  });
 }
 
 export function renderMissingInspector(
