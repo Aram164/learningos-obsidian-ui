@@ -319,6 +319,12 @@ export function renderRelationEditor(
 ): void {
   const panel = parent.createEl('section', { cls: 'los-atlas-editor' });
   panel.setAttrs({ role: 'region', 'aria-label': 'Connection editor' });
+  panel.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation?.();
+    host.editor = null;
+    host.render();
+  });
 
   panel.createDiv({
     cls: 'los-micro los-atlas-kicker',

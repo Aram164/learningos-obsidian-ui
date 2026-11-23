@@ -70,6 +70,16 @@ async function runDesign(design) {
   check(`${design}: Escape closes the connection inspector`,
     inspectorText().includes('Selected concept'));
 
+  // Escape cancels an unsubmitted relation editor without writing.
+  root().findText('los-btn', 'Connect this concept').fire('click');
+  await tick();
+  check(`${design}: Connect opens the relation editor`,
+    root().find('los-atlas-editor').length === 1);
+  root().find('los-atlas-editor')[0].fire('keydown', { key: 'Escape' });
+  await tick();
+  check(`${design}: Escape closes an unsubmitted relation editor`,
+    root().find('los-atlas-editor').length === 0 && calls.envelopes.length === 0);
+
   // Verified-evidence filter reaches the pinned binding at physical page 29.
   const evidenceSelect = root().find('los-atlas-filter-select')
     .find((select) => select.getAttribute('data-atlas-filter') === 'evidence');
@@ -87,6 +97,21 @@ async function runDesign(design) {
     inspectorText().includes('physical page 29')
     && inspectorText().includes('Parity quote')
     && Boolean(root().findText('los-btn', 'Open evidence')));
+
+  // Filtering out the inspected connection clears selection and announces why.
+  const evidenceSelectAfter = root().find('los-atlas-filter-select')
+    .find((select) => select.getAttribute('data-atlas-filter') === 'evidence');
+  evidenceSelectAfter.value = 'disputed';
+  evidenceSelectAfter.fire('change');
+  await tick();
+  check(`${design}: eliminating a selected connection clears it and announces why`,
+    view().edgeId === null
+    && root().find('los-atlas-match-count')[0].allText().includes('The selected connection no longer matches the filters.'));
+  const restoreEvidence = root().find('los-atlas-filter-select')
+    .find((select) => select.getAttribute('data-atlas-filter') === 'evidence');
+  restoreEvidence.value = 'verified';
+  restoreEvidence.fire('change');
+  await tick();
 
   // Search composes with filters over labels and aliases.
   const clear = root().findText('los-btn', 'Clear filters');

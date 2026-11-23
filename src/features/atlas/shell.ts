@@ -586,7 +586,6 @@ function renderAtlasView(root: HTMLElement, host: AtlasHost): void {
   results.setAttrs({ 'aria-live': 'polite' });
   filterResults = root.createDiv({ cls: 'los-atlas-filter-results' });
   filterResults.setAttrs({ 'aria-live': 'polite' });
-  renderResultsInto(filterResults, host, graph);
   updateSearch();
 
   if (!graph.concepts.length) {

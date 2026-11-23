@@ -36216,6 +36216,12 @@ function renderEndpoint(parent, host, graph, draft, end) {
 function renderRelationEditor(parent, host, graph, draft) {
   const panel = parent.createEl("section", { cls: "los-atlas-editor" });
   panel.setAttrs({ role: "region", "aria-label": "Connection editor" });
+  panel.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    event.stopPropagation?.();
+    host.editor = null;
+    host.render();
+  });
   panel.createDiv({
     cls: "los-micro los-atlas-kicker",
     text: draft.mode === "add" ? "Connect concepts" : "Change this connection"
@@ -38030,7 +38036,6 @@ function renderAtlasView(root, host) {
   results.setAttrs({ "aria-live": "polite" });
   filterResults = root.createDiv({ cls: "los-atlas-filter-results" });
   filterResults.setAttrs({ "aria-live": "polite" });
-  renderResultsInto(filterResults, host, graph);
   updateSearch();
   if (!graph.concepts.length) {
     empty(root, "No concepts are published yet", "Register a concept to make it available here.");
@@ -52829,7 +52834,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:d2c349fe39c8793aab10fe3a460ed961d76fc4c6bc9d6c088adc5506bce1f797" : "unavailable";
+  return true ? "sha256:43e42632c36bfa126163ba8fe099658093767cfa18818cc079b519113c87103a" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;
