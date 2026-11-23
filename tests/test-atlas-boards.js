@@ -158,6 +158,99 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
     assert.equal(keptLink.file, child.working_path);
     assert.equal(keptLink.portal, true);
 
-    console.log('Atlas boards OK: merge preservation, refusals, controller lane, portal gate.');
+  })().catch((err) => { console.error(err); process.exit(1); });
+}
+
+// The real vault adapter against a host that behaves like Obsidian 1.15.1
+// (measured 2026-11-23 in an isolated instance): the vault index skips every
+// dot-segment path, `vault.create` there writes the file but returns null,
+// `getAbstractFileByPath` never finds it, and a repeated `createFolder`
+// throws. Only the DataAdapter reaches hidden files. Before the adapter
+// routed `.state/` through it, refresh always refused and the second board of
+// a kind threw on its first open.
+{
+  const hostLoad = createSourceModuleLoader(root, { obsidian: { Notice: class Notice {} } });
+  const { AtlasBoardVault, hiddenVaultPath } = hostLoad('src/infrastructure/atlas-board-vault.ts');
+  const { BoardController: HostController, sidecarPath: hostSidecar } =
+    hostLoad('src/features/atlas/board-controller.ts');
+  const files = new Map();
+  const folders = new Set(['']);
+  const hidden = (p) => p.split('/').some((segment) => segment.startsWith('.'));
+  const parentOf = (p) => p.split('/').slice(0, -1).join('/');
+  const addFolders = (folder) => {
+    const parts = folder.split('/');
+    for (let i = 1; i <= parts.length; i += 1) folders.add(parts.slice(0, i).join('/'));
+  };
+  const tfile = (p) => ({ path: p, extension: p.split('.').pop() });
+  const enoent = (p) => new Error(`ENOENT: no such file or directory, open '${p}'`);
+  const app = {
+    vault: {
+      getAbstractFileByPath: (p) => (hidden(p) ? null
+        : files.has(p) ? tfile(p) : folders.has(p) ? { path: p, children: [] } : null),
+      read: async (file) => files.get(file.path),
+      create: async (p, text) => {
+        if (files.has(p)) throw new Error('File already exists.');
+        if (!folders.has(parentOf(p))) throw enoent(p);
+        files.set(p, text);
+        return hidden(p) ? null : tfile(p);
+      },
+      createFolder: async (p) => {
+        if (folders.has(p)) throw new Error('Folder already exists.');
+        addFolders(p);
+      },
+      process: async (file, fn) => { const next = fn(files.get(file.path)); files.set(file.path, next); return next; },
+      adapter: {
+        exists: async (p) => files.has(p) || folders.has(p),
+        read: async (p) => { if (!files.has(p)) throw enoent(p); return files.get(p); },
+        write: async (p, text) => { if (!folders.has(parentOf(p))) throw enoent(p); files.set(p, text); },
+        mkdir: async (p) => { addFolders(p); },
+        process: async (p, fn) => {
+          if (!files.has(p)) throw enoent(p);
+          const next = fn(files.get(p)); files.set(p, next); return next;
+        },
+      },
+    },
+    workspace: {
+      iterateAllLeaves: () => {},
+      revealLeaf: async () => {},
+      getLeaf: () => ({ openFile: async () => {} }),
+    },
+  };
+  const text = serializeBoard(template);
+  const sha256 = createHash('sha256').update(text).digest('hex');
+  const scope = (id) => ({ kind: 'module', id, sha256,
+    template_path: `generated/atlas/templates/module/${id}.canvas`,
+    working_path: `boards/atlas/module/${id}.canvas` });
+  const first = scope('module-one');
+  const second = scope('module-two');
+  (async () => {
+    assert.equal(hiddenVaultPath(hostSidecar(first)), true);
+    assert.equal(hiddenVaultPath(first.working_path), false);
+    const controller = new HostController(new AtlasBoardVault(app));
+    assert.equal((await controller.openBoard(first, text)).action, 'created');
+    assert.equal((await controller.openBoard(second, text)).action, 'created');
+    assert.ok(files.has(hostSidecar(first)) && files.has(hostSidecar(second)));
+
+    files.set(first.template_path, text);
+    const moved = parseBoard(files.get(first.working_path));
+    moved.nodes[0].x = 77;
+    files.set(first.working_path, serializeBoard(moved));
+    const preview = await controller.previewRefresh(first);
+    assert.equal(preview.ok, true, preview.reason);
+    const refreshed = await controller.refreshBoard(
+      first, preview.templateText, preview.workingText, preview.ownershipText);
+    assert.equal(refreshed.ok, true, refreshed.reason);
+    assert.equal(parseBoard(files.get(first.working_path)).nodes[0].x, 77);
+
+    // A board deleted in Obsidian leaves its hidden record behind; opening the
+    // scope again recreates the board and replaces the record.
+    files.delete(second.working_path);
+    files.set(hostSidecar(second), JSON.stringify({ schema_version: 1, template_sha256: 'c'.repeat(64),
+      managed_ids: ['los-concept-gone'] }) + '\n');
+    assert.equal((await controller.openBoard(second, text)).action, 'created');
+    assert.deepEqual(JSON.parse(files.get(hostSidecar(second))).managed_ids, managed);
+    // One line, which the Core procedure transcript (refresh-an-atlas-board.md) matches.
+    console.log('Atlas boards OK: merge preservation, refusals, controller lane, portal gate, '
+      + 'hidden ownership records through the vault adapter.');
   })().catch((err) => { console.error(err); process.exit(1); });
 }

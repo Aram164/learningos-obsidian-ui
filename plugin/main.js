@@ -32663,12 +32663,11 @@ function asAbilityLayout(value) {
 // src/features/atlas/practice.ts
 var METHODS = [
   ["source-matched", "official-source", "Match an official answer"],
-  ["cross-checked", "independent-solve", "Compare an independent solution"],
   ["confirmed", "explicit-review", "Confirm the answer after review"],
   ["disputed", "explicit-review", "Mark the answer disputed"],
   ["unverified", "explicit-review", "Mark the answer unverified"]
 ];
-var SHA256 = /^[a-f0-9]{64}$/;
+var REVIEWER = "aram";
 function control(parent, name, tag2) {
   const label = parent.createEl("label", { cls: "los-atlas-practice-field" });
   label.createSpan({ text: name });
@@ -32682,11 +32681,6 @@ function renderVerification(parent, plugin, note2, context, item, done) {
   for (const [status, , title2] of METHODS) {
     method.createEl("option", { text: title2, attr: { value: status } });
   }
-  const reviewer = control(fields, "Reviewer ID", "input");
-  const artifact = control(fields, "Review artifact SHA-256", "input");
-  const comparisonFields = fields.createDiv({ cls: "los-atlas-practice-fields" });
-  comparisonFields.hidden = true;
-  const comparison = control(comparisonFields, "Independent comparison SHA-256", "input");
   const official = fields.createDiv({ cls: "los-atlas-practice-fields" });
   official.hidden = true;
   const source = control(official, "Primary evidence source", "select");
@@ -32697,19 +32691,16 @@ function renderVerification(parent, plugin, note2, context, item, done) {
     source.createEl("option", { text: asLabel(record7, id), attr: { value: id } });
   }
   const path = control(official, "PDF path relative to materials", "input");
-  const digest = control(official, "PDF SHA-256", "input");
   const page2 = control(official, "Physical PDF page", "input");
   page2.setAttrs({ type: "number", min: "1", step: "1" });
   const quote = control(official, "Evidence excerpt", "input");
   quote.setAttribute("maxlength", "240");
   method.addEventListener("change", () => {
     official.hidden = method.value !== "source-matched";
-    comparisonFields.hidden = method.value !== "cross-checked";
   });
   source.addEventListener("change", () => {
     const pathHint = asString(plugin.store.get(source.value)?.material_path);
     path.value = pathHint?.startsWith("materials/") ? pathHint.slice("materials/".length) : "";
-    digest.value = "";
     page2.value = "";
     quote.value = "";
   });
@@ -32717,19 +32708,15 @@ function renderVerification(parent, plugin, note2, context, item, done) {
   const review2 = parent.createDiv({ cls: "los-atlas-practice-fields" });
   const preview = button(fields, "Preview verification", () => {
     const selection = METHODS.find(([status]) => status === method.value);
-    if (!selection || !reviewer.value.trim() || !SHA256.test(artifact.value.trim())) {
-      feedback.setText("Choose a method and enter the reviewer ID and review artifact SHA-256.");
+    if (!selection) {
+      feedback.setText("Choose a verification method.");
       return;
     }
     const [new_status, proofMethod] = selection;
     const pageNumber = Number(page2.value);
     const excerpt = quote.value.trim();
-    if (new_status === "source-matched" && (!source.value || !path.value.trim() || !SHA256.test(digest.value.trim()) || !Number.isSafeInteger(pageNumber) || pageNumber < 1 || !excerpt || excerpt.length > 240)) {
-      feedback.setText("Select a source and enter the PDF path, SHA-256, physical page and excerpt.");
-      return;
-    }
-    if (new_status === "cross-checked" && !SHA256.test(comparison.value.trim())) {
-      feedback.setText("Enter the SHA-256 of the reviewed independent comparison.");
+    if (new_status === "source-matched" && (!source.value || !path.value.trim() || !Number.isSafeInteger(pageNumber) || pageNumber < 1 || !excerpt || excerpt.length > 240)) {
+      feedback.setText("Select a source and enter the PDF path, physical page and excerpt.");
       return;
     }
     const record7 = {
@@ -32738,18 +32725,16 @@ function renderVerification(parent, plugin, note2, context, item, done) {
       new_status,
       method: proofMethod,
       concept_ids: item.concept_ids,
-      artifact_sha256: artifact.value.trim(),
-      reviewer_id: reviewer.value.trim(),
+      artifact_sha256: item.content_sha256,
+      reviewer_id: REVIEWER,
       ...new_status === "source-matched" ? {
         source_binding: {
           source_id: source.value,
           material_relpath: path.value.trim(),
-          file_sha256: digest.value.trim(),
           page: pageNumber,
           quote: excerpt
         }
-      } : {},
-      ...new_status === "cross-checked" ? { comparison_sha256: comparison.value.trim() } : {}
+      } : {}
     };
     feedback.setText("");
     fields.hidden = true;
@@ -32805,7 +32790,6 @@ function renderPracticeReview(parent, plugin, note2) {
         const row3 = result.createDiv({ cls: "los-atlas-practice-item" });
         row3.createEl("strong", { text: `${item.item_id} \xB7 ${item.kind} \xB7 ${item.status}` });
         for (const reason of item.ineligibility) row3.createEl("p", { cls: "los-micro", text: reason });
-        if (context.diagnostics.length) continue;
         let rendered = false;
         const toggle = button(row3, "Record verification", () => {
           form.hidden = !form.hidden;
@@ -36752,6 +36736,7 @@ function renderRelationInspector(panel, host, graph, edge) {
   fact2("Type", `${relationPhrase(edge.type)} (${edge.type})`);
   endpoint("To", edge.to);
   fact2("Context", edge.context ?? "No context recorded. The schema permits that, and nothing is invented to fill it.");
+  fact2("Added by", edge.origin === "aram" ? "You, in the app" : "An agent (the Atlas keeper, or the earlier pilot). Veto or pin it here.");
   const scopes = /* @__PURE__ */ new Set([
     ...modulesFor(graph, edge.from).map((module2) => module2.label),
     ...modulesFor(graph, edge.to).map((module2) => module2.label)
@@ -37149,12 +37134,15 @@ var BoardController = class {
     if (!template || templateText === null) {
       return { ok: false, reason: "Board template is unavailable or changed. Rebuild views and try again." };
     }
-    if (await this.port.read(sidecarPath(entry)) !== null) {
-      return { ok: false, reason: "The board is absent but its ownership record exists. Restore the board before opening it." };
+    const managed = [...template.nodes ?? [], ...template.edges ?? []].map((node) => String(node.id));
+    const ownership = JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n";
+    const state = sidecarPath(entry);
+    if (await this.port.read(state) === null) {
+      await this.port.create(state, ownership);
+    } else if (!await this.port.process(state, () => ownership)) {
+      return { ok: false, reason: "The board ownership record could not be replaced. Try again." };
     }
     await this.port.create(entry.working_path, templateText);
-    const managed = [...template.nodes ?? [], ...template.edges ?? []].map((node) => String(node.id));
-    await this.port.create(sidecarPath(entry), JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n");
     await this.port.openLeaf(entry.working_path);
     return { ok: true, action: "created" };
   }
@@ -38129,6 +38117,12 @@ function atlasBoardController(app) {
   controllers.set(app, controller);
   return controller;
 }
+function hiddenVaultPath(path) {
+  return path.split("/").some((segment2) => segment2.startsWith("."));
+}
+function parentFolder(path) {
+  return path.split("/").slice(0, -1).join("/");
+}
 var AtlasBoardVault = class {
   constructor(app) {
     this.app = app;
@@ -38138,28 +38132,45 @@ var AtlasBoardVault = class {
     return found && "extension" in found ? found : null;
   }
   async read(path) {
+    if (hiddenVaultPath(path)) {
+      const adapter = this.app.vault.adapter;
+      return await adapter.exists(path) ? adapter.read(path) : null;
+    }
     const file = this.file(path);
     return file ? this.app.vault.read(file) : null;
   }
   async create(path, text4) {
-    const folder2 = path.split("/").slice(0, -1).join("/");
+    const folder2 = parentFolder(path);
+    if (hiddenVaultPath(path)) {
+      const adapter = this.app.vault.adapter;
+      if (await adapter.exists(path)) throw new Error(`File already exists: ${path}`);
+      if (folder2) await adapter.mkdir(folder2);
+      await adapter.write(path, text4);
+      return;
+    }
     if (folder2 && !this.app.vault.getAbstractFileByPath(folder2)) {
       await this.app.vault.createFolder(folder2);
     }
     await this.app.vault.create(path, text4);
   }
   async process(path, fn) {
-    const file = this.file(path);
-    if (!file) return false;
     const unchanged = new Error("No board edit to write");
     let accepted = false;
+    const transform = (latest) => {
+      const next = fn(latest);
+      accepted = next !== null;
+      if (next === null || next === latest) throw unchanged;
+      return next;
+    };
     try {
-      await this.app.vault.process(file, (latest) => {
-        const next = fn(latest);
-        accepted = next !== null;
-        if (next === null || next === latest) throw unchanged;
-        return next;
-      });
+      if (hiddenVaultPath(path)) {
+        if (!await this.app.vault.adapter.exists(path)) return false;
+        await this.app.vault.adapter.process(path, transform);
+      } else {
+        const file = this.file(path);
+        if (!file) return false;
+        await this.app.vault.process(file, transform);
+      }
     } catch (error) {
       if (error !== unchanged) throw error;
     }
@@ -52817,7 +52828,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:b987e2226cd4f96a7ef717bd8f60670c54e0d7aab7f4ec89dacbfd411ef82062" : "unavailable";
+  return true ? "sha256:cd0fdc0acf3df0859d7cbc3623d80fb24b1a800c321136e211327ed179bb6df5" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;

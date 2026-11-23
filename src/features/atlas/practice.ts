@@ -10,15 +10,20 @@ type PracticePlugin = Pick<AppSurface, 'gateway' | 'mutate' | 'store'> & {
 
 type PracticeItem = PracticeContextWire['items'][number];
 
+/**
+ * What a person can verify from this screen. `cross-checked` is left out:
+ * it needs a stored independent comparison, which nothing produces yet, and
+ * a typed digest would only pretend to be one.
+ */
 const METHODS = [
   ['source-matched', 'official-source', 'Match an official answer'],
-  ['cross-checked', 'independent-solve', 'Compare an independent solution'],
   ['confirmed', 'explicit-review', 'Confirm the answer after review'],
   ['disputed', 'explicit-review', 'Mark the answer disputed'],
   ['unverified', 'explicit-review', 'Mark the answer unverified'],
 ] as const;
 
-const SHA256 = /^[a-f0-9]{64}$/;
+/** The reviewer this application records: the app is Aram's own gesture. */
+const REVIEWER = 'aram';
 
 function control<T extends 'input' | 'select'>(parent: HTMLElement, name: string, tag: T) {
   const label = parent.createEl('label', { cls: 'los-atlas-practice-field' });
@@ -42,12 +47,6 @@ function renderVerification(
   for (const [status, , title] of METHODS) {
     method.createEl('option', { text: title, attr: { value: status } });
   }
-  const reviewer = control(fields, 'Reviewer ID', 'input');
-  const artifact = control(fields, 'Review artifact SHA-256', 'input');
-  const comparisonFields = fields.createDiv({ cls: 'los-atlas-practice-fields' });
-  comparisonFields.hidden = true;
-  const comparison = control(comparisonFields, 'Independent comparison SHA-256', 'input');
-
   const official = fields.createDiv({ cls: 'los-atlas-practice-fields' });
   official.hidden = true;
   const source = control(official, 'Primary evidence source', 'select');
@@ -58,19 +57,16 @@ function renderVerification(
     source.createEl('option', { text: asLabel(record, id), attr: { value: id } });
   }
   const path = control(official, 'PDF path relative to materials', 'input');
-  const digest = control(official, 'PDF SHA-256', 'input');
   const page = control(official, 'Physical PDF page', 'input');
   page.setAttrs({ type: 'number', min: '1', step: '1' });
   const quote = control(official, 'Evidence excerpt', 'input');
   quote.setAttribute('maxlength', '240');
   method.addEventListener('change', () => {
     official.hidden = method.value !== 'source-matched';
-    comparisonFields.hidden = method.value !== 'cross-checked';
   });
   source.addEventListener('change', () => {
     const pathHint = asString(plugin.store.get(source.value)?.material_path);
     path.value = pathHint?.startsWith('materials/') ? pathHint.slice('materials/'.length) : '';
-    digest.value = '';
     page.value = '';
     quote.value = '';
   });
@@ -79,38 +75,36 @@ function renderVerification(
   const review = parent.createDiv({ cls: 'los-atlas-practice-fields' });
   const preview = button(fields, 'Preview verification', () => {
     const selection = METHODS.find(([status]) => status === method.value);
-    if (!selection || !reviewer.value.trim() || !SHA256.test(artifact.value.trim())) {
-      feedback.setText('Choose a method and enter the reviewer ID and review artifact SHA-256.');
+    if (!selection) {
+      feedback.setText('Choose a verification method.');
       return;
     }
     const [new_status, proofMethod] = selection;
     const pageNumber = Number(page.value);
     const excerpt = quote.value.trim();
     if (new_status === 'source-matched' && (!source.value || !path.value.trim()
-        || !SHA256.test(digest.value.trim()) || !Number.isSafeInteger(pageNumber) || pageNumber < 1
+        || !Number.isSafeInteger(pageNumber) || pageNumber < 1
         || !excerpt || excerpt.length > 240)) {
-      feedback.setText('Select a source and enter the PDF path, SHA-256, physical page and excerpt.');
+      feedback.setText('Select a source and enter the PDF path, physical page and excerpt.');
       return;
     }
-    if (new_status === 'cross-checked' && !SHA256.test(comparison.value.trim())) {
-      feedback.setText('Enter the SHA-256 of the reviewed independent comparison.');
-      return;
-    }
+    // The reviewed artifact is the item exactly as Core showed it here; Core
+    // refuses the record if the item has changed since. Core also pins the
+    // PDF's digest itself, so nobody types a hash.
     const record = {
       item_id: item.item_id,
       expected_old: item.stored_row,
       new_status,
       method: proofMethod,
       concept_ids: item.concept_ids,
-      artifact_sha256: artifact.value.trim(),
-      reviewer_id: reviewer.value.trim(),
+      artifact_sha256: item.content_sha256,
+      reviewer_id: REVIEWER,
       ...(new_status === 'source-matched' ? {
         source_binding: {
           source_id: source.value, material_relpath: path.value.trim(),
-          file_sha256: digest.value.trim(), page: pageNumber, quote: excerpt,
+          page: pageNumber, quote: excerpt,
         },
       } : {}),
-      ...(new_status === 'cross-checked' ? { comparison_sha256: comparison.value.trim() } : {}),
     };
     feedback.setText('');
     fields.hidden = true;
@@ -168,7 +162,8 @@ export function renderPracticeReview(parent: HTMLElement, plugin: PracticePlugin
         const row = result.createDiv({ cls: 'los-atlas-practice-item' });
         row.createEl('strong', { text: `${item.item_id} · ${item.kind} · ${item.status}` });
         for (const reason of item.ineligibility) row.createEl('p', { cls: 'los-micro', text: reason });
-        if (context.diagnostics.length) continue;
+        // Listed items are clean by construction: a diagnostic names an item
+        // Core did not extract, so it never blocks the items shown here.
         let rendered = false;
         const toggle = button(row, 'Record verification', () => {
           form.hidden = !form.hidden;

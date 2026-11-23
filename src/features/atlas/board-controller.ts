@@ -150,12 +150,20 @@ export class BoardController {
     if (!template || templateText === null) {
       return { ok: false, reason: 'Board template is unavailable or changed. Rebuild views and try again.' };
     }
-    if (await this.port.read(sidecarPath(entry)) !== null) {
-      return { ok: false, reason: 'The board is absent but its ownership record exists. Restore the board before opening it.' };
+    // The ownership record is written before the board. An interrupted create
+    // then leaves only a record for a board that does not exist, and the next
+    // open replaces it. A record left behind by a deleted board is replaced
+    // the same way: with no board there is no layout for it to protect, and
+    // the hidden `.state/` folder is not visible in Obsidian's file explorer.
+    const managed = [...(template.nodes ?? []), ...(template.edges ?? [])].map((node) => String(node.id));
+    const ownership = JSON.stringify(sidecarFor(entry.sha256, managed)) + '\n';
+    const state = sidecarPath(entry);
+    if (await this.port.read(state) === null) {
+      await this.port.create(state, ownership);
+    } else if (!await this.port.process(state, () => ownership)) {
+      return { ok: false, reason: 'The board ownership record could not be replaced. Try again.' };
     }
     await this.port.create(entry.working_path, templateText);
-    const managed = [...(template.nodes ?? []), ...(template.edges ?? [])].map((node) => String(node.id));
-    await this.port.create(sidecarPath(entry), JSON.stringify(sidecarFor(entry.sha256, managed)) + '\n');
     await this.port.openLeaf(entry.working_path);
     return { ok: true, action: 'created' };
   }

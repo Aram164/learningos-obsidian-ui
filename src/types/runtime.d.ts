@@ -131,6 +131,17 @@ declare module 'obsidian' {
       path: string,
       data: string,
     ): Promise<void>;
+
+    /** Recursive; a folder that already exists is not an error. */
+    mkdir(
+      path: string,
+    ): Promise<void>;
+
+    /** Atomic read-modify-write of a plaintext file, hidden paths included. */
+    process(
+      path: string,
+      fn: (data: string) => string,
+    ): Promise<string>;
   }
 
   export interface TFile extends TAbstractFile {

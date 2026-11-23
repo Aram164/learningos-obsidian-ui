@@ -19,7 +19,7 @@ module.exports = async function run() {
         return callback(null, JSON.stringify({
           schema_version: 1, contract: 'practice-context-v1', snapshot_id: args[3],
           note_id: invalid ? 'note-other' : note, note_revision: 7, practice_index_revision: 3,
-          diagnostics: [], items: [{
+          diagnostics: invalid ? [] : ['A9: labeled item has no details answer'], items: [{
             item_id: item, label: 'A1', kind: 'flashcard', prompt: 'Synthetic prompt',
             status: 'unverified', checked: false, ineligibility: ['Fixture content changed'],
             content_sha256: digest, concept_ids: ['concept-bayes'], stored_row: stored,
@@ -45,18 +45,23 @@ module.exports = async function run() {
     check('Atlas displays exact item, kind, status and ineligibility',
       root.allText().includes(item + ' · flashcard · unverified')
       && root.allText().includes('Fixture content changed'));
+    check('a diagnostic about another item does not hide this item\'s gesture',
+      root.allText().includes('labeled item has no details answer')
+      && Boolean(root.findText('los-btn', 'Record verification')));
     root.findText('los-btn', 'Record verification').fire('click');
     check('answer review uses the existing note opener', Boolean(root.findText('los-btn', 'Open note to review answer')));
+    const labels = root.find('los-atlas-practice-field').map((row) => row.children[0].text);
+    check('the form asks for no digest and no reviewer identity',
+      !labels.some((label) => /SHA-256|Reviewer/.test(label)));
     const field = (label) => root.find('los-atlas-practice-field')
       .find((row) => row.children[0].text === label).children[1];
     field('Verification method').value = 'confirmed';
     field('Verification method').fire('change');
-    field('Reviewer ID').value = 'synthetic-reviewer';
-    field('Review artifact SHA-256').value = digest;
     root.findText('los-btn', 'Preview verification').fire('click');
     check('preview names exact reviewed fields before sending',
       root.allText().includes('"method": "explicit-review"')
-      && root.allText().includes('"reviewer_id": "synthetic-reviewer"')
+      && root.allText().includes('"reviewer_id": "aram"')
+      && root.allText().includes(`"artifact_sha256": "${digest}"`)
       && !root.allText().includes('Synthetic prompt')
       && !calls.envelope('practice.verification.record'));
     const snapshot = plugin.store.snapshotId;
@@ -69,7 +74,8 @@ module.exports = async function run() {
       && envelope.expected_snapshot === snapshot
       && envelope.expected_revisions[note] === 7
       && envelope.expected_revisions['registry-practice-index'] === 3
-      && JSON.stringify(envelope.payload.record.expected_old) === JSON.stringify(stored));
+      && JSON.stringify(envelope.payload.record.expected_old) === JSON.stringify(stored)
+      && envelope.payload.record.artifact_sha256 === digest);
   } finally {
     plugin.onunload();
   }

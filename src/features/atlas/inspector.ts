@@ -577,6 +577,11 @@ function renderRelationInspector(
   fact('Type', `${relationPhrase(edge.type)} (${edge.type})`);
   endpoint('To', edge.to);
   fact('Context', edge.context ?? 'No context recorded. The schema permits that, and nothing is invented to fill it.');
+  // The Atlas is agent-run (ADR-024 amendment): Aram reviews the keeper's
+  // relations after the fact, so who added each one has to be visible.
+  fact('Added by', edge.origin === 'aram'
+    ? 'You, in the app'
+    : 'An agent (the Atlas keeper, or the earlier pilot). Veto or pin it here.');
   const scopes = new Set([
     ...modulesFor(graph, edge.from).map((module) => module.label),
     ...modulesFor(graph, edge.to).map((module) => module.label),
