@@ -109,6 +109,36 @@ async function main() {
     Notice.log.some((message) => message.includes('operations/ai-actions/requests/ai-request-new')));
 
   plugin.onunload();
+
+  const completedApp = makeApp(FIXTURE);
+  const originalRead = completedApp.vault.adapter.read.bind(completedApp.vault.adapter);
+  completedApp.vault.adapter.read = async (file) => {
+    const raw = await originalRead(file);
+    if (file !== 'generated/manifest.json') return raw;
+    const manifest = JSON.parse(raw);
+    manifest.ai_actions = {
+      ...manifest.ai_actions,
+      requests: (manifest.ai_actions?.requests || []).map((req) => (
+        req.delivery_id === 'ai-delivery-fixture'
+          ? { ...req, status: 'completed', receipt_id: 'transaction-20261124-000001-001' }
+          : req
+      )),
+    };
+    return JSON.stringify(manifest);
+  };
+  const completedPlugin = new LearningOSUI(completedApp, { id: 'learningos-ui', version: 'test' });
+  completedPlugin.runLos = (_args, callback) => callback(null, JSON.stringify({ ok: true }), '');
+  completedApp._plugin = completedPlugin;
+  await completedPlugin.onload();
+  await completedPlugin.nav.openGarden();
+  const completedRoot = completedApp.workspace.getLeavesOfType('learningos-garden')[0].view.contentEl;
+  const completedText = completedRoot.allText();
+  check('completed AI request renders completed status and hides Apply approved delivery',
+    completedText.includes('AI request · completed')
+    && completedText.includes('receipt transaction-20261124-000001-001')
+    && completedRoot.findText('los-btn', 'Apply approved delivery') === null);
+  completedPlugin.onunload();
+
   if (failures) process.exitCode = 1;
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

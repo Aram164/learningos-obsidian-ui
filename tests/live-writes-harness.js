@@ -1017,6 +1017,14 @@ async function runDeliveryApplyScenarios(repos, deliveryId) {
     assert.equal(completed?.receipt_id, res.transaction_id);
     const note = reloaded.gardenEntries().find((entry) => entry.id === 'garden-note-seed');
     assert.ok(String(note?.transcription_path || '').includes('garden-note-seed.md'));
+    const reloadedSession = await createSession(repo, settings);
+    const gardenView = new GardenView(
+      { _viewType: 'learningos-garden', app: { workspace: {} } },
+      reloadedSession.plugin,
+    );
+    await gardenView.onOpen();
+    assert.equal(gardenView.contentEl.findText('los-btn', 'Apply approved delivery'), null);
+    assert.ok(gardenView.contentEl.allText().includes('AI request · completed'));
     out.reload = { transactionId: res.transaction_id, requestStatus: completed.status, transcriptionPath: note.transcription_path };
   }
 

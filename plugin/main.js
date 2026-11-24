@@ -52121,7 +52121,7 @@ var GardenView = class extends import_obsidian12.ItemView {
           "quiet"
         );
       }
-      if (latest.delivery_id && latest.status !== "applied") {
+      if (latest.delivery_id && latest.status === "delivery-ready" && !latest.receipt_id) {
         const deliveryId = latest.delivery_id;
         let applying = false;
         const applyBtn = button(
@@ -57803,7 +57803,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:7bc22cae522062a9767d547179885c2aa2b761d84257029fc3e304abd1f23992" : "unavailable";
+  return true ? "sha256:735a968990b032553a6f5b4955d6dcdd6182815747a00d7abfe2f2fc74374e59" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;

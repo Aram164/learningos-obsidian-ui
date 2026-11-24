@@ -461,7 +461,8 @@ export class GardenView extends ItemView {
 
       if (
         latest.delivery_id
-        && latest.status !== 'applied'
+        && latest.status === 'delivery-ready'
+        && !latest.receipt_id
       ) {
         const deliveryId = latest.delivery_id;
         let applying = false;
