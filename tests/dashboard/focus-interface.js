@@ -287,17 +287,17 @@ module.exports = async function run() {
 
     await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
     const atlas = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
-    check('Focus 2.0 Atlas renders the 3-column Concept Dependency Flow and See it in its module signpost',
-      atlas.contentEl.getAttribute('data-focus-screen') === 'atlas'
-      && atlas.contentEl.find('focus-atlas-flow').length === 1
-      && atlas.contentEl.allText().includes('1. You need first')
-      && atlas.contentEl.allText().includes('2. This concept')
-      && atlas.contentEl.allText().includes('3. Leads to')
-      && atlas.contentEl.allText().includes('See it in its module'));
+    check('Focus 2.0 Atlas is the shared list/inspector with ordered sections',
+      atlas.contentEl.find('los-atlas-inspector').length === 1
+      && atlas.contentEl.find('focus-atlas-flow').length === 0
+      && ['Definition', 'Prerequisites', 'Dependents', 'Related concepts', 'Path', 'Sources', 'Practice', 'Questions', 'History']
+        .every((title) => atlas.contentEl.allText().includes(title)));
 
     await plugin.nav.openAtlas({ concept: null, module: 'module-fixture-m2', lens: 'prerequisites' });
-    check('Focus 2.0 Atlas renders the read-only Module Revision Map',
-      atlas.contentEl.find('focus-mm-lecture').length > 0 && atlas.contentEl.find('focus-mm-idea').length > 0);
+    check('a module route filters the shared browser instead of drawing a revision map',
+      atlas.state.module === 'module-fixture-m2'
+      && atlas.contentEl.find('focus-mm-lecture').length === 0
+      && atlas.contentEl.find('los-atlas-module-filter')[0].value === 'module-fixture-m2');
 
     await plugin.nav.openAtlas({ concept: null, lens: 'domains' });
     check('Notes & shelves retains its complete shared renderer',

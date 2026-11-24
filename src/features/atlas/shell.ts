@@ -3,13 +3,20 @@ import { button, empty, filterTabs, pageHeader } from '../../components';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import type { AtlasLensV1 } from '../../contracts/route-v1';
 import {
+  ALL_RELATION_TYPES,
   buildAtlasGraph,
   bridges,
+  canonicalSentence,
+  filterConcepts,
+  filterRelations,
+  filtersActive,
   neighbourhood,
+  relationPhrase,
   type AtlasGraph,
 } from './graph';
-import { renderFocusedGraph, renderOutline, renderPath } from './focused-graph';
+import { renderOutline, renderPath } from './text-navigation';
 import { renderInspector } from './inspector';
+import { defaultBoardEntry } from './board-controller';
 import { renderBridges, renderDiagnostics } from './lenses';
 import { renderDomains, renderAtlasVariants } from './domains';
 import { moduleTrail, plural, subgraphSummary } from './narrative';
@@ -278,15 +285,236 @@ function renderConnectAction(
     actions,
     focusId ? 'Connect this concept' : 'Connect concepts',
     () => {
+      host.inspectorOrigin = 'connect-action';
       host.editor = newDraft(focusId ?? '');
       host.render();
     },
     'quiet',
   );
   control.addClass('los-atlas-connect-action');
+  control.setAttrs({ 'data-row-key': 'connect-action' });
+}
+
+/** Editable-board controls (ADR-024, P3; scope default P4 step 23). */
+function renderBoardControls(root: HTMLElement, host: AtlasHost): void {
+  const catalog = host.boardCatalog();
+  if (!catalog.length) return;
+  const row = root.createDiv({ cls: 'los-atlas-board-controls' });
+  const select = row.createEl('select', {
+    cls: 'los-atlas-board-scope',
+    attr: { 'aria-label': 'Board scope' },
+  });
+  select.createEl('option', { text: 'Choose a board', attr: { value: '' } });
+  for (const entry of catalog) {
+    select.createEl('option', {
+      text: `${entry.kind} · ${entry.title ?? entry.id}`,
+      attr: { value: `${entry.kind}/${entry.id}` },
+    });
+  }
+  // The named module wins; otherwise the one current program/semester.
+  // No unambiguous scope leaves the explicit "Choose a board" state.
+  const desired = defaultBoardEntry(
+    catalog, host.state.module, host.plugin.store.currentSemester());
+  if (!host.boardScope && desired) {
+    host.boardScope = `${desired.kind}/${desired.id}`;
+  }
+  select.value = host.boardScope ?? '';
+  select.addEventListener('change', () => { host.boardScope = select.value || null; host.render(); });
+  const selected = catalog.find(
+    (entry) => `${entry.kind}/${entry.id}` === host.boardScope);
+  const open = button(row, 'Open board', () => { if (selected) void host.openAtlasBoard(selected); }, 'quiet');
+  const refresh = button(row, 'Refresh board', () => { if (selected) void host.refreshAtlasBoard(selected); }, 'quiet');
+  open.disabled = !selected;
+  refresh.disabled = !selected;
+  if (host.plugin.settings.atlasAdvancedCanvas) {
+    const advanced = button(row, 'Advanced board',
+      () => { if (selected) void host.openAtlasBoard(selected, true); }, 'quiet');
+    advanced.disabled = !selected;
+    advanced.setAttrs({ title: 'Open this board with the installed Advanced Canvas plugin' });
+  }
+  if (selected?.parent_kind && host.plugin.settings.atlasAdvancedCanvas) {
+    button(row, 'Use editable child in portals',
+      () => { void host.usePortalChild(selected); }, 'quiet');
+  }
+}
+
+/**
+ * Search + Layer/Type/Evidence filters (P4 step 25).
+ *
+ * AND-composed over the graph read model; the count states concepts and
+ * relations separately so a learner can tell which kind matched.
+ */
+function renderFilters(parent: HTMLElement, host: AtlasHost): void {
+  const wrap = parent.createDiv({ cls: 'los-atlas-filters' });
+  wrap.setAttrs({ role: 'group', 'aria-label': 'Filter concepts and connections' });
+
+  const addSelect = (
+    key: 'layer' | 'type' | 'evidence',
+    label: string,
+    options: ReadonlyArray<readonly [string, string]>,
+  ): void => {
+    const field = wrap.createEl('label', { cls: 'los-atlas-filter' });
+    field.createSpan({ cls: 'los-micro', text: label });
+    const select = field.createEl('select', {
+      cls: 'los-atlas-filter-select',
+      attr: { 'aria-label': label, 'data-atlas-filter': key },
+    });
+    for (const [value, text] of options) {
+      select.createEl('option', { text, attr: { value } });
+    }
+    select.value = host.filters[key];
+    select.addEventListener('change', () => {
+      host.filters = { ...host.filters, [key]: select.value };
+      host.render();
+    });
+  };
+
+  addSelect('layer', 'Layer', [
+    ['all', 'All layers'], ['strict', 'Strict'], ['semantic', 'Semantic'],
+  ]);
+  addSelect('type', 'Type', [
+    ['all', 'All types'],
+    ...ALL_RELATION_TYPES.map((type) => [type, relationPhrase(type)] as const),
+  ]);
+  addSelect('evidence', 'Evidence', [
+    ['all', 'All evidence'], ['verified', 'Verified'], ['missing', 'Missing'],
+    ['stale', 'Stale'], ['disputed', 'Disputed'],
+  ]);
+
+  const clear = button(wrap, 'Clear filters', () => {
+    host.filters = { layer: 'all', type: 'all', evidence: 'all' };
+    host.query = '';
+    host.render();
+  }, 'tertiary');
+  clear.disabled = !filtersActive(host.filters) && !host.query.trim();
+}
+
+/** The filtered concept/relation results list (P4 steps 24–25). */
+function renderResultsInto(
+  container: HTMLElement,
+  host: AtlasHost,
+  graph: AtlasGraph,
+): void {
+  container.empty();
+  if (!host.query.trim() && !filtersActive(host.filters)) return;
+
+  const concepts = filterConcepts(graph, host.query, host.filters);
+  const relations = filterRelations(graph, host.query, host.filters);
+
+  // A selection the new filters eliminate is cleared and announced, never
+  // left pointing at a row that no longer exists (step 27).
+  let cleared = '';
+  if (host.edgeId && !relations.some((edge) => edge.id === host.edgeId)) {
+    host.edgeId = null;
+    host.relationAction = null;
+    cleared = ' The selected connection no longer matches the filters.';
+  }
+  if (host.concepts.selected
+    && !concepts.some((concept) => concept.id === host.concepts.selected)) {
+    host.concepts.selected = null;
+    cleared += ' The selected concept no longer matches the filters.';
+  }
+
+  const status = container.createDiv({
+    cls: 'los-atlas-match-count los-micro',
+    attr: { role: 'status' },
+    text: `${plural(concepts.length, 'concept')} · ${plural(relations.length, 'connection')} match.${cleared}`,
+  });
+  void status;
+
+  const shown = Math.min(host.concepts.visibleLimit, concepts.length + relations.length);
+  let rendered = 0;
+
+  const list = container.createDiv({
+    cls: 'los-atlas-results',
+    attr: { role: 'group', 'aria-label': 'Matching concepts and connections' },
+  });
+  enableButtonGroupKeyboardNavigation(list, 'vertical');
+
+  for (const concept of concepts) {
+    if (rendered >= shown) break;
+    rendered += 1;
+    const row = button(list, concept.label, () => {
+      host.inspectorOrigin = `concept:${concept.id}`;
+      host.focusInspector = true;
+      host.go({ concept: concept.id });
+    }, 'row');
+    row.setAttribute('data-row-key', `concept:${concept.id}`);
+    row.createSpan({
+      cls: 'los-micro',
+      text: modulesLine(graph, concept.id),
+    });
+  }
+
+  for (const edge of relations) {
+    if (rendered >= shown) break;
+    rendered += 1;
+    const row = button(list, canonicalSentence(graph, edge), () => {
+      host.inspectorOrigin = `relation:${edge.id}`;
+      host.focusInspector = true;
+      host.inspectEdge(edge.id);
+    }, 'row');
+    row.setAttribute('data-row-key', `relation:${edge.id}`);
+    row.setAttribute('data-relation-id', edge.id);
+    row.createSpan({
+      cls: 'los-micro',
+      text: `${relationPhrase(edge.type)} · evidence: ${edge.evidenceState}`,
+    });
+  }
+
+  const total = concepts.length + relations.length;
+  if (rendered < total) {
+    button(container, `Show more · ${total - rendered} remaining`, () => {
+      host.concepts.visibleLimit += 30;
+      host.render();
+    }, 'quiet').addClass('los-atlas-show-more');
+  }
+  if (!total) {
+    container.createDiv({
+      cls: 'los-atlas-absence',
+      text: 'Nothing matches. Clear a filter or try another search.',
+    });
+  }
+}
+
+function modulesLine(graph: AtlasGraph, conceptId: string): string {
+  const modules = graph.modules
+    .filter((module) => (graph.modulesByConcept.get(conceptId) ?? []).includes(module.id))
+    .map((module) => module.shortLabel);
+  return modules.length ? modules.join(' · ') : 'No module evidence recorded';
+}
+
+/** Focus the inspector heading, or return focus to the originating row. */
+function applyFocus(root: HTMLElement, host: AtlasHost): void {
+  const focusable = (el: HTMLElement | null | undefined) => {
+    if (el && typeof el.focus === 'function') el.focus({ preventScroll: true });
+  };
+  if (host.focusInspector) {
+    host.focusInspector = false;
+    host.restoreFocus = false;
+    const heading = typeof root.querySelectorAll === 'function'
+      ? Array.from(root.querySelectorAll<HTMLElement>('h2'))
+        .find((node) => node.getAttribute('data-atlas-inspector-heading') === 'true')
+      : null;
+    focusable(heading);
+    return;
+  }
+  if (host.restoreFocus) {
+    host.restoreFocus = false;
+    if (host.inspectorOrigin && typeof root.querySelectorAll === 'function') {
+      const row = Array.from(root.querySelectorAll<HTMLElement>('[data-row-key]'))
+        .find((node) => node.getAttribute('data-row-key') === host.inspectorOrigin);
+      focusable(row);
+    }
+  }
 }
 
 export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
+  renderAtlasView(root, host);
+  applyFocus(root, host);
+}
+
+function renderAtlasView(root: HTMLElement, host: AtlasHost): void {
   const domainLens = host.state.lens === 'domains';
 
   root.empty();
@@ -319,6 +547,7 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   const about = conceptDisclosure(heading, host, 'atlas-about', 'About Atlas');
   about.createDiv({ text: 'Explore authored concepts, their linked notes and learning order. Modules show where teaching is mapped. Semantic connections explain related ideas; only prerequisites order learning.' });
   renderAtlasVariants(root, host.plugin.nav, 'concepts', (target) => host.go(target));
+  renderBoardControls(root, host);
 
   const controls = root.createDiv({ cls: 'los-atlas-controls' });
   const history = controls.createDiv({ cls: 'los-atlas-concept-history', attr: {
@@ -333,9 +562,11 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   forward.disabled = !host.canConceptForward;
   let results: HTMLElement;
   let entryRegion: HTMLElement | null = null;
+  let filterResults: HTMLElement | null = null;
   const updateSearch = () => {
     results.empty();
     if (host.query.trim()) renderConceptBrowser(results, host, graph);
+    if (filterResults) renderResultsInto(filterResults, host, graph);
     if (entryRegion) {
       entryRegion.empty();
       if (!host.query.trim()) renderConceptBrowser(entryRegion, host, graph);
@@ -344,6 +575,7 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   renderSearch(controls, host, updateSearch);
   renderConceptDomainFilter(controls, host, graph);
   renderModuleFilter(controls, host, graph);
+  renderFilters(controls, host);
   button(controls, 'Explore', () => host.openConceptBrowser(), 'quiet');
   if (host.query.trim() || host.state.module || host.concepts.domain) {
     button(controls, 'Reset browsing', () => {
@@ -354,6 +586,8 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   }
   results = root.createDiv({ cls: 'los-atlas-search-results' });
   results.setAttrs({ 'aria-live': 'polite' });
+  filterResults = root.createDiv({ cls: 'los-atlas-filter-results' });
+  filterResults.setAttrs({ 'aria-live': 'polite' });
   updateSearch();
 
   if (graph.deprecatedConceptIds.length) {
@@ -390,6 +624,17 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
     entryRegion = root.createDiv({ cls: 'los-atlas-entry-region' });
     if (!host.query.trim()) renderConceptBrowser(entryRegion, host, graph);
     if (host.editor) renderRelationEditor(root, host, graph, host.editor);
+    if (host.edgeId) {
+      // A relation chosen from the results list inspects here too: the list
+      // is complete without a selected concept or a Canvas tab.
+      const edge = graph.relationByIdentity.get(host.edgeId);
+      if (edge) {
+        const region = root.createDiv({ cls: 'los-atlas-inspection-region' });
+        renderInspector(region, host, graph, neighbourhood(graph, edge.from, {
+          depth: host.state.depth, includeSemanticNeighbours: true,
+        }));
+      }
+    }
     renderAtlasTools(root, host, graph);
     return;
   }
@@ -411,14 +656,15 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   const body = detail.createDiv({ cls: 'los-atlas-body' });
   const main = body.createDiv({ cls: 'los-atlas-main' });
   if (host.editor) renderRelationEditor(main, host, graph, host.editor);
+  // Text is the graph presentation here (step 29): the outline and path are
+  // complete, keyboard-complete alternatives; spatial layout is the board's.
   if (host.state.lens === 'path') renderPath(main, host, graph, view.focus.id);
-  else renderFocusedGraph(main, host, graph, view);
+  else renderOutline(main, host, graph, view);
   if (host.state.lens !== 'path') {
     const scope = main.createDiv({ cls: 'los-atlas-focused-scope' });
     scope.createDiv({ cls: 'los-micro', attr: { role: 'status' }, text: subgraphSummary(graph, view) });
     const further = conceptDisclosure(scope, host, `${view.focus.id}:explore`, 'Explore further');
     button(further, 'Show further connections', () => host.go({ depth: 2 }), 'quiet');
-    renderOutline(conceptDisclosure(main, host, `${view.focus.id}:outline`, 'Text outline'), host, graph, view);
   }
   const inspectedId = host.concepts.inspections?.get(view.focus.id);
   const inspected = inspectedId && graph.conceptById.has(inspectedId)

@@ -172,20 +172,23 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
-  heading('interface designs: the Atlas as a map');
+  heading('interface designs: the Atlas as the shared list');
   {
     const { app, plugin } = await boot();
     await plugin.setInterfaceDesign('study-desk');
     await plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' });
     const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
-    check('Atlas opens on the map, not on a global graph',
-      view.contentEl.find('sd-map-canvas').length === 1 && view.contentEl.find('sd-region').length > 0);
-    const region = view.contentEl.find('sd-region-head').find((node) => node.allText().includes('Mathematics'));
-    region.fire('click');
-    await waitFor(() => view.contentEl.find('sd-region-sheet').length === 1);
-    check('a region opens in study order', view.contentEl.find('sd-region-sheet').length === 1);
+    check('Study Desk Atlas is the shared list/inspector, restyled not redrawn',
+      view.contentEl.find('los-atlas-search-input').length === 1
+      && view.contentEl.allText().includes('Explore by domain')
+      && view.contentEl.find('sd-map-canvas').length === 0
+      && view.contentEl.find('los-atlas-filter-select').length === 3);
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
+    await waitFor(() => view.contentEl.find('los-atlas-inspector').length === 1);
+    check('the same inspector renders under Study Desk',
+      view.contentEl.find('los-atlas-inspector')[0].allText().includes('Prerequisites'));
     await plugin.nav.openAtlas({ concept: null, lens: 'domains' });
-    await waitFor(() => view.contentEl.find('sd-map-canvas').length === 0);
+    await waitFor(() => view.contentEl.allText().includes('Notes & shelves'));
     check('Notes & shelves keeps its complete classic screen',
       view.contentEl.allText().includes('Notes') && view.contentEl.find('sd-map-canvas').length === 0);
     plugin.onunload();
@@ -207,105 +210,30 @@ module.exports = async function run() {
     const { app, plugin, calls } = await boot({ patchManifest: lectureMaps });
     await plugin.setInterfaceDesign('study-desk');
     const before = calls.envelopes.length;
-    await plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' });
+    await plugin.nav.openAtlas({ concept: null, module: 'module-fixture-m2', lens: 'prerequisites' });
     const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     const root = () => view.contentEl;
-    const group = (title) => root().find('sd-side-group').find((node) => node.allText().startsWith(title));
-    check('the Atlas offers each module that has lecture maps, to revise it',
-      group('Revise a module')?.allText().includes('M2F module map') && group('Revise a module').allText().includes('2 lectures · 6 ideas'));
-    group('Revise a module').find('sd-side-row')[0].fire('click');
-    await waitFor(() => root().find('sd-mm-sheet').length === 1);
-    const lectures = () => root().find('sd-mm-lecture');
-    check('the module map has one row per lecture, in course order',
-      lectures().length === 2 && lectures()[0].allText().includes('Sample spaces') && lectures()[1].allText().includes('Bayes theorem'));
-    const columns = lectures()[1].find('sd-mm-column').map((column) => column.find('sd-mm-idea').map((node) => node.children[0].allText()).join('|'));
-    check('a lecture’s ideas sit left to right by what they build on',
-      columns.join(' / ') === 'Conditioning / Total probability / Bayes theorem / Updating beliefs', columns.join(' / '));
-    const bayes = lectures()[1].find('sd-mm-idea').find((node) => node.children[0].allText() === 'Bayes theorem');
-    check('each idea tells a screen reader what it builds on',
-      bayes.find('los-sr-only')[0]?.allText() === ', builds on Conditioning and Total probability', bayes.allText());
-    check('ideas are not links: the map is for study (D14)', root().find('sd-mm-idea').every((node) => node.tag === 'div'));
-    check('an exam block is named under the map, not drawn as a lecture',
-      root().allText().includes('is an exam block, not a lecture, so it has no row here.') && !root().allText().includes('Mixed mocks'));
-    check('the map is drawn from the route’s existing module field', view.state.module === 'module-fixture-m2' && view.state.concept === null);
-    root().find('sd-crumb').find((node) => node.allText() === 'Atlas').fire('click');
-    await waitFor(() => root().find('sd-map-canvas').length === 1);
-    check('the Atlas crumb leaves the module map', view.state.module === null && root().find('sd-mm-sheet').length === 0);
+    check('the shared browser is filtered by the route module field',
+      view.state.module === 'module-fixture-m2' && view.state.concept === null
+      && root().find('los-atlas-module-filter')[0].value === 'module-fixture-m2');
 
     await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
-    await waitFor(() => root().find('sd-need').length > 0);
+    await waitFor(() => root().find('los-atlas-inspector').length === 1);
     check('each prerequisite says why it comes first, in its relation’s own words (D15)',
-      root().find('sd-need-why').map((node) => node.allText()).join() === 'Bayes rewrites a conditional, so the conditional comes first.');
-    const signpost = group('See it in its module');
-    check('the concept page leads to the map of each module that teaches it, at its lecture',
-      signpost?.allText().includes('M2F module map') && signpost.allText().includes('Lecture 04 · all 6 ideas, one row per lecture'),
-      signpost?.allText());
-    signpost.find('sd-side-row')[0].fire('click');
-    await waitFor(() => root().find('sd-mm-sheet').length === 1);
-    check('the module map opens marked at that lecture',
-      lectures().find((node) => node.classes.has('is-here'))?.allText().includes('Bayes theorem') === true);
-    await plugin.nav.openAtlas({ concept: 'concept-bedingte-wahrscheinlichkeit', lens: 'prerequisites' });
-    await waitFor(() => root().find('sd-need').length > 0);
-    check('a prerequisite with no recorded reason shows none, never an invented one',
-      root().find('sd-need').length === 1 && root().find('sd-need-why').length === 0);
-    check('reading maps and reasons writes nothing to Core', calls.envelopes.length === before);
+      root().find('los-atlas-inspector')[0].allText()
+        .includes('Bayes rewrites a conditional, so the conditional comes first.'));
+    await plugin.nav.openAtlas({ concept: 'concept-frequentist-inference', lens: 'prerequisites' });
+    await waitFor(() => root().find('los-atlas-inspector').length === 1);
+    check('a concept with no authored prerequisites shows that absence, never an invented reason',
+      root().find('los-atlas-inspector')[0].allText().includes('No authored prerequisites'));
+    check('reading lists and reasons writes nothing to Core', calls.envelopes.length === before);
     plugin.onunload();
   }
 
   heading('interface designs: the model and the stylesheet');
   {
-    const load = createSourceModuleLoader(ROOT);
-    const { buildConceptMap, browsingRegion, studyOrderLayout, moduleOverlap, overlapKey, UNGROUPED, layoutLectureMap } = load('src/designs/study-desk/atlas-model.ts');
-    const concept = (id) => ({ id, label: id, sortKey: id, record: { id } });
-    const edge = (from, to, layer = 'strict') => ({ id: `${from}--requires--${to}`, from, to, type: 'requires', layer, studyFrom: from, studyTo: to, prerequisiteId: from, dependentId: to, context: null, source: null });
-    const concepts = ['a', 'b', 'c', 'd', 'lonely'].map(concept);
-    const edges = [edge('a', 'b'), edge('b', 'c'), edge('c', 'd')];
-    const graph = {
-      concepts, conceptById: new Map(concepts.map((row) => [row.id, row])), edges,
-      modulesByConcept: new Map([['a', ['m1', 'm2']], ['b', ['m1']]]),
-    };
-    const note = (bucket, ...ids) => ({ path: 'knowledge/notes/anywhere/n.md', domain_bucket: bucket, concepts: ids });
-    const catalog = [{ id: 'mathematics', label: 'Mathematics', order: 1 }, { id: 'systems', label: 'Systems', order: 2 }];
-    const map = buildConceptMap(catalog, [note('mathematics', 'a', 'b'), note('systems', 'b'), note('mathematics', 'b'), note('systems', 'c', 'd')], graph);
-    check('a concept is placed where most of its notes live', map.regionOf.get('b') === 'mathematics' && map.regionOf.get('c') === 'systems');
-    check('a concept with no note stays Not yet grouped, never guessed', map.regionOf.get('lonely') === UNGROUPED);
-    check('links between regions are counted from authored relations',
-      map.links.length === 1 && map.links[0].count === 1);
-    check('browsing membership is the union of published buckets, separate from drawing placement',
-      map.memberships.get('b').has('mathematics') && map.memberships.get('b').has('systems')
-      && map.regionOf.get('b') === 'mathematics');
-    check('the browse view lists every concept the domain carries, not only the drawing majority',
-      browsingRegion(map, graph, 'systems').concepts.join('|') === 'b|c|d'
-      && browsingRegion(map, graph, 'systems').linked === 3);
-    check('the published bucket is the only bucket the UI reads — the path is never consulted',
-      buildConceptMap(catalog, [{ path: 'knowledge/notes/systems/n.md', concepts: ['a'], domain_bucket: 'mathematics' }], graph).regionOf.get('a') === 'mathematics');
-    const order = studyOrderLayout(['a', 'b', 'lonely'], graph);
-    const at = (id) => order.placed.find((row) => row.id === id);
-    check('reading left to right never asks for something not yet introduced',
-      at('a').column < at('b').column && at('b').column < at('c').column);
-    check('what lies outside the region is marked and goes beyond it',
-      at('c').visiting && order.beyond === at('c').column && !at('a').visiting);
-    check('an unlinked member is listed, not floated', order.unlinked.includes('lonely') && !at('lonely'));
-    const cycle = studyOrderLayout(['x', 'y'], {
-      ...graph, edges: [edge('x', 'y'), edge('y', 'x')],
-    });
-    check('a cycle in the records cannot hang the layout', cycle.placed.length === 2);
-    check('overlap counts concepts two modules share, in either order',
-      moduleOverlap(graph).get(overlapKey('m2', 'm1')).join() === 'a');
-
-    // F5: one lecture's ideas, shaped like AML L02's map.
-    const idea = (id, ...buildsOn) => ({ id, title: id, buildsOn });
-    const lecture = layoutLectureMap([idea('rep'), idea('alg', 'rep'), idea('dist', 'rep'), idea('dim', 'dist'), idea('bias', 'alg'), idea('val', 'bias')]);
-    check('a lecture map reads left to right by what each idea builds on',
-      JSON.stringify(lecture.columns) === JSON.stringify([['rep'], ['alg', 'dist'], ['bias', 'dim'], ['val']]), JSON.stringify(lecture.columns));
-    check('inside a column an idea follows the row of what it builds on, not only the map order',
-      lecture.columns[2][0] === 'bias' && lecture.links.length === 5);
-    const loose = layoutLectureMap([idea('a', 'a', 'elsewhere'), idea('b', 'a', 'a')]);
-    check('a link to itself or to an idea outside the lecture is not drawn',
-      loose.links.length === 1 && JSON.stringify(loose.columns) === '[["a"],["b"]]');
-    check('a cycle in a lecture map cannot hang the layout',
-      layoutLectureMap([idea('x', 'y'), idea('y', 'x')]).columns.flat().length === 2);
-
+    // The Study Desk atlas model was deleted with its screen (P4 step 29);
+    // domain browsing parity is covered by the shared-renderer suites.
     const stylesDir = path.join(ROOT, 'src', 'styles');
     const designSheets = fs.readdirSync(stylesDir).filter((name) => /^\d\d-design-(?!switch)/.test(name));
     check('there is a stylesheet per design', designSheets.length >= 1);
@@ -541,19 +469,19 @@ module.exports = async function run() {
     } });
     await plugin.nav.openAtlas({ lens: 'prerequisites' });
     const atlas = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl;
-    const mathematics = atlas().find('sd-region').find((card) => card.getAttribute('data-region') === 'mathematics');
-    check('one drawing marker: the study chip sits where drawing places the concept',
-      mathematics?.findText('sd-chip-button', 'You are here: Bayes theorem') !== null
-      && atlas().find('sd-chip-button').filter((chip) => chip.classes.has('is-here')).length === 1);
-    atlas().find('sd-region-head').find((card) => card.getAttribute('aria-label')?.includes('Systems')).fire('click');
-    await waitFor(() => atlas().find('sd-order-grid').length === 1);
-    atlas().findText('sd-node', 'Bayes theorem').fire('click');
-    await waitFor(() => atlas().findText('los-btn', 'Focus on this') !== null);
-    atlas().findText('los-btn', 'Focus on this').fire('click');
-    await waitFor(() => atlas().find('sd-crumb').map((node) => node.allText()).includes('Bayes theorem'));
-    const crumbs = atlas().find('sd-crumb').map((node) => node.allText());
-    check('opened from Systems, the return crumb keeps the browsed domain even though drawing places Bayes in Mathematics',
-      crumbs.includes('Systems') && crumbs.includes('Bayes theorem'), crumbs.join('|'));
+    check('the shared browser carries both published domains, with no drawing marker',
+      atlas().find('los-atlas-place').some((card) => card.getAttribute('data-domain') === 'mathematics')
+      && atlas().find('los-atlas-place').some((card) => card.getAttribute('data-domain') === 'systems')
+      && !atlas().allText().includes('You are here'));
+    atlas().find('los-atlas-place').find((card) => card.getAttribute('data-domain') === 'systems').fire('click');
+    await waitFor(() => atlas().find('los-atlas-concept-seed')
+      .some((row) => row.getAttribute('data-concept-id') === 'concept-bayes'));
+    atlas().find('los-atlas-concept-seed')
+      .find((row) => row.getAttribute('data-concept-id') === 'concept-bayes').fire('click');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.atlas)[0].view.state.concept === 'concept-bayes');
+    const crumbs = atlas().find('los-atlas-breadcrumb')[0]?.allText() ?? '';
+    check('opened from Systems, the breadcrumb keeps the browsed domain',
+      crumbs.includes('Systems'), crumbs);
     await plugin.nav.openModule('module-fixture-m2');
     await waitFor(() => app.workspace.getLeavesOfType(VIEW.module)[0]?.view.contentEl.find('sd-unit-sheet').length === 1);
     const sheet = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;
@@ -570,10 +498,11 @@ module.exports = async function run() {
       manifest.counts.notes += 1;
     } });
     await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
-    await waitFor(() => app.workspace.getLeavesOfType(VIEW.atlas)[0]?.view.contentEl.find('sd-crumb').length > 0);
-    const crumbs = app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.find('sd-crumb').map((node) => node.allText());
-    check('a deep link without a browse context returns to the canonical drawing place',
-      crumbs.includes('Mathematics') && !crumbs.includes('Systems'), crumbs.join('|'));
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.atlas)[0]?.view.contentEl.find('los-atlas-inspector').length > 0);
+    const crumbs = app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.find('los-atlas-breadcrumb')[0]?.allText() ?? '';
+    check('a deep link without a browse context opens the concept with no invented domain',
+      app.workspace.getLeavesOfType(VIEW.atlas)[0].view.state.concept === 'concept-bayes'
+      && !crumbs.includes('Systems'), crumbs);
     plugin.onunload();
   }
   {
@@ -583,7 +512,7 @@ module.exports = async function run() {
     await plugin.nav.openAtlas({ lens: 'prerequisites' });
     const atlas = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl;
     check('an incoherent pointer draws no study marker on the atlas',
-      atlas().findText('sd-chip-button', 'You are here') === null);
+      !atlas().allText().includes('You are here'));
     await plugin.nav.openModule('module-fixture-m2');
     await waitFor(() => app.workspace.getLeavesOfType(VIEW.module)[0]?.view.contentEl.find('sd-unit-sheet').length === 1);
     const sheet = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;

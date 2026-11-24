@@ -262,7 +262,7 @@ async function main() {
     // Core reports the incomplete rollback as INTERNAL_FAILURE.
     const generated = path.join(repo, 'generated');
     for (const entry of fs.readdirSync(generated)) {
-      if (entry !== 'reports') fs.rmSync(path.join(generated, entry), { force: true });
+      if (entry !== 'reports') fs.rmSync(path.join(generated, entry), { force: true, recursive: true });
     }
     const site = path.join(workspace, 'broken-projection-site');
     fs.mkdirSync(site, { recursive: true });

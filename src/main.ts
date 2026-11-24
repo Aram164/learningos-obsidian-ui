@@ -858,6 +858,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
   openMaterialPath(path: string, destination: PageDestination | null = null) {
     return this.resources.openMaterialPath(path, destination);
   }
+  openMaterialReferencePath(path: string, destination: PageDestination) {
+    return this.resources.openMaterialReferencePath(path, destination);
+  }
   openAuthoredPath(path: string) {
     return this.resources.openAuthoredPath(path);
   }

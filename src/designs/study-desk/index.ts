@@ -1,5 +1,4 @@
 import type { DesignScreens } from '../screens';
-import { renderDeskAtlas } from './atlas';
 import { renderDeskHome } from './home';
 import { renderDeskLearn, renderDeskModuleDetail, renderDeskModuleList } from './modules';
 import { renderDeskNav } from './nav';
@@ -13,5 +12,6 @@ export const studyDeskScreens: DesignScreens = {
   moduleList: renderDeskModuleList,
   moduleDetail: renderDeskModuleDetail,
   unit: renderDeskUnit,
-  atlas: renderDeskAtlas,
+  // Atlas is the shared list/inspector renderer in every design (P4 step 29):
+  // no design-owned graph screen, so the base view draws it, restyled.
 };

@@ -103,6 +103,7 @@ export const UI_GESTURE_CAPABILITIES: readonly string[] = [
    * "the app needs it" reintroduces the thing the allowlist exists to stop.
    */
   'concept.relations.change',
+  'practice.verification.record',
   'review.apply',
   'review.prepare',
   'unit.map.import',

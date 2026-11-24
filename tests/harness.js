@@ -220,6 +220,7 @@ class Plugin {
     this._data = {};
   }
   registerView(type, factory) { this.views[type] = factory; }
+  registerObsidianProtocolHandler(action, handler) { (this.protocolHandlers ??= {})[action] = handler; }
   addSettingTab(t) { this.settingTabs.push(t); }
   addRibbonIcon(icon, title, fn) { this.ribbons.push({ icon, title, fn }); return new El('div'); }
   addCommand(c) { this.commands.push(c); }

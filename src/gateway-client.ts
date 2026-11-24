@@ -1,10 +1,12 @@
 import {
   validateAiActionDeliveryPreviewV1,
+  validatePracticeContextWire,
   validateProjectionSettlementWire,
   validateUnitMapImportPreviewV1,
 } from './contracts/generated/responses.validator.cjs';
 import type {
   AiActionDeliveryPreviewV1,
+  PracticeContextWire,
   ProjectionSettlementWire,
   UnitMapImportPreviewV1,
 } from './contracts/generated/responses.types';
@@ -1089,6 +1091,19 @@ export class GatewayClient {
       { expectedRevisions },
     );
   }
+  recordPracticeVerification(
+    record: Readonly<Record<string, unknown>>,
+    context: PracticeContextWire,
+  ) {
+    return this.capability('practice.verification.record', { record }, {
+      expectedSnapshot: context.snapshot_id,
+      expectedRevisions: {
+        'registry-practice-index': context.practice_index_revision,
+        [context.note_id]: context.note_revision,
+      },
+    });
+  }
+
   prepareShelving(unitId: string,
     expectedRevisions: Readonly<Record<string, number>> = {}) {
     return this.capability('review.prepare', { unit_id: unitId }, { expectedRevisions });
@@ -1351,6 +1366,36 @@ export class GatewayClient {
     if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
     args.push('--json');
     return this.call(args);
+  }
+
+  /**
+   * Exact stored relation rows and questions for one concept (ADR-024).
+   *
+   * Relation writes bind the exact previous row, and the projection cannot
+   * supply it: Core projects absent optional fields as defaults, so a row
+   * rebuilt from the manifest would not match what is stored. This bounded
+   * read is the only source of `old` rows for decorated relations.
+   */
+  atlasContext(
+    conceptId: string,
+    options: { expectedSnapshot?: string | null } = {},
+  ) {
+    const args = ['atlas-context', conceptId];
+    if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
+    args.push('--json');
+    return this.call(args);
+  }
+
+  async practiceContext(noteId: string, expectedSnapshot: string): Promise<PracticeContextWire> {
+    const value: unknown = await this.call([
+      'practice-context', noteId, '--expected-snapshot', expectedSnapshot, '--json',
+    ]);
+    if (!validatePracticeContextWire(value) || value.note_id !== noteId
+        || value.snapshot_id !== expectedSnapshot
+        || value.items.some((item) => item.item_id !== `${noteId}#${item.label}`)) {
+      throw new Error('LearningOS returned a mismatched practice context. Reload and try again.');
+    }
+    return value;
   }
 
   /**

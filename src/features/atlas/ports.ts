@@ -1,6 +1,7 @@
 import type { AppNavigator } from '../../app/navigator';
 import type { AppSurface } from '../../app/surface';
 import type { AtlasDepthV1, AtlasLensV1 } from '../../contracts/route-v1';
+import type { AtlasFilters, EvidenceBinding } from './graph';
 
 /**
  * The narrow host the Atlas feature needs.
@@ -22,6 +23,7 @@ export type AtlasPlugin = Pick<
   | 'gateway'
   | 'generate'
   | 'mutate'
+  | 'openMaterialReferencePath'
   | 'openVaultPath'
   | 'router'
   | 'settings'
@@ -52,6 +54,26 @@ export interface RelationRow {
   readonly to: string;
   readonly context?: string;
   readonly source?: string;
+  /** ADR-024 lifecycle/evidence decoration, present only when authored. */
+  readonly origin?: string;
+  readonly status?: string;
+  readonly pinned?: boolean;
+  readonly status_reason?: string;
+  readonly evidence_disputed?: boolean;
+  readonly evidence?: readonly EvidenceBinding[];
+}
+
+/** An in-progress lifecycle action on one relation (veto/retract/restore). */
+export interface RelationActionState {
+  readonly edgeId: string;
+  readonly kind: 'veto' | 'retract' | 'restore';
+  reason: string;
+  sourceId: string;
+  materialRelpath: string;
+  fileSha256: string;
+  page: string;
+  quote: string;
+  error: string | null;
 }
 
 /** The only three things that may happen to the relation registry. */
@@ -174,4 +196,34 @@ export interface AtlasHost {
    * somewhere else.
    */
   changeRelations(operations: readonly RelationOperation[]): Promise<void>;
+
+  /** Open the editor on the exact stored row fetched via `atlas.context`. */
+  editRelation(edge: import('./graph').AtlasEdge): void;
+  /** Pin or unpin through an exact-row replace (Core guards pinned rows). */
+  togglePin(edge: import('./graph').AtlasEdge): Promise<void>;
+  /** Begin composing a veto/retract/restore in the relation inspector. */
+  startRelationAction(edge: import('./graph').AtlasEdge, kind: 'veto' | 'retract' | 'restore'): void;
+  /** Submit the composed lifecycle action with its exact old row. */
+  submitRelationAction(): Promise<void>;
+
+  /** Editable-board scope selection and lifecycle (ADR-024, P3). */
+  boardScope: string | null;
+  boardCatalog(): readonly import('./board-controller').BoardCatalogEntry[];
+  openAtlasBoard(entry: import('./board-controller').BoardCatalogEntry, advanced?: boolean): Promise<void>;
+  refreshAtlasBoard(entry: import('./board-controller').BoardCatalogEntry): Promise<void>;
+  /** Point the parent board's link at this editable child (step 21). */
+  usePortalChild(child: import('./board-controller').BoardCatalogEntry): Promise<void>;
+
+  /** AND-composed list filters (P4 step 25). View-owned, never route state. */
+  filters: AtlasFilters;
+  /** The lifecycle action being composed in the relation inspector. */
+  relationAction: RelationActionState | null;
+  /** Open one evidence binding of a relation at its physical page. */
+  openEvidence(relationId: string, ordinal: number): void;
+  /** Row key that opened the inspector; focus returns there on dismissal. */
+  inspectorOrigin: string | null;
+  /** Set by a row activation: the shell focuses the inspector heading once. */
+  focusInspector: boolean;
+  /** Set on dismissal: the shell returns focus to `inspectorOrigin` once. */
+  restoreFocus: boolean;
 }

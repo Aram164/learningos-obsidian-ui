@@ -50,6 +50,7 @@ const REQUIRED_RESPONSE_ENDPOINTS = [
   'AiActionDeliveryPreviewV1',
   'UnitMapImportCheckV1',
   'UnitMapImportPreviewV1',
+  'PracticeContextWire',
 ];
 
 function collectTsFiles(directory) {
@@ -392,6 +393,23 @@ async function exerciseLivePorcelain(mirror, capabilitySites) {
     await probe('concept.relations.change', () => gateway.changeConceptRelations([
       { action: 'add', new: { from: 'a', to: 'b', kind: 'relates' } },
     ]));
+    await probe('practice.verification.record', () => gateway.recordPracticeVerification(
+      {
+        item_id: 'practice-demo',
+        expected_old: null,
+        new_status: 'verified',
+        method: 'self_check',
+        concept_ids: ['concept-demo'],
+        artifact_sha256: mapSha,
+        reviewer_id: 'aram',
+      },
+      {
+        snapshot_id: SNAPSHOT,
+        practice_index_revision: 0,
+        note_id: 'note-demo',
+        note_revision: 0,
+      },
+    ));
     await probe('review.prepare', () => gateway.prepareShelving('unit-demo'));
     await probe('review.apply', () => gateway.applyShelving('unit-demo', ['item-1']));
     await probe('unit.map.import', async () => {

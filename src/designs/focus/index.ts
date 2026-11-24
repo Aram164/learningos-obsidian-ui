@@ -1,5 +1,4 @@
 import type { DesignScreens } from '../screens';
-import { renderFocusAtlas } from './atlas';
 import { renderFocusHome, renderFocusLearn } from './learning';
 import { renderFocusModule, renderFocusModules } from './modules';
 import { renderFocusNav } from './nav';
@@ -13,5 +12,6 @@ export const focusScreens: DesignScreens = {
   moduleList: renderFocusModules,
   moduleDetail: renderFocusModule,
   unit: renderFocusUnit,
-  atlas: renderFocusAtlas,
+  // Atlas is the shared list/inspector renderer in every design (P4 step 29):
+  // no design-owned graph screen, so the base view draws it, restyled.
 };

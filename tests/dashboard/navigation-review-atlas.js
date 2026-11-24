@@ -544,30 +544,26 @@ module.exports = async function run() {
     /* A3. The outline is a complete alternative to the picture, not a summary
      * of the focus's own adjacency: an edge between two drawn neighbours is
      * still an edge the picture shows. */
-    const drawn = view.contentEl.find('los-atlas-node')
-      .map((node) => node.getAttribute('data-atlas-concept'));
+    const inspectorTextA3 = view.contentEl.find('los-atlas-inspector')[0].allText();
     const stated = view.contentEl.find('los-atlas-outline-row')
       .map((row) => row.getAttribute('data-relation-id'));
     check('the outline carries edges between neighbours, not only the focus\u2019s own',
       stated.includes('concept-logistic-regression--builds-on--concept-bayes')
-      && drawn.includes('concept-logistic-regression') && drawn.includes('concept-bayes'));
-    check('every stated relation has both endpoints drawn, and none is stated twice',
+      && inspectorTextA3.includes('Logistic regression') && inspectorTextA3.includes('Bayes theorem'));
+    check('every stated relation has both endpoints named, and none is stated twice',
       stated.length === new Set(stated).size
       && stated.every((id) => id && id.split('--').length === 3));
 
-    /* The package's acceptance condition: one relation, three surfaces, one
-     * sentence. A picture that says something the outline does not is a
-     * picture the keyboard reader is denied. */
+    /* The package's acceptance condition: one relation, every surface, one
+     * sentence. A board that says something the list does not is a board the
+     * keyboard reader is denied. */
     fromPrerequisite.fire('click');
     await tick();
     view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     const sentence = 'Bayes theorem requires Conditional probability';
-    const node = view.contentEl.find('los-atlas-node')
-      .find((row) => row.getAttribute('data-atlas-concept') === 'concept-bayes');
     const inspector = view.contentEl.find('los-atlas-inspector')[0];
-    check('graph, outline and inspector describe the selected relation identically',
-      Boolean(node) && Boolean(inspector)
-      && node.allText().includes(sentence)
+    check('outline and inspector describe the selected relation identically',
+      Boolean(inspector)
       && fromPrerequisite.allText().includes(sentence)
       && inspector.allText().includes(sentence));
     check('inspecting a connection does not re-centre the view on the other concept',
@@ -588,7 +584,7 @@ module.exports = async function run() {
       view.contentEl.find('los-atlas-outline-row')
         .some((row) => row.getAttribute('data-relation-id')
           === 'concept-bayes--contrasts-with--concept-frequentist-inference')
-      && text.includes('excluded from path order'));
+      && text.includes('do not set learning order'));
 
     /* Retained from the crossing-table coverage this block replaced: the
      * evidence trail still reaches the exact unit and stage, and Back still
@@ -600,13 +596,10 @@ module.exports = async function run() {
       plugin.router.snapshot().current?.name === 'atlas'
       && plugin.router.snapshot().current?.concept === 'concept-bayes');
 
-    view.contentEl.find('los-filter-tab')
-      .find((tab) => tab.allText().includes('Evidence')).fire('click');
-    await tick();
     view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     check('module evidence is reachable and names what exists, not what was understood',
       view.contentEl.allText().includes('what exists, not what was understood')
-      && view.contentEl.find('los-item').length === 2);
+      && Boolean(view.contentEl.findText('los-item', 'Bayes decision rule')));
 
     view.contentEl.findText('los-item', 'Bayes decision rule').fire('click');
     await tick(); await tick();
@@ -723,7 +716,7 @@ module.exports = async function run() {
     // Returning to Bayes retains its selected connection attention. Resolve
     // the concept question explicitly, rather than whichever band came first.
     view.contentEl.findText('los-btn', 'Close connection')?.fire('click');
-    view.contentEl.findText('los-btn', 'Questions').fire('click');
+    // The Questions section is always rendered now; no tab opens it.
     view.contentEl.find('los-atlas-question-action')
       .find((action) => action.getAttribute('aria-label')
         === 'Mark “Why does Bayes need the conditional first?” answered').fire('click');
@@ -908,7 +901,7 @@ module.exports = async function run() {
     view = atlas();
     check('removal names the assertion and what stays untouched',
       view.contentEl.allText()
-        .includes('Removing takes away the claim that Logistic regression builds on Bayes theorem')
+        .includes('Removing or retiring takes away the claim that Logistic regression builds on Bayes theorem')
       && view.contentEl.allText().includes('any question recorded about them stay exactly as they are'));
 
     view.contentEl.find('los-atlas-remove-connection')[0].fire('click');
@@ -948,7 +941,9 @@ module.exports = async function run() {
       for (let i = 0; i < 74; i += 1) {
         const id = `concept-fixture-extra-${i}`;
         manifest.records.push({ ...template, id, title: `Extra concept ${String(i).padStart(2, '0')}` });
-        manifest.relations.push({ from: 'concept-bayes', to: id, type: 'requires', context: null, source: null });
+        manifest.relations.push({ from: 'concept-bayes', to: id, type: 'requires', context: null, source: null,
+          origin: 'pilot', status: 'active', pinned: false, status_reason: null,
+          evidence_disputed: false, evidence: [], evidence_state: 'missing' });
       }
       manifest.records.push({ ...template, id: 'concept-fixture-zero', title: 'Zero linked notes' });
       for (let i = 0; i < 22; i += 1) {
@@ -991,35 +986,34 @@ module.exports = async function run() {
       && input.parentElement.tag === 'label' && input.selectionStart === 5);
     root.find('los-atlas-concept-seed').find((row) => row.getAttribute('data-concept-id') === 'concept-bayes').fire('click');
     await tick(); root = browserDom(atlas().contentEl);
-    check('crowded concepts cap pictured nodes and explicitly name every omitted concept',
-      root.find('los-atlas-node').length <= 9 && root.find('los-atlas-crowded-remainder').length === 1
-      && root.find('los-atlas-crowded-remainder')[0].allText().includes('Text outline')
-      && root.find('los-atlas-outline-row').length >= 77
-      && root.find('los-atlas-node').length + root.find('los-atlas-crowded-remainder')[0].find('los-btn').length >= 77);
-    const noteRows = root.find('los-atlas-linked-note');
-    check('all linked notes remain reachable through an honest Show all disclosure',
-      noteRows.length === 23 && root.allText().includes('Show all 23 linked notes')
-      && !noteRows.some((row) => row.getAttribute('data-note-id') === 'note-fixture-text-only'));
-    const details = root.find('los-atlas-disclosure').find((row) => row.getAttribute('data-atlas-disclosure') === 'concept-bayes:notes');
+    check('crowded concepts state every relation as text, with no picture cap',
+      root.find('los-atlas-canvas').length === 0
+      && root.find('los-atlas-outline-row').length >= 74
+      && root.find('los-atlas-inspector')[0].allText().includes('Extra concept 73'));
+    const noteRows = root.find('los-item')
+      .filter((row) => (row.getAttribute('data-note-id') ?? '').startsWith('note-fixture'));
+    check('all linked notes remain reachable in Sources without a disclosure',
+      noteRows.length === 23
+      && !root.find('los-item').some((row) => row.getAttribute('data-note-id') === 'note-fixture-text-only'));
     const before = plugin.router.snapshot();
-    details.open = true; details.fire('toggle'); atlas().render();
-    check('opening notes is retained attention and adds no route history',
-      root.find('los-atlas-disclosure').find((row) => row.getAttribute('data-atlas-disclosure') === 'concept-bayes:notes').open
-      && JSON.stringify(plugin.router.snapshot()) === JSON.stringify(before));
+    atlas().render();
+    check('redrawing notes is retained attention and adds no route history',
+      JSON.stringify(plugin.router.snapshot()) === JSON.stringify(before));
     await plugin.nav.openUnit('unit-fixture-aml-l04', 'stage-fixture-aml-bayes');
     await plugin.nav.back(); await tick(); root = browserDom(atlas().contentEl);
     check('Back from an evidence unit restores the selected concept and linked-note context',
-      plugin.router.snapshot().current?.concept === 'concept-bayes' && root.find('los-atlas-linked-note').length === 23);
+      plugin.router.snapshot().current?.concept === 'concept-bayes' && root.find('los-item').filter((row) => (row.getAttribute('data-note-id') ?? '').startsWith('note-fixture')).length === 23);
     const saved = atlas().getState();
     await plugin.nav.openAtlas({ concept: 'concept-fixture-zero', lens: 'semantic', depth: 2 });
     root = browserDom(atlas().contentEl);
     check('restoring a zero-note semantic deep link preserves concept, lens and depth honestly',
       atlas().getState().concept === 'concept-fixture-zero' && atlas().getState().lens === 'semantic'
-      && atlas().getState().depth === 2 && root.allText().includes('No notes explicitly linked'));
+      && atlas().getState().depth === 2 && root.find('los-atlas-inspector').length === 1
+      && !root.allText().includes('Linked notes ·'));
     await plugin.nav.openAtlas(saved); root = browserDom(atlas().contentEl);
     check('restoring the saved route returns the exact concept and note context',
       JSON.stringify(atlas().getState()) === JSON.stringify(saved)
-      && root.find('los-atlas-linked-note').length === 23);
+      && root.find('los-item').filter((row) => (row.getAttribute('data-note-id') ?? '').startsWith('note-fixture')).length === 23);
     check('browsing, graph selection, disclosures and history cause no Core writes', calls.envelopes.length === 0);
     plugin.onunload();
   }
@@ -1037,8 +1031,13 @@ module.exports = async function run() {
     const disclosure = (key) => root.find('los-atlas-disclosure')
       .find((row) => row.getAttribute('data-atlas-disclosure') === key);
     const select = async (id) => {
-      root.find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === id).fire('click');
-      root.find('los-atlas-inspection-actions')[0].findText('los-btn', 'Explore from here').fire('click');
+      // Inspect the connection, then take its named endpoint: the same two
+      // keyboard steps a learner uses, with no picture in between.
+      const row = root.find('los-atlas-outline-row')
+        .find((candidate) => (candidate.getAttribute('data-relation-id') ?? '').includes(id));
+      row.fire('click');
+      root.find('los-btn')
+        .find((btn) => btn.getAttribute('data-row-key') === `concept:${id}`).fire('click');
       await waitFor(() => atlas().state.concept === id);
     };
     check('a fresh semantic deep link has no invented previous selection and native history controls',
@@ -1048,14 +1047,11 @@ module.exports = async function run() {
       && control('Forward').getAttribute('aria-label') === 'Forward to next concept');
     const applicationHistory = plugin.router.snapshot().history.length;
     field().value = 'conditional'; field().fire('input');
-    disclosure('concept-bayes:outline').open = true; disclosure('concept-bayes:outline').fire('toggle');
     const bayesRoute = atlas().getState();
     await select('concept-bedingte-wahrscheinlichkeit');
     atlas().go({ module: null, lens: 'prerequisites', depth: 1 });
     await waitFor(() => atlas().state.lens === 'prerequisites' && atlas().state.depth === 1 && atlas().state.module === null);
     field().value = 'logistic'; field().fire('input');
-    disclosure('concept-bedingte-wahrscheinlichkeit:outline').open = true;
-    disclosure('concept-bedingte-wahrscheinlichkeit:outline').fire('toggle');
     const conditionalRoute = atlas().getState();
     root.find('los-atlas-concept-seed').find((row) => row.getAttribute('data-concept-id') === 'concept-logistic-regression').fire('click');
     await waitFor(() => atlas().state.concept === 'concept-logistic-regression');
@@ -1063,9 +1059,9 @@ module.exports = async function run() {
     const logisticRoute = atlas().getState();
     control('Back').focus(); control('Back').fire('click', { detail: 0 });
     await waitFor(() => atlas().state.concept === 'concept-bedingte-wahrscheinlichkeit');
-    check('keyboard activation of Back restores exact concept/module/lens/depth, query and disclosure',
+    check('keyboard activation of Back restores exact concept/module/lens/depth and query',
       JSON.stringify(atlas().getState()) === JSON.stringify(conditionalRoute)
-      && field().value === 'logistic' && disclosure('concept-bedingte-wahrscheinlichkeit:outline').open
+      && field().value === 'logistic' && root.find('los-atlas-inspector').length === 1
       && global.document.activeElement === control('Back') && !control('Back').disabled && !control('Forward').disabled);
     let prevented = false;
     root.find('los-atlas-concept-history')[0].fire('keydown', {
@@ -1093,7 +1089,7 @@ module.exports = async function run() {
     control('Back').fire('click'); await waitFor(() => atlas().state.concept === 'concept-bayes');
     check('the original concept returns with its saved route and attention, then exhausts Back',
       JSON.stringify(atlas().getState()) === JSON.stringify(bayesRoute)
-      && field().value === 'conditional' && disclosure('concept-bayes:outline').open
+      && field().value === 'conditional' && root.find('los-atlas-inspector').length === 1
       && control('Back').disabled && !control('Forward').disabled);
 
     const second = app.workspace.getLeaf(true);
@@ -1169,8 +1165,8 @@ module.exports = async function run() {
     await plugin.nav.openAtlas({ concept: 'concept-bayes', module: 'module-fixture-m2', lens: 'prerequisites' });
     root = browserDom(atlas().contentEl);
     check('projected operator-drafted authorship is presented as Operator draft',
-      root.find('los-atlas-linked-note').find((row) => row.getAttribute('data-note-id') === 'note-fixture-probability')
-        .allText().includes('Operator draft') && !root.find('los-atlas-linked-note')[0].allText().includes('operator-drafted'));
+      root.find('los-item').find((row) => row.getAttribute('data-note-id') === 'note-fixture-probability')
+        .allText().includes('Operator draft') && !root.find('los-item')[0].allText().includes('operator-drafted'));
     const historyLength = plugin.router.snapshot().history.length;
     root.findText('los-btn', 'Explore').fire('click');
     await waitFor(() => atlas().state.concept === null && atlas().concepts.browseAll);

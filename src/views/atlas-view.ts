@@ -21,11 +21,29 @@ import type {
   AtlasRouteState,
 } from '../features/atlas/ports';
 import { renderAtlas, rememberConcept } from '../features/atlas/shell';
+import {
+  advancedBoardAvailable,
+  type BoardCatalogEntry,
+} from '../features/atlas/board-controller';
+import { AtlasBoardVault, atlasBoardController } from '../infrastructure/atlas-board-vault';
 import { drawDesignScreen } from '../designs/registry';
-import type {
-  RelationDraft,
-  RelationOperation,
+import {
+  editDraft,
+  isDecorated,
+  rowOf,
+  type RelationDraft,
+  type RelationOperation,
+  type RelationRow,
 } from '../features/atlas/relation-editor';
+import {
+  buildAtlasGraph,
+  EMPTY_FILTERS,
+  type AtlasEdge,
+  type AtlasFilters,
+} from '../features/atlas/graph';
+import type { RelationActionState } from '../features/atlas/ports';
+import { BoardRefreshModal } from '../features/atlas/board-preview';
+import { openEvidenceBinding } from '../features/atlas/evidence';
 
 /** The artifact every relation change is guarded against, as Core names it. */
 const RELATION_REGISTRY = 'registry-concept-relations';
@@ -76,11 +94,236 @@ export class AtlasView extends ItemView implements AtlasHost {
     browseAll: false, visibleLimit: 30, domain: null, subdomain: null,
     selected: null, recentsOnly: false, disclosures: new Map(),
   };
+  boardScope: string | null = null;
+
+  boardCatalog(): readonly BoardCatalogEntry[] {
+    return this.plugin.store.atlasBoards();
+  }
+
+  async openAtlasBoard(entry: BoardCatalogEntry, advanced = false): Promise<void> {
+    try {
+      if (advanced) {
+        const installed = await this.app.vault.adapter.exists(
+          '.obsidian/plugins/advanced-canvas/manifest.json');
+        if (!advancedBoardAvailable(this.plugin.settings.atlasAdvancedCanvas, installed)) {
+          new Notice('Advanced board needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin.');
+          return;
+        }
+      }
+      const vault = new AtlasBoardVault(this.app);
+      const template = await vault.read(entry.template_path);
+      const result = await atlasBoardController(this.app).openBoard(entry, template);
+      if (!result.ok) new Notice(result.reason);
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
+  }
+
+  async usePortalChild(child: BoardCatalogEntry): Promise<void> {
+    const parent = this.boardCatalog().find(
+      (entry) => entry.kind === child.parent_kind && entry.id === child.parent_id);
+    if (!parent) {
+      new Notice('This scope has no parent board to point at it.');
+      return;
+    }
+    try {
+      const result = await atlasBoardController(this.app).useEditableChild(parent, child);
+      new Notice(result.ok
+        ? 'Portals on the parent board now open the editable child.'
+        : result.reason);
+      this.render();
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
+  }
+
+  async refreshAtlasBoard(entry: BoardCatalogEntry): Promise<void> {
+    const controller = atlasBoardController(this.app);
+    try {
+      const preview = await controller.previewRefresh(entry);
+      if (!preview.ok) {
+        new Notice(preview.reason);
+        return;
+      }
+      new BoardRefreshModal(this.app, entry.title ?? entry.id, preview, () => {
+        void controller.refreshBoard(entry, preview.templateText, preview.workingText, preview.ownershipText)
+          .then((result) => new Notice(result.ok ? 'Board refreshed.' : result.reason))
+          .catch((error: unknown) => new Notice(errorMessage(error)));
+      }).open();
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
+  }
+
   tab: AtlasInspectorTab = 'summary';
   semanticOpen = false;
   remainderOpen = false;
   edgeId: string | null = null;
   editor: RelationDraft | null = null;
+  filters: AtlasFilters = { ...EMPTY_FILTERS };
+  relationAction: RelationActionState | null = null;
+  inspectorOrigin: string | null = null;
+  focusInspector = false;
+  restoreFocus = false;
+
+  openEvidence(relationId: string, ordinal: number): void {
+    openEvidenceBinding({
+      store: this.plugin.store,
+      openMaterialReferencePath: (path, destination) => this.plugin.openMaterialReferencePath(path, destination),
+      notify: (message) => new Notice(message),
+    }, relationId, ordinal);
+  }
+
+  /** The exact stored row for one projected edge, via `atlas.context`. */
+  private async exactRow(edge: AtlasEdge): Promise<
+    | { readonly ok: true; readonly row: RelationRow | null }
+    | { readonly ok: false; readonly error: string }
+  > {
+    try {
+      const value = await this.plugin.gateway.atlasContext(edge.from, {
+        expectedSnapshot: this.plugin.store.snapshotId,
+      }) as { relations?: unknown } | null;
+      if (!value || typeof value !== 'object' || !Array.isArray(value.relations)) {
+        return { ok: false, error: 'Malformed atlas context response.' };
+      }
+      const match = value.relations.find((row): row is RelationRow => {
+        const candidate = row as RelationRow | null;
+        return Boolean(candidate)
+          && candidate?.from === edge.from
+          && candidate?.type === edge.type
+          && candidate?.to === edge.to;
+      });
+      return { ok: true, row: match ?? null };
+    } catch (error: unknown) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  }
+
+  editRelation(edge: AtlasEdge): void {
+    void (async () => {
+      const lookup = await this.exactRow(edge);
+      if (!lookup.ok) {
+        new Notice(`The exact stored connection could not be read (${lookup.error}), so it was not opened for editing.`);
+        return;
+      }
+      const exact = lookup.row;
+      if (!exact && isDecorated(edge)) {
+        new Notice('The exact stored connection could not be read, so it was not opened for editing.');
+        return;
+      }
+      this.editor = editDraft(edge, exact ?? undefined);
+      this.render();
+    })();
+  }
+
+  async togglePin(edge: AtlasEdge): Promise<void> {
+    const lookup = await this.exactRow(edge);
+    if (!lookup.ok) {
+      new Notice(`The exact stored connection could not be read (${lookup.error}), so nothing was pinned or unpinned.`);
+      return;
+    }
+    const exact = lookup.row;
+    if (!exact && isDecorated(edge)) {
+      new Notice('The exact stored connection could not be read, so nothing was pinned or unpinned.');
+      return;
+    }
+    const old = exact ?? rowOf(edge);
+    await this.changeRelations([{
+      action: 'replace', old, new: { ...old, pinned: !old.pinned },
+    }]);
+  }
+
+  startRelationAction(edge: AtlasEdge, kind: 'veto' | 'retract' | 'restore'): void {
+    this.edgeId = edge.id;
+    this.relationAction = {
+      edgeId: edge.id, kind, reason: '', sourceId: '', materialRelpath: '',
+      fileSha256: '', page: '', quote: '', error: null,
+    };
+    this.render();
+  }
+
+  async submitRelationAction(): Promise<void> {
+    const action = this.relationAction;
+    if (!action) return;
+    // The projected edge, for status and endpoint identity.
+    const graph = buildAtlasGraph(this.plugin.store);
+    const projected = graph.relationByIdentity.get(action.edgeId);
+    if (!projected) {
+      this.relationAction = { ...action, error: 'That connection is no longer published.' };
+      this.render();
+      return;
+    }
+    const reason = action.reason.trim();
+    if ((action.kind === 'veto' || action.kind === 'retract')
+      && (reason.length < 1 || reason.length > 400)) {
+      this.relationAction = { ...action, error: 'Give a reason of 1–400 characters.' };
+      this.render();
+      return;
+    }
+    const needsBinding = action.kind === 'restore' && projected.status === 'vetoed';
+    const page = Number(action.page);
+    if (needsBinding && (!action.sourceId.trim() || !action.materialRelpath.trim()
+      || !/^[0-9a-f]{64}$/.test(action.fileSha256.trim())
+      || !Number.isInteger(page) || page < 1 || !action.quote.trim())) {
+      this.relationAction = {
+        ...action,
+        error: 'Restoring a vetoed connection needs one complete evidence binding from a previously unused source.',
+      };
+      this.render();
+      return;
+    }
+    const lookup = await this.exactRow(projected);
+    if (!lookup.ok) {
+      this.relationAction = { ...action, error: lookup.error };
+      this.render();
+      return;
+    }
+    const exact = lookup.row;
+    if (!exact && isDecorated(projected)) {
+      this.relationAction = { ...action, error: 'The exact stored connection could not be read.' };
+      this.render();
+      return;
+    }
+    const old = exact ?? rowOf(projected);
+    const next: Record<string, unknown> = { ...old };
+    if (action.kind === 'veto') {
+      next.status = 'vetoed';
+      next.status_reason = reason;
+    } else if (action.kind === 'retract') {
+      next.status = 'retracted';
+      next.status_reason = reason;
+    } else {
+      next.status = 'active';
+      delete next.status_reason;
+      if (needsBinding) {
+        const evidence = Array.isArray(old.evidence) ? [...old.evidence] : [];
+        evidence.push({
+          source_id: action.sourceId.trim(),
+          material_relpath: action.materialRelpath.trim(),
+          file_sha256: action.fileSha256.trim(),
+          page,
+          quote: action.quote.trim(),
+        });
+        next.evidence = evidence;
+      }
+    }
+    const applied = await this.write(
+      () => this.plugin.gateway.changeConceptRelations(
+        [{ action: 'replace', old, new: next as unknown as RelationRow }],
+        this.plugin.store.artifactGuard(RELATION_REGISTRY),
+      ),
+      (message) => {
+        if (this.relationAction) this.relationAction.error = message;
+      },
+    );
+    if (applied) {
+      this.relationAction = null;
+      this.edgeId = action.edgeId;
+      this.render();
+    } else {
+      this.render();
+    }
+  }
   private mutationPending = false;
   private renderCleanups: Array<() => void> = [];
   private conceptAttention = new Map<string | null, ConceptAttention>();
@@ -193,6 +436,7 @@ export class AtlasView extends ItemView implements AtlasHost {
       this.concept = state.concept;
     }
     if (typeof state.module === 'string' || state.module === null) {
+      if (this.module !== state.module) this.boardScope = null;
       this.module = state.module;
     }
     this.lens = asAtlasLens(state.lens);
@@ -234,6 +478,7 @@ export class AtlasView extends ItemView implements AtlasHost {
       this.semanticOpen = restored?.semanticOpen ?? false;
       this.remainderOpen = restored?.remainderOpen ?? false;
       this.editor = null;
+      this.relationAction = null;
       if (this.concept) this.plugin.settings.atlasRecentConcepts = rememberConcept(
         this.plugin.settings.atlasRecentConcepts, this.concept,
       );
@@ -373,7 +618,20 @@ export class AtlasView extends ItemView implements AtlasHost {
     const focused = doc?.activeElement as HTMLElement | null;
     const historyKey = focused && this.contentEl.contains(focused)
       ? focused.getAttribute('data-los-tab') : null;
+    const filterKey = focused && this.contentEl.contains(focused)
+      ? focused.getAttribute('data-atlas-filter') : null;
     withRenderFocus(this.contentEl, () => this.renderContent());
+    // Filter selects are native controls outside the search/button-group
+    // focus machinery: keep the learner on the filter they just changed.
+    if (filterKey) {
+      const now = doc.activeElement;
+      if (!now || now === doc.body || !now.isConnected) {
+        const replacement = Array.from(
+          this.contentEl.querySelectorAll<HTMLElement>('[data-atlas-filter]'),
+        ).find((node) => node.getAttribute('data-atlas-filter') === filterKey);
+        replacement?.focus({ preventScroll: true });
+      }
+    }
     // Exhausting one direction disables its native button. Keep keyboard
     // attention on the remaining direction rather than a removed control.
     if (historyKey === 'concept-back' || historyKey === 'concept-forward') {

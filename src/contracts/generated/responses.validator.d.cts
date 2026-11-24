@@ -23,3 +23,4 @@ export function validateAiActionStatusV1(value: unknown): value is Wire.AiAction
 export function validateAiActionDeliveryPreviewV1(value: unknown): value is Wire.AiActionDeliveryPreviewV1;
 export function validateUnitMapImportCheckV1(value: unknown): value is Wire.UnitMapImportCheckV1;
 export function validateUnitMapImportPreviewV1(value: unknown): value is Wire.UnitMapImportPreviewV1;
+export function validatePracticeContextWire(value: unknown): value is Wire.PracticeContextWire;

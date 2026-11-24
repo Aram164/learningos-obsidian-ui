@@ -131,6 +131,21 @@ declare module 'obsidian' {
       path: string,
       data: string,
     ): Promise<void>;
+
+    /** Recursive; a folder that already exists is not an error. */
+    mkdir(
+      path: string,
+    ): Promise<void>;
+
+    /** Atomic read-modify-write of a plaintext file, hidden paths included. */
+    process(
+      path: string,
+      fn: (data: string) => string,
+    ): Promise<string>;
+  }
+
+  export interface TFile extends TAbstractFile {
+    readonly extension: string;
   }
 
   export interface Vault {
@@ -142,6 +157,14 @@ declare module 'obsidian' {
     getAbstractFileByPath(
       path: string,
     ): TAbstractFile | null;
+
+    read(file: TFile): Promise<string>;
+
+    create(path: string, data: string): Promise<TFile>;
+
+    createFolder(path: string): Promise<unknown>;
+
+    process(file: TFile, fn: (data: string) => string): Promise<string>;
   }
 
   export interface CommandManager {
@@ -205,6 +228,12 @@ declare module 'obsidian' {
 
     addCommand(
       command: Command,
+    ): void;
+
+    /** Public protocol API: `obsidian://<action>?…` with string params only. */
+    registerObsidianProtocolHandler(
+      action: string,
+      handler: (params: Record<string, string>) => unknown,
     ): void;
 
     loadData<T = unknown>():
@@ -429,6 +458,11 @@ declare module 'node:fs' {
   export function statSync(
     path: string,
   ): Stats;
+
+  export function lstatSync(
+    path: string,
+    options: { throwIfNoEntry: false },
+  ): Stats | undefined;
 
   export function mkdirSync(
     path: string,

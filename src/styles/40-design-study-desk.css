@@ -777,8 +777,6 @@ body.los-ui-study-desk {
   .sd-region-sheet { min-height: 480px; }
   .sd-order-scroll { overflow-x: auto; }
   .sd-order-canvas { position: relative; padding-bottom: 8px; }
-  .sd-order-canvas .los-atlas-edge, .sd-focus-canvas .los-atlas-edge { stroke-width: 1px; }
-  .sd-order-canvas .los-atlas-edge.is-selected, .sd-focus-canvas .los-atlas-edge.is-selected { stroke-width: 1.6px; }
   .sd-order-labels, .sd-order-grid {
     display: grid;
     grid-template-columns: repeat(var(--sd-columns), minmax(150px, 1fr));
@@ -1253,7 +1251,6 @@ body.los-ui-study-desk {
     .sd-home-columns { grid-template-columns: minmax(0, 1fr); }
     .sd-focus-canvas { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .sd-mm-guide { grid-template-columns: minmax(0, 1fr); }
-    .sd-focus-canvas .los-atlas-edge-layer { display: none; }
     .sd-map-canvas { display: flex; flex-direction: column; gap: 8px; min-height: 0; aspect-ratio: auto; }
     .sd-map-lines, .sd-map-badge { display: none; }
     .sd-region { position: static; width: auto !important; height: auto !important; }

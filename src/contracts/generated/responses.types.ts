@@ -198,6 +198,32 @@ export type PlanTemplateSchema = {
   readonly schema: "study-map.schema.json";
 };
 
+/** practice-context.schema.json#/$defs/item */
+export type PracticeContext_Item = {
+  readonly checked: boolean;
+  readonly concept_ids: readonly string[];
+  readonly content_sha256: string;
+  readonly ineligibility: readonly string[];
+  readonly item_id: string;
+  readonly kind: "flashcard" | "worked";
+  readonly label: string;
+  readonly prompt: string;
+  readonly status: "unverified" | "cross-checked" | "source-matched" | "confirmed" | "disputed";
+  readonly stored_row: { readonly [key: string]: unknown } | null;
+};
+
+/** practice-context.schema.json#/ */
+export type PracticeContextSchema = {
+  readonly contract: "practice-context-v1";
+  readonly diagnostics: readonly string[];
+  readonly items: readonly PracticeContext_Item[];
+  readonly note_id: string;
+  readonly note_revision: number;
+  readonly practice_index_revision: number;
+  readonly schema_version: 1;
+  readonly snapshot_id: string;
+};
+
 /** study-sequence.schema.json#/ */
 export type StudySequenceSchema = {
   readonly canonical_current_stage: string | null;
@@ -679,6 +705,9 @@ export type UiResponses_OperationTimelineRowV1 = {
 /** ui-responses.schema.json#/$defs/PlanTemplateV1 */
 export type UiResponses_PlanTemplateV1 = PlanTemplateSchema;
 
+/** ui-responses.schema.json#/$defs/PracticeContextWire */
+export type UiResponses_PracticeContextWire = PracticeContextSchema;
+
 /** ui-responses.schema.json#/$defs/ProjectionSettlementWire */
 export type UiResponses_ProjectionSettlementWire = {
   readonly current_snapshot_id: string | null;
@@ -844,7 +873,7 @@ export type UiResponses_UnitMapImportPreviewV1 = {
 };
 
 /** ui-responses.schema.json#/ */
-export type UiResponsesSchema = UiResponses_HealthReportV1 | UiResponses_LegacyArchiveLockV1 | UiResponses_LegacyArchiveStatusV1 | UiResponses_MastersPlanningDashboardV1 | UiResponses_OperationsListV1 | UiResponses_OperationDetailV1 | UiResponses_GatewaySuccessV2 | UiResponses_GatewayFailureV2 | UiResponses_GatewayRequestV2 | UiResponses_MaterialSpanWire | UiResponses_AbilityBriefWire | UiResponses_AbilityFocusWire | UiResponses_AbilityUnmappedWire | UiResponses_ProjectionSettlementWire | UiResponses_StudySequenceV1 | UiResponses_SessionEndV1 | UiResponses_StatusV1 | UiResponses_PlanTemplateV1 | UiResponses_AiActionPrepareV1 | UiResponses_AiActionStatusV1 | UiResponses_AiActionDeliveryPreviewV1 | UiResponses_UnitMapImportCheckV1 | UiResponses_UnitMapImportPreviewV1;
+export type UiResponsesSchema = UiResponses_HealthReportV1 | UiResponses_LegacyArchiveLockV1 | UiResponses_LegacyArchiveStatusV1 | UiResponses_MastersPlanningDashboardV1 | UiResponses_OperationsListV1 | UiResponses_OperationDetailV1 | UiResponses_GatewaySuccessV2 | UiResponses_GatewayFailureV2 | UiResponses_GatewayRequestV2 | UiResponses_MaterialSpanWire | UiResponses_AbilityBriefWire | UiResponses_AbilityFocusWire | UiResponses_AbilityUnmappedWire | UiResponses_ProjectionSettlementWire | UiResponses_StudySequenceV1 | UiResponses_SessionEndV1 | UiResponses_StatusV1 | UiResponses_PlanTemplateV1 | UiResponses_AiActionPrepareV1 | UiResponses_AiActionStatusV1 | UiResponses_AiActionDeliveryPreviewV1 | UiResponses_UnitMapImportCheckV1 | UiResponses_UnitMapImportPreviewV1 | UiResponses_PracticeContextWire;
 
 // The UI's public names, each pinned to one schema resource and pointer
 // (scripts/contract-type-aliases.json).
@@ -886,6 +915,7 @@ export type OperationRowV1 = UiResponses_OperationRowV1;
 export type OperationsListV1 = UiResponses_OperationsListV1;
 export type OperationTimelineRowV1 = UiResponses_OperationTimelineRowV1;
 export type PlanTemplateV1 = UiResponses_PlanTemplateV1;
+export type PracticeContextWire = UiResponses_PracticeContextWire;
 export type ProjectionSettlementWire = UiResponses_ProjectionSettlementWire;
 export type SessionEndOtherSessionWire = UiResponses_SessionEndOtherSessionWire;
 export type SessionEndV1 = UiResponses_SessionEndV1;

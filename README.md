@@ -84,7 +84,7 @@ and code-only gates.
   that every non-declaration TypeScript source module is reachable from
   `src/main.ts`, the runtime graph is acyclic, and feature code does not depend
   on concrete view classes.
-- The app reads atomic `generated/manifest.json` contract v20 for its primary
+- The app reads atomic `generated/manifest.json` contract v21 for its primary
   projection and calls bounded on-demand Core CLI queries (`tools/los.py`:
   `status --json [--no-validate]`, `material-span`, `ability-context`,
   `study-sequence`, `plan-template`, `unit-map-import --check`,

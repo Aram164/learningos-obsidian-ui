@@ -401,6 +401,9 @@ async function build(options = {}) {
       if (confirmation.ok && args.includes('--replay-only')) confirmation.replayed = true;
       return callback(null, JSON.stringify(confirmation), '');
     }
+    if (args[0] === 'atlas-context') {
+      return callback(null, JSON.stringify({ ok: true, relations: [] }), '');
+    }
     return callback(null, JSON.stringify({ ok: true }), '');
   };
   app._plugin = plugin;

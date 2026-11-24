@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "purpose": "Pinned optional plugins for the experimental Native Atlas branch (IMPLEMENTATION-PLAN P5). These are the only experimental pins; production ecosystem-plugins.json is untouched and no latest URL is ever resolved.",
+  "plugins": {
+    "advanced-canvas": {
+      "id": "advanced-canvas",
+      "version": "7.1.2",
+      "release_url": "https://github.com/Developer-Mike/obsidian-advanced-canvas/releases/tag/7.1.2",
+      "marker": { "file": ".los-atlas-fixture" },
+      "assets": {
+        "main.js": "b222bafacd341ded555fc316d185cafe4fa48c4c789b5668bb03bed44a945396",
+        "manifest.json": "ea9f86448be45217b0b7d90860660518cc675812a34abfe1271f8dcf22db96b4",
+        "styles.css": "3646804b9160e5542b7fc9fec19392e82917c118d110f9a8d88ddb938923922c"
+      }
+    },
+    "learnkit": {
+      "id": "learnkit",
+      "version": "1.8.6",
+      "release_url": "https://github.com/ctrlaltwill/LearnKit/releases/tag/1.8.6",
+      "marker": { "file": ".learningos-practice-vault.json", "json_experimental": true },
+      "assets": {
+        "main.js": "b131fa2b7237c2dff20c63a008c7799d60b506e1be1dc9d0cbeaab17c5c05de1",
+        "manifest.json": "11fae4f1225e86843ae229cea3ef482d02fd75079b73fb0d52ada2d86bcb3316",
+        "styles.css": "17aa543592e18df5500edca431806f9e0fcf66bb2577b972994438ba7991cc60"
+      }
+    }
+  }
+}

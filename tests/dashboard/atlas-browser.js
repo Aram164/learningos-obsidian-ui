@@ -35,29 +35,28 @@ module.exports = async function run() {
   root().find('los-atlas-concept-select')[0].fire('click');
   check('title selection previews without navigating to or mutating the graph', view().state.concept === null
     && root().find('los-atlas-concept-preview')[0].allText().includes('Bayes theorem')
-    && root().find('los-atlas-node').length === 0);
+    && root().find('los-atlas-inspector').length === 0);
   root().findText('los-btn', 'Open concept map').fire('click'); await tick();
-  check('opening the map retains browse breadcrumbs and all authored prerequisites', view().state.concept === 'concept-bayes'
+  check('opening the concept retains browse breadcrumbs and all authored prerequisites as text', view().state.concept === 'concept-bayes'
     && root().find('los-atlas-breadcrumb')[0].allText().includes('Dataframe Semantics')
-    && root().find('los-atlas-node').some((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit'));
-  const originalNodes = root().find('los-atlas-node').map((node) => node.getAttribute('data-atlas-concept')).join('|');
+    && root().find('los-atlas-outline-row').some((row) => row.getAttribute('data-relation-id') === 'concept-bayes--requires--concept-bedingte-wahrscheinlichkeit')
+    && root().find('los-atlas-inspector')[0].allText().includes('Conditional probability'));
   const originalRoute = JSON.stringify(view().getState());
   browserDom(root());
-  root().find('los-atlas-lanes')[0].scrollLeft = 140;
-  root().find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit').focus();
-  root().find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit').fire('click');
-  check('selecting a map node inspects it without moving the exploration centre or changing history',
+  const relationRow = root().find('los-atlas-outline-row')
+    .find((row) => row.getAttribute('data-relation-id') === 'concept-bayes--requires--concept-bedingte-wahrscheinlichkeit');
+  relationRow.fire('click');
+  check('selecting a connection inspects it without moving the exploration centre or changing history',
     JSON.stringify(view().getState()) === originalRoute
-    && root().find('los-atlas-node').map((node) => node.getAttribute('data-atlas-concept')).join('|') === originalNodes
-    && root().find('los-atlas-inspection-actions')[0].allText().includes('Inspecting Conditional probability · map centred on Bayes theorem')
-    && root().find('los-atlas-inspector')[0].allText().includes('bedingte Wahrscheinlichkeit')
-    && root().find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit').getAttribute('aria-pressed') === 'true');
-  check('inspection retains the graph scroll and keyboard focus on the selected node',
-    root().find('los-atlas-lanes')[0].scrollLeft === 140
-    && global.document.activeElement === root().find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit'));
-  root().findText('los-btn', 'Return to centre').fire('click');
-  check('return to centre restores the original inspection without navigating',
-    JSON.stringify(view().getState()) === originalRoute && !root().find('los-atlas-inspection-actions').length);
+    && root().find('los-atlas-inspector')[0].allText().includes('Selected connection')
+    && root().find('los-atlas-inspector')[0].allText().includes('Bayes theorem requires Conditional probability'));
+  check('inspection moves keyboard focus to the inspector heading',
+    global.document.activeElement?.getAttribute('data-atlas-inspector-heading') === 'true');
+  root().findText('los-btn', 'Close connection').fire('click');
+  check('closing the connection restores the concept inspection and returns focus to the row',
+    JSON.stringify(view().getState()) === originalRoute
+    && root().find('los-atlas-inspector')[0].allText().includes('Selected concept')
+    && global.document.activeElement?.getAttribute('data-row-key') === 'relation:concept-bayes--requires--concept-bedingte-wahrscheinlichkeit');
   root().findText('los-filter-tab', 'Related ideas').fire('click'); await tick();
   check('a related-ideas view explains the prerequisite context when associations are absent',
     root().find('los-atlas-mode-meaning')[0].allText().includes('Related ideas') || root().find('los-atlas-mode-meaning')[0].allText().includes('No additional related-idea'));

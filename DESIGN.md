@@ -206,6 +206,14 @@ maintenance is never mixed with study destinations.
   for semantic context, paths, provenance, questions, relation editing, the
   full text outline and every omitted record. Semantic relations never become
   preparation order. All existing lenses and deep links remain valid.
+  **Open board** opens the selected semester, module, lecture or exam in
+  native Canvas. The list and inspector contain keyboard-accessible relation,
+  path, evidence, history and authoring actions. **Refresh board** previews a
+  merge after all managed boards are closed. Optional Advanced Canvas portals
+  use the same working boards. **Practice** loads item IDs and proof status
+  on demand. The original note is the answer review surface, and confirming
+  the verification preview sends one guarded write.
+
   Compact Back/Forward controls revisit concept selections within each pane,
   restoring the route and per-record search/disclosures. Initial deep links
   have no invented previous entry; same-concept filters, lenses and disclosures

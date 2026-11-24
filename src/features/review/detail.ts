@@ -1,3 +1,4 @@
+import { renderPracticeReview } from '../atlas/practice';
 import { Notice } from 'obsidian';
 import { badge, button, chip } from '../../components';
 import type {
@@ -364,7 +365,10 @@ function renderCore(parent: HTMLElement, host: ReviewHost, entry: Extract<Review
   const target = isRecord(entry.item.target) ? entry.item.target : null;
   const targetId = asString(target?.unit_id) ?? asString(target?.id);
   const record = targetId ? host.plugin.store.get(targetId) : null;
-  if (record) chip(evidence, record, target => host.plugin.nav.openRecord(target));
+  if (record) {
+    chip(evidence, record, target => host.plugin.nav.openRecord(target));
+    renderPracticeReview(evidence, host.plugin, record);
+  }
   const path = asString(target?.path);
   if (path) evidence.createDiv({ cls: 'los-review-pointer-text', text: path });
   const proposals = Array.isArray(target?.proposal_ids) ? target?.proposal_ids.length ?? 0 : 0;
