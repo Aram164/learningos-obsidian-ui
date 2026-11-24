@@ -19,6 +19,7 @@ const CURRICULUM_STATUS_LITERALS = new Set([
   'not-started',
   'needs-map',
   'pending',
+  'revisit',
   'ready-to-shelve',
   'current',
 ]);

@@ -14,3 +14,10 @@ export function validateAbilityBriefWire(value: unknown): value is Wire.AbilityB
 export function validateAbilityFocusWire(value: unknown): value is Wire.AbilityFocusWire;
 export function validateAbilityUnmappedWire(value: unknown): value is Wire.AbilityUnmappedWire;
 export function validateProjectionSettlementWire(value: unknown): value is Wire.ProjectionSettlementWire;
+export function validateStudySequenceV1(value: unknown): value is Wire.StudySequenceV1;
+export function validateSessionEndV1(value: unknown): value is Wire.SessionEndV1;
+export function validateStatusV1(value: unknown): value is Wire.StatusV1;
+export function validatePlanTemplateV1(value: unknown): value is Wire.PlanTemplateV1;
+export function validateAiActionPrepareV1(value: unknown): value is Wire.AiActionPrepareV1;
+export function validateAiActionStatusV1(value: unknown): value is Wire.AiActionStatusV1;
+export function validateUnitMapImportCheckV1(value: unknown): value is Wire.UnitMapImportCheckV1;

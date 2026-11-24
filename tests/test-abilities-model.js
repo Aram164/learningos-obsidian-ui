@@ -570,4 +570,41 @@ test('UI-owned drafts round-trip and refuse what they cannot represent', () => {
   assert.equal(asAbilityDraft({ ...claimDraft(), id: '' }), null);
 });
 
+test('ability-context-v1 schema rejects unknown keys, untyped bridges/encounters/expand/schema, and incomplete rows', () => {
+  const Ajv2020 = require('ajv/dist/2020');
+  const addFormats = require('ajv-formats');
+  const schema = JSON.parse(fs.readFileSync(
+    path.join(root, 'contracts', 'ability-context-v1.schema.json'),
+    'utf8',
+  ));
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  addFormats(ajv);
+  const validate = ajv.compile(schema);
+
+  const validBrief = fixtures.abilityBrief();
+  const validFocus = fixtures.abilityFocus('ability-fixture-conditional');
+  assert.equal(validate(validBrief), true, ajv.errorsText(validate.errors));
+  assert.equal(validate(validFocus), true, ajv.errorsText(validate.errors));
+  assert.equal(validate(fixtures.abilityFocus('ability-fixture-nowhere')), true);
+
+  // Unknown root property and untyped `schema` value are rejected.
+  assert.equal(validate({ ...validBrief, unexpected_root: true }), false);
+  assert.equal(validate({ ...validBrief, schema: 'not-an-object' }), false);
+
+  // Incomplete or bloated `abilityRow` is rejected.
+  const missingId = fixtures.abilityBrief((raw) => { delete raw.abilities[0].id; });
+  assert.equal(validate(missingId), false);
+  const extraRowField = fixtures.abilityBrief((raw) => { raw.abilities[0].extra = 1; });
+  assert.equal(validate(extraRowField), false);
+
+  // Malformed typed `bridges`, `encounters`, and `expand` are rejected.
+  const badBridge = fixtures.abilityBrief((raw) => { raw.bridges[0] = { bogus: true }; });
+  assert.equal(validate(badBridge), false);
+  const badEncounter = fixtures.abilityFocus('ability-fixture-conditional', (raw) => {
+    raw.encounters[0] = { module_id: 'm' };
+  });
+  assert.equal(validate(badEncounter), false);
+  assert.equal(validate({ ...validBrief, expand: 42 }), false);
+});
+
 console.log(`Abilities model OK: ${passed} groups (contracts, plane, claims, Review queue, drafts).`);

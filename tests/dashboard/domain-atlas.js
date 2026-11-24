@@ -219,17 +219,34 @@ module.exports = async function run() {
     roles.every((value) => optionValues(largeRoot.find('los-domain-role-filter')[0]).includes(value))
     && ['user', 'mixed', 'external', 'operator-drafted', 'unrecorded'].every((value) => optionValues(largeRoot.find('los-domain-author-filter')[0]).includes(value)));
   let filterParity = true;
+  let exercisedIntersections = 0;
   for (const role of roles) for (const author of authors) {
     const roleFilter = largeRoot.find('los-domain-role-filter')[0]; roleFilter.value = role; roleFilter.fire('change');
     const authorFilter = largeRoot.find('los-domain-author-filter')[0]; authorFilter.value = author ?? 'unrecorded'; authorFilter.fire('change');
     for (const key of ['mathematics', 'future-domain']) {
-      const choice = choose(largeRoot, key); if (!choice) continue; choice.fire('click');
       const expected = large.plugin.store.of('note').filter((note) => note.role === role && (note.authorship ?? 'unrecorded') === (author ?? 'unrecorded')
         && note.path.split('/')[2] === key).map((note) => note.id).sort();
+      const choice = choose(largeRoot, key);
+      if (expected.length === 0) {
+        if (choice) {
+          choice.fire('click');
+          filterParity &&= noteIds(largeRoot).length === 0
+            && choice.allText().includes('No filter matches');
+        }
+        continue;
+      }
+      if (!choice) {
+        check(`domain choice ${key} is selectable when ${expected.length} note(s) match role=${role} author=${author ?? 'unrecorded'}`, false);
+        filterParity = false;
+        continue;
+      }
+      exercisedIntersections += 1;
+      choice.fire('click');
       filterParity &&= JSON.stringify(noteIds(largeRoot).sort()) === JSON.stringify(expected);
     }
   }
-  check('all role × authorship filter intersections preserve exact corpus ids', filterParity);
+  check('all role × authorship filter intersections preserve exact corpus ids',
+    filterParity && exercisedIntersections >= roles.length * authors.length);
   largeRoot.find('los-domain-role-filter')[0].value = ''; largeRoot.find('los-domain-role-filter')[0].fire('change');
   largeRoot.find('los-domain-author-filter')[0].value = ''; largeRoot.find('los-domain-author-filter')[0].fire('change');
   const allIds = [];

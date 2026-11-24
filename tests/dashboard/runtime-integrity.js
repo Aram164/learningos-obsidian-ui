@@ -17,6 +17,7 @@ const {
   heading,
   build,
   boot,
+  gatewayConfirmation,
 } = require('./support');
 
 function paletteBlocks(css) {
@@ -901,5 +902,86 @@ module.exports = async function run() {
       css.includes('font-size: 14px') && css.includes('clamp(24px, 2.2vw, 28px)')
       && css.includes('min-height: 28px'));
     check('reduced motion is respected', css.includes('prefers-reduced-motion'));
+
+    const extraFieldRefusal = gatewayConfirmation({
+      schema_version: 2,
+      request_id: 'req-ajv-extra',
+      idempotency_key: 'idem-ajv-extra',
+      capability: 'stage.progress.update',
+      payload: { unit_id: 'u', stage_id: 's', status: 'active', bogus_field: 1 },
+    });
+    check('dashboard gateway mock refuses undeclared capability payload fields via AJV',
+      extraFieldRefusal.ok === false
+      && extraFieldRefusal.error.code === 'INVALID_REQUEST'
+      && extraFieldRefusal.error.message.includes('invalid payload'));
+    const missingReqRefusal = gatewayConfirmation({
+      schema_version: 2,
+      request_id: 'req-ajv-missing',
+      idempotency_key: 'idem-ajv-missing',
+      capability: 'stage.progress.update',
+      payload: { unit_id: 'u' },
+    });
+    check('dashboard gateway mock refuses missing required capability payload fields via AJV',
+      missingReqRefusal.ok === false
+      && missingReqRefusal.error.code === 'INVALID_REQUEST'
+      && missingReqRefusal.error.message.includes('invalid payload'));
+
+    let blockedOverrideCalls = 0;
+    const guarded = await build({
+      runLosOverride: (_args, callback) => {
+        blockedOverrideCalls += 1;
+        return callback(null, JSON.stringify({ ok: true }), '');
+      },
+    });
+    let maskedError = null;
+    await guarded.plugin.gateway.capability('stage.progress.update', {
+      unit_id: 'unit-demo',
+      stage_id: 'stage-demo',
+      status: 'active',
+      bogus_field: 1,
+    }).catch((error) => { maskedError = error; });
+    check('runLosOverride cannot mask an invalid V2 envelope payload before AJV validation',
+      blockedOverrideCalls === 0
+      && maskedError !== null
+      && maskedError.gatewayCode === 'INVALID_REQUEST'
+      && maskedError.message.includes('invalid payload'));
+    guarded.plugin.onunload();
+
+    let optedInCalls = 0;
+    const optIn = await build({
+      allowInvalidEnvelope: true,
+      runLosOverride: (_args, callback, stdin) => {
+        optedInCalls += 1;
+        const env = JSON.parse(stdin);
+        return callback(null, JSON.stringify({
+          schema_version: 2,
+          request_id: env.request_id,
+          idempotency_key: env.idempotency_key,
+          capability: env.capability,
+          ok: false,
+          replayed: false,
+          transaction_id: null,
+          receipt_path: null,
+          snapshot_after: null,
+          result: {},
+          error: { code: 'INVALID_REQUEST', message: 'custom negative test refusal', retryable: false, details: {} },
+        }), '');
+      },
+    });
+    const optInOutcome = await optIn.plugin.gateway.dispatchPreparedEnvelope(JSON.stringify({
+      schema_version: 2,
+      request_id: 'req-neg-optin',
+      idempotency_key: 'idem-neg-optin',
+      capability: 'stage.progress.update',
+      channel: 'ui',
+      expected_snapshot: optIn.plugin.store.snapshotId,
+      expected_revisions: {},
+      payload: { bogus_field: 1 },
+    }));
+    check('allowInvalidEnvelope opt-out still allows intentional malformed-envelope protocol tests',
+      optedInCalls === 1
+      && optInOutcome.outcome === 'refused'
+      && optInOutcome.failure.error.message === 'custom negative test refusal');
+    optIn.plugin.onunload();
   }
 };

@@ -112,3 +112,64 @@ export function loadFreshCoreBundle(coreRoot) {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 }
+
+export function buildCapabilitySchemaMirror(coreRoot) {
+  const capabilitiesDir = path.join(coreRoot, 'system/schema/capabilities');
+  const requestsDir = path.join(coreRoot, 'system/schema/requests');
+  if (!fs.existsSync(capabilitiesDir) || !fs.existsSync(requestsDir)) {
+    throw new Error(`Core capability or request schemas missing under ${coreRoot}.`);
+  }
+
+  const capabilities = {};
+  for (const file of fs.readdirSync(capabilitiesDir).filter((n) => n.endsWith('.schema.json')).sort()) {
+    const capName = file.slice(0, -'.schema.json'.length);
+    capabilities[capName] = JSON.parse(fs.readFileSync(path.join(capabilitiesDir, file), 'utf8'));
+  }
+
+  const cli_commands = {};
+  for (const file of fs.readdirSync(requestsDir).filter((n) => n.endsWith('.schema.json')).sort()) {
+    const doc = JSON.parse(fs.readFileSync(path.join(requestsDir, file), 'utf8'));
+    const cmd = doc['x-los-cli-command'];
+    if (!cmd || !cmd.name) continue;
+    const properties = {};
+    for (const [prop, subschema] of Object.entries(doc.properties || {})) {
+      const cli = subschema?.['x-los-cli'];
+      if (!cli) continue;
+      properties[prop] = {
+        flags: cli.flags || [],
+        position: cli.position ?? null,
+        action: cli.action || 'store',
+        nargs: cli.nargs ?? null,
+        required: Boolean(cli.required),
+        choices: cli.choices ?? null,
+        transport_only: Boolean(cli.transport_only),
+        envelope_owned: Boolean(cli.envelope_owned),
+      };
+    }
+    cli_commands[cmd.name] = {
+      operation: file.slice(0, -'.schema.json'.length),
+      handler: cmd.handler || null,
+      operation_kind: cmd.operation_kind || null,
+      required: doc.required || [],
+      mutually_exclusive: cmd.mutually_exclusive || [],
+      properties,
+    };
+  }
+
+  const sortedCommands = Object.fromEntries(
+    Object.keys(cli_commands).sort().map((key) => [key, cli_commands[key]]),
+  );
+  return {
+    format: 'learningos-capability-mirror/1',
+    capabilities,
+    cli_commands: sortedCommands,
+  };
+}
+
+export function writeCapabilitySchemaMirror(uiRoot, coreRoot) {
+  const mirror = buildCapabilitySchemaMirror(coreRoot);
+  const outPath = path.join(uiRoot, 'contracts/capability-schemas.generated.json');
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, `${JSON.stringify(mirror, null, 2)}\n`);
+  return { outPath, mirror };
+}

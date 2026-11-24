@@ -179,6 +179,50 @@ export type MaterialComparisonDefs_Sha256 = string;
 /** material-comparison-defs.schema.json#/ */
 export type MaterialComparisonDefsSchema = unknown;
 
+/** plan-template.schema.json#/ */
+export type PlanTemplateSchema = {
+  readonly contract: "plan-template-v1";
+  readonly ok: true;
+  readonly plan: {
+    readonly id: string;
+    readonly plan_template_version: number;
+    readonly stages: readonly {
+        readonly id: string;
+        readonly number: number;
+        readonly title: string;
+      }[];
+    readonly type: "study-map";
+  };
+  readonly plan_template_version: number;
+  readonly profile: "curriculum";
+  readonly schema: "study-map.schema.json";
+};
+
+/** study-sequence.schema.json#/ */
+export type StudySequenceSchema = {
+  readonly canonical_current_stage: string | null;
+  readonly canonical_files_written: 0;
+  readonly contract: "study-sequence-v1";
+  readonly durable_stage_ids: readonly string[];
+  readonly lifetime: "unit-view-and-snapshot";
+  readonly limitations: readonly string[];
+  readonly omitted_stage_ids: readonly string[];
+  readonly prerequisite_edges: readonly {
+      readonly dependent_stage_id: string;
+      readonly prerequisite_stage_id: string;
+    }[];
+  readonly snapshot_id: string;
+  readonly stages: readonly {
+      readonly id: string;
+      readonly status: string;
+      readonly title: string;
+    }[];
+  readonly study_map_id: string;
+  readonly timezone: "Europe/Berlin";
+  readonly unit_id: string;
+  readonly valid_on_date: string;
+};
+
 /** ui-responses.schema.json#/$defs/AbilityBridgeWire */
 export type UiResponses_AbilityBridgeWire = {
   readonly carries: string;
@@ -343,6 +387,35 @@ export type UiResponses_AbilityUnmappedWire = {
   readonly schema_version: 1;
   readonly snapshot_id: string;
   readonly state: "unmapped";
+};
+
+/** ui-responses.schema.json#/$defs/AiActionPrepareV1 */
+export type UiResponses_AiActionPrepareV1 = {
+  readonly bundle_path: string;
+  readonly ok: true;
+  readonly request: UiResponses_AiActionRequestStatusWire;
+};
+
+/** ui-responses.schema.json#/$defs/AiActionRequestStatusWire */
+export type UiResponses_AiActionRequestStatusWire = {
+  readonly action_id: string;
+  readonly bundle_path: string;
+  readonly created_at: string;
+  readonly delivery_id: string | null;
+  readonly id: string;
+  readonly provider: string;
+  readonly receipt_id: string | null;
+  readonly status: "prepared" | "delivery-ready" | "completed";
+  readonly target: {
+    readonly id: string;
+    readonly kind: string;
+  };
+};
+
+/** ui-responses.schema.json#/$defs/AiActionStatusV1 */
+export type UiResponses_AiActionStatusV1 = {
+  readonly ok: true;
+  readonly request: UiResponses_AiActionRequestStatusWire;
 };
 
 /** ui-responses.schema.json#/$defs/CandidateComparisonWire */
@@ -592,6 +665,9 @@ export type UiResponses_OperationTimelineRowV1 = {
   readonly state: "passed" | "failed" | "skipped" | "missing";
 };
 
+/** ui-responses.schema.json#/$defs/PlanTemplateV1 */
+export type UiResponses_PlanTemplateV1 = PlanTemplateSchema;
+
 /** ui-responses.schema.json#/$defs/ProjectionSettlementWire */
 export type UiResponses_ProjectionSettlementWire = {
   readonly current_snapshot_id: string | null;
@@ -600,8 +676,141 @@ export type UiResponses_ProjectionSettlementWire = {
   readonly write_completed: boolean;
 };
 
+/** ui-responses.schema.json#/$defs/SessionEndOtherSessionWire */
+export type UiResponses_SessionEndOtherSessionWire = {
+  readonly age_hours: number | null;
+  readonly oldest_recorded_at: string | null;
+  readonly paths: readonly string[];
+  readonly stale_paths: readonly string[];
+};
+
+/** ui-responses.schema.json#/$defs/SessionEndV1 */
+export type UiResponses_SessionEndV1 = {
+  readonly client: string | null;
+  readonly committed: boolean;
+  readonly ok: true;
+  readonly other_sessions: { readonly [key: string]: UiResponses_SessionEndOtherSessionWire };
+  readonly owned_changes: readonly string[];
+  readonly ownership_conflicts: readonly string[];
+  readonly pushed: boolean;
+  readonly session_closed: boolean;
+  readonly session_id: string;
+  readonly stale_hours: number;
+  readonly stale_paths: readonly string[];
+  readonly touched: readonly string[];
+  readonly unrelated_changes: readonly string[];
+  readonly validation: string;
+};
+
+/** ui-responses.schema.json#/$defs/StatusCountsWire */
+export type UiResponses_StatusCountsWire = {
+  readonly active_workspaces: number;
+  readonly archived_workspaces: number;
+  readonly concept_relations: number;
+  readonly concepts: number;
+  readonly garden_notes: number;
+  readonly inbox_files: number;
+  readonly inbox_items: number;
+  readonly modules: number;
+  readonly modules_compatibility_only: number;
+  readonly modules_enrolled: number;
+  readonly notes: number;
+  readonly programs: number;
+  readonly programs_quarantined: number;
+  readonly sources: number;
+  readonly standing_workspaces: number;
+  readonly study_maps: number;
+  readonly units: number;
+};
+
+/** ui-responses.schema.json#/$defs/StatusV1 */
+export type UiResponses_StatusV1 = {
+  readonly adoption: {
+    readonly notes_reviewed: number;
+    readonly notes_with_evidence: number;
+  };
+  readonly counts: UiResponses_StatusCountsWire;
+  readonly exam_spine: readonly {
+      readonly date: string;
+      readonly module_id: string;
+      readonly termin: number | null;
+      readonly title: string;
+    }[];
+  readonly learning_os: string;
+  readonly root: string;
+  readonly validation: {
+      readonly skipped: true;
+    } | {
+      readonly errors: number;
+      readonly ok: boolean;
+      readonly warnings: number;
+    };
+};
+
+/** ui-responses.schema.json#/$defs/StudySequenceV1 */
+export type UiResponses_StudySequenceV1 = StudySequenceSchema;
+
+/** ui-responses.schema.json#/$defs/UnitMapImportCheckDiffWire */
+export type UiResponses_UnitMapImportCheckDiffWire = {
+  readonly content_changes: readonly {
+      readonly after: unknown;
+      readonly before: unknown;
+      readonly field: string;
+      readonly stage_id: string;
+    }[];
+  readonly intentional_reorder_reason?: string | null;
+  readonly map_changes: readonly {
+      readonly after: unknown;
+      readonly before: unknown;
+      readonly field: string;
+    }[];
+  readonly map_state_fields_preserved?: readonly string[];
+  readonly preserved_stage_state?: readonly string[];
+  readonly relative_order_changed?: boolean;
+  readonly replacement: boolean;
+  readonly resource_changes?: readonly {
+      readonly added: readonly { readonly [key: string]: unknown }[];
+      readonly after_count: number;
+      readonly before_count: number;
+      readonly removed: readonly { readonly [key: string]: unknown }[];
+      readonly reordered: boolean;
+      readonly stage_id: string;
+    }[];
+  readonly resume_stage?: string | null;
+  readonly retire_reason?: string | null;
+  readonly retired_stage_evidence?: readonly {
+      readonly attachments: number;
+      readonly completed: string | null;
+      readonly note_characters: number;
+      readonly source_feedback: number;
+      readonly stage_id: string | null;
+      readonly status: string | null;
+    }[];
+  readonly stages_added?: readonly string[];
+  readonly stages_after: readonly string[];
+  readonly stages_before?: readonly string[];
+  readonly stages_retired?: readonly string[];
+  readonly state_reset_reason?: string | null;
+  readonly structural_reason?: string;
+  readonly unit_status: string;
+};
+
+/** ui-responses.schema.json#/$defs/UnitMapImportCheckV1 */
+export type UiResponses_UnitMapImportCheckV1 = {
+  readonly canonical_files_written: 0;
+  readonly diff: UiResponses_UnitMapImportCheckDiffWire;
+  readonly expected_revisions: { readonly [key: string]: number };
+  readonly file_sha256: string;
+  readonly files_checked: number;
+  readonly mode: "check";
+  readonly ok: true;
+  readonly snapshot_id: string;
+  readonly study_map_id: string | null;
+  readonly unit_id: string;
+};
+
 /** ui-responses.schema.json#/ */
-export type UiResponsesSchema = UiResponses_HealthReportV1 | UiResponses_LegacyArchiveLockV1 | UiResponses_LegacyArchiveStatusV1 | UiResponses_MastersPlanningDashboardV1 | UiResponses_OperationsListV1 | UiResponses_OperationDetailV1 | UiResponses_GatewaySuccessV2 | UiResponses_GatewayFailureV2 | UiResponses_GatewayRequestV2 | UiResponses_MaterialSpanWire | UiResponses_AbilityBriefWire | UiResponses_AbilityFocusWire | UiResponses_AbilityUnmappedWire | UiResponses_ProjectionSettlementWire;
+export type UiResponsesSchema = UiResponses_HealthReportV1 | UiResponses_LegacyArchiveLockV1 | UiResponses_LegacyArchiveStatusV1 | UiResponses_MastersPlanningDashboardV1 | UiResponses_OperationsListV1 | UiResponses_OperationDetailV1 | UiResponses_GatewaySuccessV2 | UiResponses_GatewayFailureV2 | UiResponses_GatewayRequestV2 | UiResponses_MaterialSpanWire | UiResponses_AbilityBriefWire | UiResponses_AbilityFocusWire | UiResponses_AbilityUnmappedWire | UiResponses_ProjectionSettlementWire | UiResponses_StudySequenceV1 | UiResponses_SessionEndV1 | UiResponses_StatusV1 | UiResponses_PlanTemplateV1 | UiResponses_AiActionPrepareV1 | UiResponses_AiActionStatusV1 | UiResponses_UnitMapImportCheckV1;
 
 // The UI's public names, each pinned to one schema resource and pointer
 // (scripts/contract-type-aliases.json).
@@ -618,6 +827,9 @@ export type AbilityRouteWire = UiResponses_AbilityRouteWire;
 export type AbilityRowWire = UiResponses_AbilityRowWire;
 export type AbilityTransferWire = UiResponses_AbilityTransferWire;
 export type AbilityUnmappedWire = UiResponses_AbilityUnmappedWire;
+export type AiActionPrepareV1 = UiResponses_AiActionPrepareV1;
+export type AiActionRequestStatusWire = UiResponses_AiActionRequestStatusWire;
+export type AiActionStatusV1 = UiResponses_AiActionStatusV1;
 export type CandidateComparisonWire = UiResponses_CandidateComparisonWire;
 export type GatewayApprovalV2 = UiResponses_GatewayApprovalV2;
 export type GatewayErrorBodyV2 = UiResponses_GatewayErrorBodyV2;
@@ -638,4 +850,12 @@ export type OperationFactsV1 = UiResponses_OperationFactsV1;
 export type OperationRowV1 = UiResponses_OperationRowV1;
 export type OperationsListV1 = UiResponses_OperationsListV1;
 export type OperationTimelineRowV1 = UiResponses_OperationTimelineRowV1;
+export type PlanTemplateV1 = UiResponses_PlanTemplateV1;
 export type ProjectionSettlementWire = UiResponses_ProjectionSettlementWire;
+export type SessionEndOtherSessionWire = UiResponses_SessionEndOtherSessionWire;
+export type SessionEndV1 = UiResponses_SessionEndV1;
+export type StatusCountsWire = UiResponses_StatusCountsWire;
+export type StatusV1 = UiResponses_StatusV1;
+export type StudySequenceV1 = UiResponses_StudySequenceV1;
+export type UnitMapImportCheckDiffWire = UiResponses_UnitMapImportCheckDiffWire;
+export type UnitMapImportCheckV1 = UiResponses_UnitMapImportCheckV1;

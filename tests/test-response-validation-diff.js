@@ -57,4 +57,163 @@ assert.equal(golden.core_shape_comparisons, golden.cases.length);
 assert.equal(golden.cases.length, 12750);
 // A counterfactual decoder that silently changes projection content must fail.
 assert.notEqual(hash({ kind: 'value', value: { corrupted: true } }), golden.cases[0].expected);
-console.log(`Response differential OK: ${golden.cases.length} cases, 13 endpoints; ${golden.stricter_malformed_rejections} malformed values rejected by producer shape`);
+
+// Phase 2: validate all 7 newly added response endpoint validators (positive + negative).
+const SNAPSHOT = `sha256:${'a'.repeat(64)}`;
+const DIGEST = `sha256:${'b'.repeat(64)}`;
+const SEVEN_ENDPOINTS = {
+  StudySequenceV1: {
+    valid: {
+      contract: 'study-sequence-v1',
+      snapshot_id: SNAPSHOT,
+      valid_on_date: '2026-10-01',
+      timezone: 'Europe/Berlin',
+      lifetime: 'unit-view-and-snapshot',
+      canonical_files_written: 0,
+      unit_id: 'unit-demo-l01',
+      study_map_id: 'study-map-demo-l01',
+      canonical_current_stage: 'stage-demo',
+      durable_stage_ids: ['stage-demo'],
+      omitted_stage_ids: [],
+      limitations: ['No mastery inferred.'],
+      stages: [{ id: 'stage-demo', title: 'Derive', status: 'active' }],
+      prerequisite_edges: [],
+    },
+    invalid: { contract: 'study-sequence-v1', snapshot_id: SNAPSHOT, valid_on_date: 'not-a-date' },
+  },
+  SessionEndV1: {
+    valid: {
+      ok: true,
+      touched: [],
+      owned_changes: [],
+      unrelated_changes: [],
+      committed: false,
+      pushed: false,
+      validation: '0 error(s), 0 warning(s)',
+      ownership_conflicts: [],
+      session_id: 'channel:ui',
+      client: 'obsidian-ui/2.0.0',
+      stale_paths: [],
+      stale_hours: 24,
+      other_sessions: {},
+      session_closed: false,
+    },
+    invalid: { ok: true, committed: 'no' },
+  },
+  StatusV1: {
+    valid: {
+      learning_os: '3.2.0',
+      root: '<ROOT>',
+      counts: {
+        notes: 1, concepts: 1, concept_relations: 0, sources: 1, programs: 1,
+        programs_quarantined: 0, modules: 1, modules_compatibility_only: 0,
+        modules_enrolled: 1, active_workspaces: 1, standing_workspaces: 0,
+        archived_workspaces: 0, inbox_items: 0, inbox_files: 0, garden_notes: 0,
+        units: 1, study_maps: 1,
+      },
+      adoption: { notes_reviewed: 0, notes_with_evidence: 0 },
+      exam_spine: [],
+      validation: { skipped: true },
+    },
+    invalid: { learning_os: '3.2.0', validation: { skipped: false } },
+  },
+  PlanTemplateV1: {
+    valid: {
+      ok: true,
+      contract: 'plan-template-v1',
+      profile: 'curriculum',
+      plan_template_version: 1,
+      schema: 'study-map.schema.json',
+      plan: {
+        id: 'study-map-demo-l01',
+        type: 'study-map',
+        plan_template_version: 1,
+        unit_id: 'unit-demo-l01',
+        status: 'ready',
+        current_stage: 'stage-demo',
+        source_plan: { path: 'replace-with-reviewed-plan.yaml', provenance: 'operator' },
+        detours: [],
+        stages: [{
+          id: 'stage-demo',
+          number: 1,
+          title: 'Stage Demo',
+          status: 'pending',
+          objective: 'Objective',
+          done_when: ['Done criterion'],
+          exam_critical: false,
+          concepts: [],
+          scope_triage: 'required-now',
+          resources: [],
+          working_note: 'curriculum/modules/m/units/u/stages/stage-demo/notes.md',
+          attachments: [],
+          source_feedback: [],
+        }],
+        shelving: { state: 'none' },
+      },
+    },
+    invalid: { ok: true, contract: 'plan-template-v1', profile: 'unknown-profile' },
+  },
+  AiActionPrepareV1: {
+    valid: {
+      ok: true,
+      request: {
+        id: 'ai-request-1',
+        action_id: 'garden.shelve',
+        target: { kind: 'garden-note', id: 'garden-note-seed' },
+        provider: 'manual-bundle',
+        status: 'prepared',
+        created_at: '2026-10-01T07:00:00+00:00',
+        delivery_id: null,
+        receipt_id: null,
+        bundle_path: 'operations/ai-actions/requests/ai-request-1',
+      },
+      bundle_path: 'operations/ai-actions/requests/ai-request-1',
+    },
+    invalid: { ok: true, bundle_path: 'operations/ai-actions/requests/ai-request-1' },
+  },
+  AiActionStatusV1: {
+    valid: {
+      ok: true,
+      request: {
+        id: 'ai-request-1',
+        action_id: 'garden.shelve',
+        target: { kind: 'garden-note', id: 'garden-note-seed' },
+        provider: 'manual-bundle',
+        status: 'delivery-ready',
+        created_at: '2026-10-01T07:00:00+00:00',
+        delivery_id: 'ai-delivery-1',
+        receipt_id: null,
+        bundle_path: 'operations/ai-actions/requests/ai-request-1',
+      },
+    },
+    invalid: { ok: true, request: { id: 'ai-request-1', status: 'bogus-status' } },
+  },
+  UnitMapImportCheckV1: {
+    valid: {
+      ok: true,
+      mode: 'check',
+      unit_id: 'unit-demo-l01',
+      study_map_id: 'study-map-demo-l01',
+      files_checked: 2,
+      canonical_files_written: 0,
+      file_sha256: DIGEST,
+      snapshot_id: SNAPSHOT,
+      expected_revisions: { 'unit-demo-l01': 1, 'study-map-demo-l01': 0 },
+      diff: {
+        replacement: false,
+        unit_status: 'ready',
+        stages_after: ['stage-demo'],
+        content_changes: [],
+        map_changes: [],
+      },
+    },
+    invalid: { ok: true, mode: 'apply', canonical_files_written: 1 },
+  },
+};
+for (const [name, sample] of Object.entries(SEVEN_ENDPOINTS)) {
+  const fn = validators['validate' + name];
+  assert.equal(typeof fn, 'function', `Missing validator validate${name}`);
+  assert.equal(Boolean(fn(sample.valid)), true, `Expected valid ${name}: ${JSON.stringify(fn.errors)}`);
+  assert.equal(Boolean(fn(sample.invalid)), false, `Expected invalid ${name} to fail`);
+}
+console.log(`Response differential OK: ${golden.cases.length} cases, 13 endpoints (+7 generated Phase 2 validators verified); ${golden.stricter_malformed_rejections} malformed values rejected by producer shape`);

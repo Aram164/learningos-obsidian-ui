@@ -22,6 +22,7 @@ const {
   build,
   boot,
 } = require('./support');
+const { browserDom } = require('./browser-dom');
 
 module.exports = async function run() {
   heading('library navigability');
@@ -948,17 +949,8 @@ module.exports = async function run() {
     );
 
     // The columns layout filters its current column under the same field.
-    // Supply the two native DOM queries missing from this fixture's DOM shim.
-    view.contentEl.querySelector = (selector) => {
-      const group = view.contentEl.find('los-finder-layouts')[0];
-      if (selector === '.los-finder-layouts') return group;
-      if (selector === '.los-finder-layouts button[aria-pressed="true"]') {
-        return group.find('los-btn').find(
-          (control) => control.getAttribute('aria-pressed') === 'true',
-        ) || null;
-      }
-      return null;
-    };
+    // Wire shared native selector support so the production querySelector lookup runs.
+    browserDom(view.contentEl);
     const columnsControl = view.contentEl.findText('los-btn', 'Columns');
     columnsControl.focus();
     columnsControl.fire('click');

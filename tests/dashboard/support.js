@@ -5,10 +5,21 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const os = require('os');
+const Ajv2020 = require('ajv/dist/2020');
+const addFormats = require('ajv-formats');
 const { makeApp, Notice, stub } = require('../harness');
 const { answerAbilityRead } = require('../ability-fixtures');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const CAPABILITY_MIRROR_PATH = path.join(ROOT, 'contracts', 'capability-schemas.generated.json');
+const CAPABILITY_VALIDATORS = (() => {
+  const mirror = JSON.parse(fs.readFileSync(CAPABILITY_MIRROR_PATH, 'utf8'));
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  addFormats(ajv);
+  return Object.fromEntries(
+    Object.entries(mirror.capabilities).map(([name, schema]) => [name, ajv.compile(schema)]),
+  );
+})();
 const FIXTURE = path.join(ROOT, 'fixture-vault');
 const LearningOSUI = require(
   process.env.LEARNINGOS_TEST_BUNDLE || path.join(ROOT, 'plugin', 'main.js'),
@@ -239,24 +250,39 @@ function gatewayRefusal(envelope, code, message, retryable = false) {
   };
 }
 
+function gatewayPayloadRefusal(envelope) {
+  if (!envelope || typeof envelope !== 'object') {
+    return 'invalid capability envelope';
+  }
+  const validate = CAPABILITY_VALIDATORS[envelope.capability];
+  if (!validate) {
+    return `no declared payload schema for capability ${String(envelope.capability)}`;
+  }
+  const ok = validate(envelope.payload ?? {});
+  if (ok) return null;
+  // Phase 2 bounded baseline: allow only pre-Phase-3 #1 extra `route_id` on
+  // unit.source-selection.set unless a test asks for strict validation.
+  const errors = validate.errors || [];
+  if (
+    !process.env.LOS_STRICT_MOCK_PARITY
+    && envelope.capability === 'unit.source-selection.set'
+    && errors.length === 1
+    && errors[0].keyword === 'additionalProperties'
+    && errors[0].params?.additionalProperty === 'route_id'
+  ) {
+    return null;
+  }
+  return `invalid payload: ${errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`;
+}
+
+function gatewayValidationRefusal(envelope) {
+  return gatewayGuardRefusal(envelope) || gatewayPayloadRefusal(envelope);
+}
+
 function gatewayConfirmation(envelope, result = {}) {
-  const refusal = gatewayGuardRefusal(envelope);
+  const refusal = gatewayValidationRefusal(envelope);
   if (refusal) {
-    return {
-      schema_version: 2,
-      request_id: envelope.request_id,
-      idempotency_key: envelope.idempotency_key,
-      capability: envelope.capability,
-      ok: false,
-      replayed: false,
-      transaction_id: null,
-      receipt_path: null,
-      snapshot_after: null,
-      result: {},
-      error: {
-        code: 'INVALID_REQUEST', message: refusal, retryable: false, details: {},
-      },
-    };
+    return gatewayRefusal(envelope, 'INVALID_REQUEST', refusal);
   }
   return {
     schema_version: 2,
@@ -316,7 +342,14 @@ async function build(options = {}) {
    */
   plugin.runLos = (args, callback, stdin) => {
     calls.push(args);
-    const envelope = stdin ? JSON.parse(stdin) : null;
+    let envelope = null;
+    if (stdin) {
+      try {
+        envelope = JSON.parse(stdin);
+      } catch (error) {
+        if (!options.allowInvalidEnvelope) throw error;
+      }
+    }
     if (envelope) envelopes.push(envelope);
     options.spy?.(args, stdin);
     if (args[0] === 'projection-observe') {
@@ -324,6 +357,12 @@ async function build(options = {}) {
         write_completed: true, current_snapshot_id: plugin.store.snapshotId,
         settled: true, reason: 'ready', ...options.projectionObservation,
       }), '');
+    }
+    if (envelope && !options.allowInvalidEnvelope) {
+      const refusal = gatewayValidationRefusal(envelope);
+      if (refusal) {
+        return callback(null, JSON.stringify(gatewayRefusal(envelope, 'INVALID_REQUEST', refusal)), '');
+      }
     }
     if (options.runLosOverride) {
       return options.runLosOverride(args, callback, stdin);

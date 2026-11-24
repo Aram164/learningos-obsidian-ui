@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import standaloneCode from 'ajv/dist/standalone/index.js';
 import { createAjv2020, registerBundleIdentities } from './ajv-options.mjs';
-import { generateCoreBundle } from './core-contract-bundle.mjs';
+import { generateCoreBundle, writeCapabilitySchemaMirror } from './core-contract-bundle.mjs';
 import { emitTypes } from './emit-contract-types.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -134,4 +134,14 @@ if (!meta.root_schema || !meta.root_schema_sha256 || !meta.closure_sha256 || !me
   const lockPath = path.join(resolvedOut, 'manifest.contract.lock.json');
   fs.writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`);
   console.log(`lock: ${path.relative(root, lockPath)}`);
+}
+
+const mirrorCoreRoot = path.resolve(root, '../repository');
+if (fs.existsSync(path.join(mirrorCoreRoot, 'system/schema/capabilities'))) {
+  const { outPath, mirror } = writeCapabilitySchemaMirror(root, mirrorCoreRoot);
+  console.log(
+    `capability-mirror: ${path.relative(root, outPath)} `
+    + `(${Object.keys(mirror.capabilities).length} capabilities, `
+    + `${Object.keys(mirror.cli_commands).length} CLI commands)`,
+  );
 }
