@@ -1343,5 +1343,171 @@ class AcceptedArtifactTests(unittest.TestCase):
                 INSTALLER._hosted_run('Aram164/LearningOS', '12', 'a' * 40)
 
 
+class InstallerSecurityHardeningTests(unittest.TestCase):
+    def test_clean_git_env_strips_repo_overrides_and_observations(self) -> None:
+        with mock.patch.dict(
+            INSTALLER.os.environ,
+            {
+                "GIT_DIR": "/tmp/evil/.git",
+                "GIT_WORK_TREE": "/tmp/evil",
+                "GIT_INDEX_FILE": "/tmp/evil/index",
+                "GIT_COMMON_DIR": "/tmp/evil/common",
+                "LOS_OBSERVATIONS": "/tmp/obs.jsonl",
+                "LOS_OBSERVATIONS_MODE": "1",
+                "PATH": INSTALLER.os.environ.get("PATH", ""),
+            },
+            clear=True,
+        ):
+            cleaned = INSTALLER._clean_git_env()
+            for blocked in (
+                "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
+                "GIT_COMMON_DIR", "LOS_OBSERVATIONS", "LOS_OBSERVATIONS_MODE",
+            ):
+                self.assertNotIn(blocked, cleaned)
+            self.assertIn("PATH", cleaned)
+            with mock.patch.object(
+                INSTALLER.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 0, "a" * 40 + "\n", ""),
+            ) as mocked_run:
+                head = INSTALLER._git_rev_parse(Path("/tmp/repo"))
+            self.assertEqual(head, "a" * 40)
+            passed_env = mocked_run.call_args.kwargs["env"]
+            self.assertNotIn("GIT_DIR", passed_env)
+            self.assertNotIn("GIT_WORK_TREE", passed_env)
+
+    def test_merge_helpers_refuse_symlinked_obsidian_and_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            outside = base / "outside"
+            outside.mkdir()
+            secret = outside / "secret.json"
+            secret.write_text('{"keep":true}\n', encoding="utf-8")
+
+            vault_sym_dir = base / "vault-sym-dir"
+            vault_sym_dir.mkdir()
+            (vault_sym_dir / ".obsidian").symlink_to(outside)
+            with self.assertRaises(SystemExit):
+                INSTALLER.merge_app_json(vault_sym_dir, dry=False)
+            self.assertEqual(secret.read_text(encoding="utf-8"), '{"keep":true}\n')
+
+            vault_sym_file = base / "vault-sym-file"
+            (vault_sym_file / ".obsidian").mkdir(parents=True)
+            (vault_sym_file / ".obsidian" / "app.json").symlink_to(secret)
+            with self.assertRaises(SystemExit):
+                INSTALLER.merge_app_json(vault_sym_file, dry=False)
+            (vault_sym_file / ".obsidian" / "core-plugins.json").symlink_to(secret)
+            with self.assertRaises(SystemExit):
+                INSTALLER.merge_core_plugins(vault_sym_file, dry=False)
+            (vault_sym_file / ".obsidian" / "community-plugins.json").symlink_to(secret)
+            with self.assertRaises(SystemExit):
+                INSTALLER.enable_plugins(vault_sym_file, dry=False)
+            self.assertEqual(secret.read_text(encoding="utf-8"), '{"keep":true}\n')
+
+    def test_merge_helpers_preserve_user_settings_and_leave_no_tmp_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            vault = Path(directory) / "vault"
+            obs = vault / ".obsidian"
+            obs.mkdir(parents=True)
+            (obs / "app.json").write_text(
+                json.dumps({"customUserFlag": 42, "userIgnoreFilters": ["custom/"]}),
+                encoding="utf-8",
+            )
+            (obs / "core-plugins.json").write_text(
+                json.dumps({"my-core-plugin": True}),
+                encoding="utf-8",
+            )
+            (obs / "community-plugins.json").write_text(
+                json.dumps(["other-plugin"]),
+                encoding="utf-8",
+            )
+            INSTALLER.merge_app_json(vault, dry=False)
+            INSTALLER.merge_core_plugins(vault, dry=False)
+            INSTALLER.enable_plugins(vault, dry=False, extra=["omnisearch"])
+            self.assertEqual(json.loads((obs / "app.json").read_text())["customUserFlag"], 42)
+            self.assertIn("custom/", json.loads((obs / "app.json").read_text())["userIgnoreFilters"])
+            self.assertTrue(json.loads((obs / "core-plugins.json").read_text())["my-core-plugin"])
+            self.assertEqual(
+                json.loads((obs / "community-plugins.json").read_text()),
+                ["other-plugin", INSTALLER.PLUGIN_ID, "omnisearch"],
+            )
+            self.assertEqual([p for p in obs.iterdir() if p.name.endswith(".tmp")], [])
+
+    def test_copy_tree_and_ecosystem_enforce_containment_and_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            src = base / "bases"
+            dst = base / "vault" / "bases"
+            outside = base / "outside.base"
+            outside.write_text("keep", encoding="utf-8")
+            src.mkdir()
+            (src / "good.base").write_text("views: []\n", encoding="utf-8")
+            (src / "bad.base").symlink_to(outside)
+            with self.assertRaises(SystemExit):
+                INSTALLER.copy_tree(src, dst, "*.base", dry=False)
+            (src / "bad.base").unlink()
+            dst.mkdir(parents=True)
+            (dst / "good.base").symlink_to(outside)
+            with self.assertRaises(SystemExit):
+                INSTALLER.copy_tree(src, dst, "*.base", dry=False)
+            self.assertEqual(outside.read_text(encoding="utf-8"), "keep")
+
+            with self.assertRaises(SystemExit):
+                INSTALLER._validate_plugin_id("../evil")
+            with self.assertRaises(SystemExit):
+                INSTALLER._validate_filename("sub/main.js")
+
+            eco_vault = base / "eco-vault"
+            (eco_vault / ".obsidian" / "plugins" / "omnisearch").mkdir(parents=True)
+            (eco_vault / ".obsidian" / "plugins" / "omnisearch" / "data.json").symlink_to(outside)
+            with self.assertRaises(SystemExit):
+                INSTALLER.install_ecosystem(eco_vault, dry=False)
+
+    def test_install_ecosystem_downloads_checksummed_bytes_atomically(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            vault = Path(directory) / "vault"
+            (vault / "tools").mkdir(parents=True)
+            (vault / "tools" / "codex_obsidian.py").write_text("# wrapper\n", encoding="utf-8")
+            spec = json.loads((ROOT / "ecosystem-plugins.json").read_text(encoding="utf-8"))
+            payload_by_url: dict[str, bytes] = {}
+            for plugin in spec["plugins"]:
+                for fname, meta in plugin["files"].items():
+                    raw = f"{plugin['id']}:{fname}".encode("utf-8")
+                    meta["sha256"] = hashlib.sha256(raw).hexdigest()
+                    payload_by_url[meta["url"]] = raw
+            fake_here = Path(directory) / "fake-ui"
+            shutil.copytree(ROOT / "vault-config", fake_here / "vault-config")
+            (fake_here / "ecosystem-plugins.json").write_text(json.dumps(spec), encoding="utf-8")
+
+            class _FakeResp:
+                def __init__(self, content: bytes) -> None:
+                    self._content = content
+
+                def __enter__(self) -> _FakeResp:
+                    return self
+
+                def __exit__(self, *args) -> None:
+                    return None
+
+                def read(self) -> bytes:
+                    return self._content
+
+            def fake_urlopen(req, timeout=None):
+                return _FakeResp(payload_by_url[req.full_url])
+
+            with mock.patch.object(INSTALLER, "HERE", fake_here), \
+                    mock.patch.object(INSTALLER.urllib.request, "urlopen", side_effect=fake_urlopen):
+                installed = INSTALLER.install_ecosystem(vault, dry=False)
+            self.assertEqual(installed, [p["id"] for p in spec["plugins"]])
+            self.assertEqual(
+                (vault / ".obsidian" / "plugins" / "omnisearch" / "main.js").read_bytes(),
+                b"omnisearch:main.js",
+            )
+            self.assertIn(
+                "customBinaryPath",
+                json.loads((vault / ".obsidian" / "plugins" / "agentic-copilot" / "data.json").read_text()),
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

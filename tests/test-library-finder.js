@@ -464,6 +464,79 @@ const fixture = checkVault('fixture', fixtureManifest(), NO_MATERIALS);
     true,
     'a path outside materials/ must not resolve',
   );
+
+  // Containment against OTHER sources' directories and prefix lookalikes (#23).
+  const multiManifest = {
+    thematic_groups: [{ id: 'g-ml', title: 'ML', order: 1 }],
+    indexes: { source_to_modules: {} },
+    records: [
+      {
+        id: 'source-a', type: 'source', title: 'Source A', source_type: 'lecture',
+        thematic_group_ids: ['g-ml'],
+        material_path: 'materials/ml/course-a', material_exists: true,
+      },
+      {
+        id: 'source-a-prefix', type: 'source', title: 'Prefix Lookalike', source_type: 'lecture',
+        thematic_group_ids: ['g-ml'],
+        material_path: 'materials/ml/course-a-other', material_exists: true,
+      },
+      {
+        id: 'source-b', type: 'source', title: 'Source B', source_type: 'lecture',
+        thematic_group_ids: ['g-ml'],
+        material_path: 'materials/ml/course-b', material_exists: true,
+      },
+      {
+        id: 'source-missing-root', type: 'source', title: 'Missing Root', source_type: 'lecture',
+        thematic_group_ids: ['g-ml'],
+        material_path: 'materials/ml/course-a', material_exists: false,
+      },
+    ],
+  };
+  const multiContext = createFinderContext(storeFor(multiManifest), materialsFrom({
+    'materials/ml/course-a': [{ name: 'week-1', children: 1 }, { name: 'week-2', children: 1 }],
+    'materials/ml/course-a/week-1': [{ name: 'slides.pdf', size: 10 }],
+    'materials/ml/course-a/week-2': [{ name: 'notes.pdf', size: 10 }],
+    'materials/ml/course-a-other': [{ name: 'secret.pdf', size: 10 }],
+    'materials/ml/course-b': [{ name: 'secret-b.pdf', size: 10 }],
+  }));
+  assert.equal(
+    folderAt(multiContext, [
+      'domain:g-ml', 'type:lecture', 'source:source-a', 'at:materials/ml/course-b',
+    ]).missing,
+    true,
+    'sourceFolder must refuse an existing directory owned by a different source',
+  );
+  assert.equal(
+    folderAt(multiContext, [
+      'domain:g-ml', 'type:lecture', 'source:source-a', 'at:materials/ml/course-a-other',
+    ]).missing,
+    true,
+    'sourceFolder must enforce slash boundaries so prefix lookalikes cannot resolve',
+  );
+  assert.equal(
+    folderAt(multiContext, [
+      'domain:g-ml', 'type:lecture', 'source:source-a',
+      'at:materials/ml/course-a/week-1', 'at:materials/ml/course-a/week-2',
+    ]).missing,
+    true,
+    'sourceFolder must enforce monotonic parent->child descent across at: segments',
+  );
+  assert.equal(
+    folderAt(multiContext, [
+      'domain:g-ml', 'type:lecture', 'source:source-a',
+      'at:materials/ml/course-a/../course-b',
+    ]).missing,
+    true,
+    'sourceFolder must refuse dot-dot segments',
+  );
+  assert.equal(
+    folderAt(multiContext, [
+      'domain:g-ml', 'type:lecture', 'source:source-missing-root',
+      'at:materials/ml/course-a/week-1',
+    ]).missing,
+    true,
+    'sourceFolder must refuse at: navigation when owner source.material_exists is false',
+  );
 }
 
 {
@@ -554,6 +627,40 @@ const fixture = checkVault('fixture', fixtureManifest(), NO_MATERIALS);
     ]).entries.map((row) => row.name),
     ['Blatt 01.pdf'],
     'unregistered material is browsable, not merely counted',
+  );
+  assert.equal(
+    folderAt(context, [
+      'shelf:unregistered', 'at:materials/ml/course-x/lecture-slides',
+    ]).missing,
+    true,
+    'unregistered shelf must refuse direct navigation into claimed source folders',
+  );
+  assert.equal(
+    folderAt(context, [
+      'shelf:unregistered',
+      'at:materials/ml/course-x/exercise-slides',
+      'at:materials/ml/a-book',
+    ]).missing,
+    true,
+    'unregistered shelf must refuse non-descendant at: hops',
+  );
+  const deepUnreg = createFinderContext(storeFor(manifest), materialsFrom({
+    'materials/ml/course-x': [
+      { name: 'lecture-slides', children: 1 },
+      { name: 'exercise-slides', children: 1 },
+    ],
+    'materials/ml/course-x/exercise-slides': [{ name: 'nested', children: 1 }],
+    'materials/ml/course-x/exercise-slides/nested': [{ name: 'Blatt 02.pdf', size: 10 }],
+    'materials/ml': [{ name: 'course-x', children: 2 }, { name: 'a-book', children: 1 }],
+  }));
+  assert.deepEqual(
+    folderAt(deepUnreg, [
+      'shelf:unregistered',
+      'at:materials/ml/course-x/exercise-slides',
+      'at:materials/ml/course-x/exercise-slides/nested',
+    ]).entries.map((row) => row.name),
+    ['Blatt 02.pdf'],
+    'unregistered shelf allows monotonic descent inside an unregistered root',
   );
 
   // Nothing here is a source, so the registry invariant is untouched.

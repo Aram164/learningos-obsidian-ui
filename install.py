@@ -58,6 +58,49 @@ PLUGIN_ID = "learningos-ui"
 
 MANIFEST_KEYS = {"schema_version", "type", "shipped", "vault_owned"}
 MANIFEST_TYPE = "learningos-ui-plugin-assets"
+
+_SAFE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+_GIT_ENV_STRIP = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR")
+
+
+def _clean_git_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Return an environment stripped of external Git repo and observation overrides."""
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _GIT_ENV_STRIP and not key.startswith("LOS_OBSERVATIONS")
+    }
+    if extra:
+        env.update(extra)
+    return env
+
+
+def _sync_fd(descriptor: int) -> None:
+    """Flush file or directory descriptor durably (F_FULLFSYNC on macOS)."""
+    if hasattr(fcntl, "F_FULLFSYNC"):
+        fcntl.fcntl(descriptor, fcntl.F_FULLFSYNC)
+        return
+    os.fsync(descriptor)
+
+
+def _validate_plugin_id(plugin_id: str) -> str:
+    if (not isinstance(plugin_id, str)
+            or not plugin_id
+            or plugin_id in {".", ".."}
+            or not _SAFE_SEGMENT_RE.fullmatch(plugin_id)):
+        sys.exit(f"install: invalid plugin id {plugin_id!r}; refusing write")
+    return plugin_id
+
+
+def _validate_filename(filename: str) -> str:
+    if (not isinstance(filename, str)
+            or not filename
+            or filename in {".", ".."}
+            or "/" in filename
+            or "\\" in filename
+            or Path(filename).name != filename):
+        sys.exit(f"install: invalid asset filename {filename!r}; refusing write")
+    return filename
 INSTALL_TRANSACTION = ".learningos-ui-install-transaction.json"
 INSTALL_TRANSACTION_TYPE = "learningos-ui-install-transaction"
 INSTALL_PLAN = "plan.json"
@@ -288,16 +331,118 @@ def preflight_plugin_directory(vault: Path, *, recover: bool = True,
         recover_interrupted_install(plugins, installed, shipped)
 
 
+def _check_directory_chain(anchor: Path, directory: Path) -> None:
+    """Refuse symlinks or non-directories along `anchor -> directory`."""
+    if problem := directory_problem(anchor, missing_ok=False):
+        sys.exit(f"install: {anchor} {problem}; refusing write")
+    try:
+        rel = directory.relative_to(anchor)
+    except ValueError:
+        if problem := directory_problem(directory, missing_ok=True):
+            sys.exit(f"install: {directory} {problem}; refusing write")
+        return
+    current = anchor
+    for part in rel.parts:
+        current = current / part
+        if problem := directory_problem(current, missing_ok=True):
+            sys.exit(f"install: {current} {problem}; refusing write")
+
+
+def _ensure_real_directory(directory: Path, *, anchor: Path | None = None) -> None:
+    """Create missing directories under `anchor`, rejecting any symlink component."""
+    check_anchor = anchor if anchor is not None else directory.parent
+    _check_directory_chain(check_anchor, directory)
+    try:
+        rel = directory.relative_to(check_anchor)
+    except ValueError:
+        if not directory.exists():
+            directory.mkdir(parents=True, exist_ok=True)
+            _sync_directory(directory)
+            _sync_directory(directory.parent)
+        return
+    current = check_anchor
+    for part in rel.parts:
+        parent = current
+        current = current / part
+        if not current.exists():
+            current.mkdir()
+            _sync_directory(current)
+            _sync_directory(parent)
+
+
+def _read_regular_bytes(path: Path) -> bytes:
+    """Read a regular file with O_NOFOLLOW so symlinks are never traversed."""
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError(f"{path} is not a regular file")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            return handle.read()
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def _atomic_write_bytes(target: Path, data: bytes, *, anchor: Path | None = None,
+                        mode: int = 0o644) -> None:
+    """Atomically write `data` via an exclusive O_NOFOLLOW temp file and F_FULLFSYNC."""
+    _ensure_real_directory(target.parent, anchor=anchor)
+    if problem := optional_regular_file_problem(target):
+        sys.exit(f"install: {target} {problem}; refusing write")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    tmp: Path | None = None
+    descriptor = -1
+    for _ in range(32):
+        candidate = target.parent / f".{target.name}.{secrets.token_hex(6)}.tmp"
+        try:
+            descriptor = os.open(candidate, flags, mode)
+            tmp = candidate
+            break
+        except FileExistsError:
+            continue
+    else:
+        raise RuntimeError(f"could not allocate exclusive temp file beside {target}")
+    try:
+        try:
+            view = memoryview(data)
+            written = 0
+            while written < len(view):
+                written += os.write(descriptor, view[written:])
+            _sync_fd(descriptor)
+        finally:
+            os.close(descriptor)
+        os.replace(tmp, target)
+        tmp = None
+        _sync_directory(target.parent)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+
+
+def _read_regular_json(vault: Path, target: Path, warning_label: str, *, default):
+    _check_directory_chain(vault, target.parent)
+    if problem := optional_regular_file_problem(target):
+        sys.exit(f"install: {target} {problem}; refusing {warning_label}")
+    if not target.exists():
+        return default
+    try:
+        return json.loads(_read_regular_bytes(target).decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        log(f"WARNING: {target} {warning_label}")
+        return default
+
+
 def merge_app_json(vault: Path, dry: bool) -> None:
     src = json.loads((HERE / "vault-config" / "app.json").read_text(encoding="utf-8"))
     src.pop("_comment", None)
     target = vault / ".obsidian" / "app.json"
-    current = {}
-    if target.is_file():
-        try:
-            current = json.loads(target.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            log(f"WARNING: {target} is not valid JSON — replacing it")
+    current = _read_regular_json(vault, target, "is not valid JSON — replacing it", default={})
+    if not isinstance(current, dict):
+        log(f"WARNING: {target} is not a JSON object — replacing it")
+        current = {}
     merged = {**current, **src}
     # union, not clobber, for the ignore filters
     filters = list(dict.fromkeys(
@@ -305,9 +450,8 @@ def merge_app_json(vault: Path, dry: bool) -> None:
     merged["userIgnoreFilters"] = filters
     log(f"app.json: merge {sorted(src)} into {target}")
     if not dry:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n",
-                          encoding="utf-8")
+        encoded = (json.dumps(merged, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        _atomic_write_bytes(target, encoded, anchor=vault)
 
 
 def merge_core_plugins(vault: Path, dry: bool) -> None:
@@ -317,48 +461,54 @@ def merge_core_plugins(vault: Path, dry: bool) -> None:
     src = json.loads((HERE / "vault-config" / "core-plugins.json").read_text(encoding="utf-8"))
     managed = {k: v for k, v in src.items() if not k.startswith("_")}
     target = vault / ".obsidian" / "core-plugins.json"
-    current = {}
-    if target.is_file():
-        try:
-            current = json.loads(target.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            log(f"WARNING: {target} is not valid JSON — replacing it")
+    current = _read_regular_json(vault, target, "is not valid JSON — replacing it", default={})
+    if not isinstance(current, dict):
+        log(f"WARNING: {target} is not a JSON object — replacing it")
+        current = {}
     changed = {k: v for k, v in managed.items() if current.get(k) != v}
     merged = {**current, **managed}
     log(f"core-plugins.json: {len(managed)} managed key(s), "
         f"{len(changed)} changed{': ' + ', '.join(f'{k}={v}' for k, v in changed.items()) if changed else ''}")
     if not dry:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n",
-                          encoding="utf-8")
+        encoded = (json.dumps(merged, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        _atomic_write_bytes(target, encoded, anchor=vault)
 
 
 def enable_plugins(vault: Path, dry: bool, extra: list[str] | None = None) -> None:
     target = vault / ".obsidian" / "community-plugins.json"
-    plugins: list[str] = []
-    if target.is_file():
-        try:
-            plugins = json.loads(target.read_text(encoding="utf-8")) or []
-        except json.JSONDecodeError:
-            log(f"WARNING: {target} invalid — rewriting")
+    plugins = _read_regular_json(vault, target, "invalid — rewriting", default=[])
+    if not isinstance(plugins, list):
+        log(f"WARNING: {target} invalid — rewriting")
+        plugins = []
     for plugin_id in [PLUGIN_ID, *(extra or [])]:
+        _validate_plugin_id(plugin_id)
         if plugin_id not in plugins:
             plugins.append(plugin_id)
     log(f"community-plugins.json: {plugins}")
     if not dry:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(plugins, indent=2) + "\n", encoding="utf-8")
+        encoded = (json.dumps(plugins, indent=2) + "\n").encode("utf-8")
+        _atomic_write_bytes(target, encoded, anchor=vault)
 
 
 def copy_tree(src: Path, dst: Path, pattern: str, dry: bool) -> None:
+    if problem := directory_problem(src):
+        sys.exit(f"install: {src} {problem} — broken checkout")
     files = sorted(src.glob(pattern))
     if not files:
         sys.exit(f"install: nothing matches {src}/{pattern} — broken checkout")
+    for f in files:
+        if problem := shipped_file_problem(f):
+            sys.exit(f"install: {f} {problem}; refusing copy")
+    _check_directory_chain(dst.parent, dst)
+    for f in files:
+        if problem := optional_regular_file_problem(dst / f.name):
+            sys.exit(f"install: {dst / f.name} {problem}; refusing copy")
     log(f"copy {len(files)} file(s): {src.name}/{pattern} -> {dst}")
     if not dry:
-        dst.mkdir(parents=True, exist_ok=True)
         for f in files:
-            shutil.copy2(f, dst / f.name)
+            dest_file = dst / f.name
+            _atomic_write_bytes(dest_file, _read_regular_bytes(f), anchor=dst.parent)
+            shutil.copystat(f, dest_file, follow_symlinks=False)
 
 
 def _sha256(path: Path) -> str:
@@ -370,14 +520,14 @@ def _copy_regular_file(source: Path, destination: Path) -> None:
     with source.open("rb") as incoming, destination.open("xb") as outgoing:
         shutil.copyfileobj(incoming, outgoing)
         outgoing.flush()
-        os.fsync(outgoing.fileno())
+        _sync_fd(outgoing.fileno())
     shutil.copystat(source, destination, follow_symlinks=False)
 
 
 def _sync_directory(directory: Path) -> None:
     descriptor = os.open(directory, os.O_RDONLY)
     try:
-        os.fsync(descriptor)
+        _sync_fd(descriptor)
     finally:
         os.close(descriptor)
 
@@ -401,7 +551,7 @@ def _write_json_exclusive(path: Path, payload: dict):
         descriptor = -1
         handle.write(encoded)
         handle.flush()
-        os.fsync(handle.fileno())
+        _sync_fd(handle.fileno())
         return handle
     except Exception:
         if handle is not None:
@@ -417,7 +567,7 @@ def _write_json_durable(path: Path, payload: dict) -> None:
     with path.open("xb") as handle:
         handle.write(encoded)
         handle.flush()
-        os.fsync(handle.fileno())
+        _sync_fd(handle.fileno())
 
 
 def _hash_or_missing(path: Path) -> str | None:
@@ -949,7 +1099,7 @@ def _git_rev_parse(repo: Path) -> str | None:
     try:
         proc = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=repo,
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, text=True, timeout=30, env=_clean_git_env(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -1067,25 +1217,23 @@ def merge_plugin_settings(vault: Path, plugin_id: str, config_name: str,
 
     A plugin upgrade or reinstall must never erase unrelated user preferences.
     """
+    _validate_plugin_id(plugin_id)
     src = json.loads((HERE / "vault-config" / config_name).read_text(encoding="utf-8"))
     src.pop("_comment", None)
     if extra:
         src.update(extra)
     target = vault / ".obsidian" / "plugins" / plugin_id / "data.json"
-    current = {}
-    if target.is_file():
-        try:
-            current = json.loads(target.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            log(f"WARNING: {target} invalid — replacing plugin settings")
+    current = _read_regular_json(vault, target, "invalid — replacing plugin settings", default={})
+    if not isinstance(current, dict):
+        log(f"WARNING: {target} not a JSON object — replacing plugin settings")
+        current = {}
     merged = {**current, **src}
     changed = [key for key, value in src.items() if current.get(key) != value]
     log(f"ecosystem config: {plugin_id}: {len(src)} managed key(s), "
         f"{len(changed)} changed{': ' + ', '.join(changed) if changed else ''}")
     if not dry:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n",
-                          encoding="utf-8")
+        encoded = (json.dumps(merged, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        _atomic_write_bytes(target, encoded, anchor=vault)
 
 
 def install_ecosystem(vault: Path, dry: bool) -> list[str]:
@@ -1093,31 +1241,36 @@ def install_ecosystem(vault: Path, dry: bool) -> list[str]:
     spec = json.loads((HERE / "ecosystem-plugins.json").read_text(encoding="utf-8"))
     installed: list[str] = []
     for plugin in spec["plugins"]:
-        plugin_id = plugin["id"]
+        plugin_id = _validate_plugin_id(plugin["id"])
         dest = vault / ".obsidian" / "plugins" / plugin_id
+        _check_directory_chain(vault, dest)
         log(f"ecosystem: {plugin['name']} {plugin['version']} ({plugin['purpose']})")
+        for filename, meta in plugin["files"].items():
+            _validate_filename(filename)
+            if not isinstance(meta.get("url"), str) or not meta["url"].startswith("https://"):
+                sys.exit(f"install: ecosystem URL must use https for {plugin_id}/{filename}")
+            if problem := optional_regular_file_problem(dest / filename):
+                sys.exit(f"install: {dest / filename} {problem}; refusing ecosystem install")
+        if problem := optional_regular_file_problem(dest / "data.json"):
+            sys.exit(f"install: {dest / 'data.json'} {problem}; refusing ecosystem install")
         installed.append(plugin_id)
         if dry:
             continue
-        dest.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix=f"learningos-{plugin_id}-") as tmp:
-            tmp_dir = Path(tmp)
-            for filename, meta in plugin["files"].items():
-                existing = dest / filename
-                if existing.is_file() and hashlib.sha256(existing.read_bytes()).hexdigest() \
-                        == meta["sha256"]:
-                    continue
-                request = urllib.request.Request(
-                    meta["url"], headers={"User-Agent": "LearningOS-Obsidian-installer/1"})
-                with urllib.request.urlopen(request, timeout=90) as response:
-                    content = response.read()
-                actual = hashlib.sha256(content).hexdigest()
-                if actual != meta["sha256"]:
-                    sys.exit(f"install: checksum mismatch for {plugin_id}/{filename}: "
-                             f"expected {meta['sha256']}, got {actual}")
-                staged = tmp_dir / filename
-                staged.write_bytes(content)
-                shutil.copy2(staged, existing)
+        _ensure_real_directory(dest, anchor=vault)
+        for filename, meta in plugin["files"].items():
+            existing = dest / filename
+            if existing.exists() and hashlib.sha256(_read_regular_bytes(existing)).hexdigest() \
+                    == meta["sha256"]:
+                continue
+            request = urllib.request.Request(
+                meta["url"], headers={"User-Agent": "LearningOS-Obsidian-installer/1"})
+            with urllib.request.urlopen(request, timeout=90) as response:
+                content = response.read()
+            actual = hashlib.sha256(content).hexdigest()
+            if actual != meta["sha256"]:
+                sys.exit(f"install: checksum mismatch for {plugin_id}/{filename}: "
+                         f"expected {meta['sha256']}, got {actual}")
+            _atomic_write_bytes(existing, content, anchor=vault)
     wrapper = vault / "tools" / "codex_obsidian.py"
     if not dry and not wrapper.is_file():
         sys.exit(f"install: Agentic Copilot needs {wrapper}")
@@ -1137,7 +1290,8 @@ def smoke_test_cli(vault: Path) -> None:
     venv = vault / ".venv" / "bin" / "python"
     python = str(venv) if venv.is_file() else sys.executable
     proc = subprocess.run([python, str(los), "status"], cwd=vault,
-                          capture_output=True, text=True, timeout=180)
+                          capture_output=True, text=True, timeout=180,
+                          env=_clean_git_env())
     if proc.returncode == 0:
         log("CLI smoke test ✓  (los.py status)")
     else:
@@ -1203,7 +1357,7 @@ def verified_artifact(vault: Path, artifact: Path, *, previous: bool = False) ->
         [str(vault / ".venv/bin/python"), str(vault / "tools/release_pair_receipt.py"),
          "verify", "--receipt", str(receipt_path), "--artifact-dir", str(artifact),
          *contract_check],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True, text=True, timeout=60, env=_clean_git_env(),
     )
     if result.returncode != 0:
         raise PluginAssetsError("Core refused the artifact receipt: " + result.stderr.strip())
@@ -1298,11 +1452,13 @@ def verify_legacy_local_metadata(destination: Path, previous: Path, old: dict,
             if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
                 raise PluginAssetsError("legacy Core stamps must name full commit revisions")
             result = subprocess.run(["git", "cat-file", "-t", revision], cwd=core_root,
-                                    capture_output=True, text=True, timeout=30)
+                                    capture_output=True, text=True, timeout=30,
+                                    env=_clean_git_env())
             if result.returncode != 0 or result.stdout.strip() != "commit":
                 raise PluginAssetsError("legacy Core stamp is not a known commit in the selected vault")
         ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", local_core, hosted_core],
-                                  cwd=core_root, capture_output=True, timeout=30)
+                                  cwd=core_root, capture_output=True, timeout=30,
+                                  env=_clean_git_env())
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise PluginAssetsError("legacy Core ancestry could not be verified in the selected vault") from exc
     if ancestor.returncode != 0:
@@ -1382,7 +1538,7 @@ def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None
         recover_interrupted_install(HERE, HERE / "plugin", shipped)
     for root, permitted in ((vault, set()), (HERE, {"plugin/main.js", "plugin/styles.css", "plugin/build-info.json"})):
         result = subprocess.run(["git", "status", "--porcelain=v1", "-z"], cwd=root,
-                                capture_output=True, timeout=30)
+                                capture_output=True, timeout=30, env=_clean_git_env())
         entries = result.stdout.split(b"\0")[:-1]
         if result.returncode != 0 or any(
                 entry[:3] != b" M " or os.fsdecode(entry[3:]) not in permitted for entry in entries):

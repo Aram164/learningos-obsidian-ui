@@ -30,7 +30,7 @@ const {
   TRACE_OWNERSHIP_ENV,
   ownershipMarkerForTraceparent,
 } = load('src/infrastructure/trace-context.ts');
-const { LosRuntime } = load('src/infrastructure/los-runtime.ts');
+const { LosRuntime, buildCoreChildEnv } = load('src/infrastructure/los-runtime.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
 const { MemoryGatewayRecoveryStore } = load('src/application/gateway-recovery.ts');
 
@@ -288,14 +288,89 @@ async function testTerminalEventsCarryCodesNeverMessages() {
   assert.ok(!JSON.stringify(blockedEvents).includes(canary), 'blocked prose leaked into events');
 }
 
+async function testRuntimeFiltersAmbientEnv() {
+  const built = buildCoreChildEnv({
+    PATH: '/usr/bin:/bin',
+    HOME: '/tmp/home',
+    TMPDIR: '/tmp',
+    LANG: 'en_US.UTF-8',
+    LC_CTYPE: 'UTF-8',
+    PYTHONNOUSERSITE: '1',
+    SSH_AUTH_SOCK: '/tmp/ssh-agent.sock',
+    LOS_OBSERVATIONS: '/tmp/obs.jsonl',
+    LOS_OBSERVATIONS_MODE: '1',
+    LOS_SESSION_ID: 'hijack',
+    LOS_CLIENT: 'other',
+    LOS_TRACE_OWNED: 'f'.repeat(32),
+    GIT_DIR: '/tmp/evil/.git',
+    GIT_WORK_TREE: '/tmp/evil',
+    GIT_INDEX_FILE: '/tmp/evil/index',
+    GIT_COMMON_DIR: '/tmp/evil/common',
+    TRACEPARENT: `00-${TRACE_ID}-${SPAN_ID}-01`,
+    PYTHONPATH: '/tmp/evil-py',
+    UNRELATED_SECRET: 'must-not-leak',
+  });
+  assert.equal(built.PATH, '/usr/bin:/bin');
+  assert.equal(built.HOME, '/tmp/home');
+  assert.equal(built.TMPDIR, '/tmp');
+  assert.equal(built.LANG, 'en_US.UTF-8');
+  assert.equal(built.LC_CTYPE, 'UTF-8');
+  assert.equal(built.SSH_AUTH_SOCK, '/tmp/ssh-agent.sock');
+  assert.equal(built.LOS_SESSION_ID, 'ui');
+  assert.ok(built.LOS_CLIENT.startsWith('obsidian-ui/'));
+  for (const blocked of [
+    'LOS_OBSERVATIONS', 'LOS_OBSERVATIONS_MODE', 'LOS_TRACE_OWNED',
+    'GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR',
+    'TRACEPARENT', 'PYTHONPATH', 'UNRELATED_SECRET',
+  ]) {
+    assert.equal(built[blocked], undefined, `${blocked} must be excluded from Core child env`);
+  }
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-env-filter-'));
+  const stub = path.join(dir, 'stub-python.sh');
+  fs.writeFileSync(
+    stub,
+    '#!/bin/sh\necho "SESS:${LOS_SESSION_ID:-unset} OBS:${LOS_OBSERVATIONS:-unset} GIT:${GIT_DIR:-unset}:${GIT_WORK_TREE:-unset}:${GIT_INDEX_FILE:-unset}:${GIT_COMMON_DIR:-unset} SEC:${UNRELATED_SECRET:-unset}"\n',
+  );
+  fs.chmodSync(stub, 0o755);
+  const runtime = new LosRuntime(
+    { vault: { adapter: { getBasePath: () => dir } } },
+    () => stub,
+  );
+  const keys = ['LOS_OBSERVATIONS', 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR', 'UNRELATED_SECRET'];
+  const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  process.env.LOS_OBSERVATIONS = '/tmp/poison.jsonl';
+  process.env.GIT_DIR = '/tmp/evil/.git';
+  process.env.GIT_WORK_TREE = '/tmp/evil';
+  process.env.GIT_INDEX_FILE = '/tmp/evil/index';
+  process.env.GIT_COMMON_DIR = '/tmp/evil/common';
+  process.env.UNRELATED_SECRET = 'leak';
+  try {
+    const stdout = await new Promise((resolve, reject) => {
+      runtime.run(['ignored'], (error, out) => {
+        if (error) reject(error);
+        else resolve(String(out).trim());
+      });
+    });
+    assert.equal(stdout, 'SESS:ui OBS:unset GIT:unset:unset:unset:unset SEC:unset');
+  } finally {
+    for (const k of keys) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   testContextShapes();
   testOwnershipMarker();
   await testRuntimeCarriesParentAsEnv();
+  await testRuntimeFiltersAmbientEnv();
   await testClientKeepsOneOperationAcrossReplay();
   await testClientEmitsOneDiagnosticStream();
   await testTerminalEventsCarryCodesNeverMessages();
-  console.log('test-trace-context: ok (6 groups)');
+  console.log('test-trace-context: ok (7 groups)');
 }
 
 main().then(

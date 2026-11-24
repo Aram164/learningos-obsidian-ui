@@ -42,6 +42,86 @@ export function uiClientMarker(): string {
   return `obsidian-ui/${runtimeSourceFingerprint()}`;
 }
 
+const CORE_CHILD_ENV_ALLOWLIST: ReadonlySet<string> = new Set([
+  'PATH',
+  'HOME',
+  'USER',
+  'LOGNAME',
+  'SHELL',
+  'TERM',
+  'TZ',
+  'TMPDIR',
+  'TEMP',
+  'TMP',
+  'LANG',
+  'LANGUAGE',
+  'SYSTEMROOT',
+  'COMSPEC',
+  'WINDIR',
+  'PATHEXT',
+  'APPDATA',
+  'LOCALAPPDATA',
+  'USERPROFILE',
+  'HOMEDRIVE',
+  'HOMEPATH',
+  'PROGRAMDATA',
+  'SSL_CERT_FILE',
+  'SSL_CERT_DIR',
+  'REQUESTS_CA_BUNDLE',
+  'CURL_CA_BUNDLE',
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'NO_PROXY',
+  'ALL_PROXY',
+  'XDG_CONFIG_HOME',
+  'XDG_CACHE_HOME',
+  'XDG_DATA_HOME',
+  'XDG_RUNTIME_DIR',
+  'PYTHONUTF8',
+  'PYTHONIOENCODING',
+  'PYTHONDONTWRITEBYTECODE',
+  'PYTHONNOUSERSITE',
+  'VIRTUAL_ENV',
+  'SSH_AUTH_SOCK',
+]);
+
+function isAllowedCoreEnvKey(key: string): boolean {
+  const upper = key.toUpperCase();
+  if (upper.startsWith('LOS_') || upper.startsWith('GIT_')) return false;
+  if (CORE_CHILD_ENV_ALLOWLIST.has(upper)) return true;
+  return /^LC_[A-Z0-9_]+$/.test(upper);
+}
+
+/**
+ * Build the strictly allowlisted child-process environment for Core.
+ *
+ * Ambient ``LOS_*`` variables (including ``LOS_OBSERVATIONS*``), ``GIT_*``
+ * repository overrides (such as ``GIT_DIR`` and ``GIT_WORK_TREE``), and
+ * ``TRACEPARENT`` are excluded before stamping the UI session identity,
+ * client marker, and explicit dispatch trace context.
+ */
+export function buildCoreChildEnv(
+  baseEnv: Record<string, string | undefined>,
+  traceParent?: string,
+): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(baseEnv)) {
+    if (value === undefined) continue;
+    if (!isAllowedCoreEnvKey(key)) continue;
+    env[key] = value;
+  }
+  env[SESSION_ID_ENV] = UI_SESSION_ID;
+  env[CLIENT_ENV] = uiClientMarker();
+  if (traceParent !== undefined) {
+    env['TRACEPARENT'] = traceParent;
+    const owned = ownershipMarkerForTraceparent(traceParent);
+    if (owned !== null) {
+      env[TRACE_OWNERSHIP_ENV] = owned;
+    }
+  }
+  return env;
+}
+
 interface LosRuntimeHost {
   readonly vault: {
     readonly adapter: {
@@ -87,9 +167,6 @@ export class LosRuntime {
   run(args: string[], callback: LosCallback, stdin?: string, traceParent?: string): void {
     const base = this.app.vault.adapter.getBasePath();
     const script = nodePath.join(base, 'tools', 'los.py');
-    const owned = traceParent === undefined
-      ? null
-      : ownershipMarkerForTraceparent(traceParent);
     const child = execFile(
       this.resolvePython().path,
       [script, ...args],
@@ -97,17 +174,7 @@ export class LosRuntime {
         cwd: base,
         timeout: 180000,
         maxBuffer: 8 * 1024 * 1024,
-        env: {
-          ...process.env,
-          [SESSION_ID_ENV]: UI_SESSION_ID,
-          [CLIENT_ENV]: uiClientMarker(),
-          ...(traceParent === undefined
-            ? {}
-            : {
-              TRACEPARENT: traceParent,
-              ...(owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }),
-            }),
-        },
+        env: buildCoreChildEnv(process.env, traceParent),
       },
       callback,
     );

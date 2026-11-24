@@ -63,7 +63,7 @@ try {
     '--bundle', bundlePath,
     '--meta', metaPath,
     '--out', emitDir,
-  ], { encoding: 'utf8', cwd: root });
+  ], { encoding: 'utf8', cwd: root, timeout: 120_000 });
 
   if (emitResult.status !== 0) {
     fail(`generate-contract.mjs failed: ${(emitResult.stderr || emitResult.stdout || '').trim()}`);

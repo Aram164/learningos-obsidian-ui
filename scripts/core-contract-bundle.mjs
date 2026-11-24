@@ -12,11 +12,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+const GIT_ENV_STRIP = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR'];
+
 export function findCorePython(coreRoot) {
   const env = {
     ...process.env,
     PYTHONPATH: path.join(coreRoot, 'tools'),
   };
+  for (const key of GIT_ENV_STRIP) delete env[key];
 
   // If PYTHON is explicitly specified in the environment, honor it directly
   if (process.env.PYTHON) {
@@ -24,7 +27,7 @@ export function findCorePython(coreRoot) {
       const probe = spawnSync(
         process.env.PYTHON,
         ['-c', 'import learning_os.store.contracts.bundle'],
-        { encoding: 'utf8', cwd: coreRoot, env },
+        { encoding: 'utf8', cwd: coreRoot, env, timeout: 30_000 },
       );
       if (probe.status === 0) return { python: process.env.PYTHON, env };
     } catch (_) {
@@ -45,7 +48,7 @@ export function findCorePython(coreRoot) {
       const probe = spawnSync(
         candidate,
         ['-c', 'import learning_os.store.contracts.bundle'],
-        { encoding: 'utf8', cwd: coreRoot, env },
+        { encoding: 'utf8', cwd: coreRoot, env, timeout: 30_000 },
       );
       if (probe.status === 0) return { python: candidate, env };
     } catch (_) {
@@ -78,7 +81,7 @@ export function generateCoreBundle(coreRoot, outDir) {
     'tools/contract_bundle.py', 'build',
     '--schema', 'system/contracts/manifest-v20.schema.json',
     '--out', outDir,
-  ], { encoding: 'utf8', cwd: coreRoot, env });
+  ], { encoding: 'utf8', cwd: coreRoot, env, timeout: 120_000 });
 
   if (bundleResult.status !== 0) {
     const detail = (bundleResult.stderr || bundleResult.stdout || '').trim();

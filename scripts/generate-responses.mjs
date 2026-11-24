@@ -27,7 +27,7 @@ try {
   const info = findCorePython(core);
   if (!info) throw new Error('Core with its dependencies is required to generate or check response contracts.');
   const result = spawnSync(info.python, ['tools/contract_bundle.py', 'build',
-    '--schema', schemaRelative, '--out', scratch], { cwd: core, env: info.env, encoding: 'utf8' });
+    '--schema', schemaRelative, '--out', scratch], { cwd: core, env: info.env, encoding: 'utf8', timeout: 120_000 });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
   const bytes = fs.readFileSync(path.join(scratch, 'ui-responses.bundle.json'));
   const bundle = JSON.parse(bytes);

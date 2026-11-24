@@ -51,9 +51,20 @@ import {
 } from './plugin-assets.mjs';
 
 const short = (value) => String(value ?? 'unknown').slice(0, 12);
+const GIT_ENV_STRIP = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR'];
+
+function cleanGitEnv(baseEnv = process.env) {
+  const env = { ...baseEnv };
+  for (const key of GIT_ENV_STRIP) delete env[key];
+  return env;
+}
 
 function spawnGit(directory, args) {
-  return spawnSync('git', ['-C', directory, ...args], { encoding: 'utf8' });
+  return spawnSync('git', ['-C', directory, ...args], {
+    encoding: 'utf8',
+    timeout: 30_000,
+    env: cleanGitEnv(),
+  });
 }
 
 /**
@@ -150,7 +161,7 @@ function main() {
     const proof = spawnSync(path.join(vault, '.venv/bin/python'), [
       path.join(vault, 'tools/release_pair_receipt.py'), 'verify',
       '--receipt', path.join(artifact, 'pair-receipt.json'), '--artifact-dir', artifact,
-    ], { encoding: 'utf8' });
+    ], { encoding: 'utf8', timeout: 60_000, env: cleanGitEnv() });
     if (proof.status !== 0) {
       console.error(`install: accepted artifact receipt could not be verified: ${proof.stderr ?? proof.error ?? ''}`);
       process.exit(1);

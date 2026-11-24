@@ -13,6 +13,12 @@ import {
 } from './scripts/plugin-assets.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+const GIT_ENV_STRIP = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR'];
+function cleanGitEnv(baseEnv = process.env) {
+  const env = { ...baseEnv };
+  for (const key of GIT_ENV_STRIP) delete env[key];
+  return env;
+}
 const pluginDir = path.join(root, 'plugin');
 const outfile = path.join(pluginDir, 'main.js');
 const existingPluginDirectoryProblem = directoryProblem(pluginDir, { missingOk: true });
@@ -39,7 +45,7 @@ async function loadTypeScript() {
     const module = await import('typescript');
     return module.default || module;
   } catch (_) {
-    const globalRoot = execFileSync('npm', ['root', '-g'], { encoding: 'utf8' }).trim();
+    const globalRoot = execFileSync('npm', ['root', '-g'], { encoding: 'utf8', timeout: 30_000 }).trim();
     const module = await import(pathToFileURL(path.join(globalRoot, 'typescript', 'lib', 'typescript.js')).href);
     return module.default || module;
   }
@@ -217,7 +223,7 @@ const contract = manifestContract.value;
 let sourceRevision = process.env.LEARNINGOS_UI_SOURCE_REVISION || '';
 if (!sourceRevision) {
   try {
-    sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+    sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', timeout: 30_000, env: cleanGitEnv() }).trim();
   } catch (_) {
     sourceRevision = 'working-tree';
   }
@@ -287,7 +293,7 @@ const output = fs.readFileSync(outfile);
  */
 const gitOrNull = (args) => {
   try {
-    return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+    return execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 30_000, env: cleanGitEnv() }).trim();
   } catch (_) {
     return null;
   }
@@ -299,7 +305,7 @@ const GENERATED_PLUGIN_OUTPUTS = new Set(['plugin/main.js', 'plugin/styles.css',
 function worktreeDirty(cwd) {
   let raw;
   try {
-    raw = execFileSync('git', ['status', '--porcelain'], { cwd, encoding: 'utf8' });
+    raw = execFileSync('git', ['status', '--porcelain'], { cwd, encoding: 'utf8', timeout: 30_000, env: cleanGitEnv() });
   } catch (_) {
     return null;
   }

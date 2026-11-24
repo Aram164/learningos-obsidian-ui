@@ -53794,6 +53794,17 @@ function parseSegment(value) {
   const at = value.indexOf(":");
   return at < 0 ? [value, ""] : [value.slice(0, at), value.slice(at + 1)];
 }
+function normalizeRelativePath(raw) {
+  if (!raw || raw.includes("\\") || raw.includes("\0") || raw.startsWith("/") || raw.endsWith("/")) {
+    return null;
+  }
+  const parts = raw.split("/");
+  if (parts.some((part2) => !part2 || part2 === "." || part2 === "..")) return null;
+  return parts.join("/");
+}
+function isStrictChildPath(parentPath, childPath) {
+  return childPath.startsWith(`${parentPath}/`);
+}
 function titleOf(record7) {
   if (!record7) return "Unknown";
   return asText(record7.title) ?? asString(record7.id) ?? "Unknown";
@@ -54372,16 +54383,31 @@ function shelfFolder(context, shelf, rest, full) {
         entries: unregisteredMaterial(context)
       });
     }
-    const [lastPrefix, path] = parseSegment(rest[rest.length - 1] ?? "");
-    if (lastPrefix !== "at" || !context.materials.isDirectory(path)) {
-      return unavailable(full);
+    const allowedRoots = new Set(
+      unregisteredMaterial(context).map((entry) => entry.materialPath).filter((value) => typeof value === "string" && value.length > 0)
+    );
+    let currentPath = null;
+    for (const seg of rest) {
+      const [segPrefix, rawPath] = parseSegment(seg);
+      if (segPrefix !== "at") return unavailable(full);
+      const segPath = normalizeRelativePath(rawPath);
+      if (!segPath || !context.materials.isDirectory(segPath) || context.index.claimedMaterial.has(segPath)) {
+        return unavailable(full);
+      }
+      if (currentPath === null) {
+        if (!allowedRoots.has(segPath)) return unavailable(full);
+      } else if (!isStrictChildPath(currentPath, segPath)) {
+        return unavailable(full);
+      }
+      currentPath = segPath;
     }
+    if (!currentPath) return unavailable(full);
     return folder({
       path: full,
-      name: path.split("/").pop() || path,
+      name: currentPath.split("/").pop() || currentPath,
       icon: "folder-open",
       kindLabel: "Folder",
-      entries: context.materials.list(path).map(materialEntry)
+      entries: context.materials.list(currentPath).map(materialEntry)
     });
   }
   if (shelf !== "packs" && shelf !== "catalogues") return unavailable(full);
@@ -54434,11 +54460,11 @@ function sourceFolder(context, rest, full) {
   if (prefix !== "source") return unavailable(full);
   const source = store.get(sourceId);
   if (source?.type !== "source") return unavailable(full);
+  const materialPath = normalizeRelativePath(asString(source.material_path) ?? "");
+  if (!materialPath || source.material_exists !== true || !materials2.isDirectory(materialPath)) {
+    return unavailable(full);
+  }
   if (!tail.length) {
-    const materialPath = asString(source.material_path);
-    if (!materialPath || source.material_exists !== true || !materials2.isDirectory(materialPath)) {
-      return unavailable(full);
-    }
     return folder({
       path: full,
       name: titleOf(source),
@@ -54449,14 +54475,22 @@ function sourceFolder(context, rest, full) {
       sourceId
     });
   }
-  const [lastPrefix, path] = parseSegment(tail[tail.length - 1] ?? "");
-  if (lastPrefix !== "at" || !materials2.isDirectory(path)) return unavailable(full);
+  let currentPath = materialPath;
+  for (const seg of tail) {
+    const [segPrefix, rawPath] = parseSegment(seg);
+    if (segPrefix !== "at") return unavailable(full);
+    const segPath = normalizeRelativePath(rawPath);
+    if (!segPath || !isStrictChildPath(currentPath, segPath) || !materials2.isDirectory(segPath)) {
+      return unavailable(full);
+    }
+    currentPath = segPath;
+  }
   return folder({
     path: full,
-    name: path.split("/").pop() || path,
+    name: currentPath.split("/").pop() || currentPath,
     icon: "folder-open",
     kindLabel: "Folder",
-    entries: materials2.list(path).map(materialEntry),
+    entries: materials2.list(currentPath).map(materialEntry),
     sourceId
   });
 }
@@ -57803,7 +57837,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:735a968990b032553a6f5b4955d6dcdd6182815747a00d7abfe2f2fc74374e59" : "unavailable";
+  return true ? "sha256:4483ae8648befcc7a6032c7dc5709a7613b94cd3cfce5a574493f3711c1add62" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;
@@ -57815,6 +57849,72 @@ var UI_SESSION_ID = "ui";
 var CLIENT_ENV = "LOS_CLIENT";
 function uiClientMarker() {
   return `obsidian-ui/${runtimeSourceFingerprint()}`;
+}
+var CORE_CHILD_ENV_ALLOWLIST = /* @__PURE__ */ new Set([
+  "PATH",
+  "HOME",
+  "USER",
+  "LOGNAME",
+  "SHELL",
+  "TERM",
+  "TZ",
+  "TMPDIR",
+  "TEMP",
+  "TMP",
+  "LANG",
+  "LANGUAGE",
+  "SYSTEMROOT",
+  "COMSPEC",
+  "WINDIR",
+  "PATHEXT",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "USERPROFILE",
+  "HOMEDRIVE",
+  "HOMEPATH",
+  "PROGRAMDATA",
+  "SSL_CERT_FILE",
+  "SSL_CERT_DIR",
+  "REQUESTS_CA_BUNDLE",
+  "CURL_CA_BUNDLE",
+  "HTTP_PROXY",
+  "HTTPS_PROXY",
+  "NO_PROXY",
+  "ALL_PROXY",
+  "XDG_CONFIG_HOME",
+  "XDG_CACHE_HOME",
+  "XDG_DATA_HOME",
+  "XDG_RUNTIME_DIR",
+  "PYTHONUTF8",
+  "PYTHONIOENCODING",
+  "PYTHONDONTWRITEBYTECODE",
+  "PYTHONNOUSERSITE",
+  "VIRTUAL_ENV",
+  "SSH_AUTH_SOCK"
+]);
+function isAllowedCoreEnvKey(key) {
+  const upper = key.toUpperCase();
+  if (upper.startsWith("LOS_") || upper.startsWith("GIT_")) return false;
+  if (CORE_CHILD_ENV_ALLOWLIST.has(upper)) return true;
+  return /^LC_[A-Z0-9_]+$/.test(upper);
+}
+function buildCoreChildEnv(baseEnv, traceParent) {
+  const env = {};
+  for (const [key, value] of Object.entries(baseEnv)) {
+    if (value === void 0) continue;
+    if (!isAllowedCoreEnvKey(key)) continue;
+    env[key] = value;
+  }
+  env[SESSION_ID_ENV] = UI_SESSION_ID;
+  env[CLIENT_ENV] = uiClientMarker();
+  if (traceParent !== void 0) {
+    env["TRACEPARENT"] = traceParent;
+    const owned = ownershipMarkerForTraceparent(traceParent);
+    if (owned !== null) {
+      env[TRACE_OWNERSHIP_ENV] = owned;
+    }
+  }
+  return env;
 }
 var LosRuntime = class {
   constructor(app, configuredPython) {
@@ -57850,7 +57950,6 @@ var LosRuntime = class {
   run(args, callback, stdin, traceParent) {
     const base = this.app.vault.adapter.getBasePath();
     const script = nodePath2.join(base, "tools", "los.py");
-    const owned = traceParent === void 0 ? null : ownershipMarkerForTraceparent(traceParent);
     const child = (0, import_node_child_process.execFile)(
       this.resolvePython().path,
       [script, ...args],
@@ -57858,15 +57957,7 @@ var LosRuntime = class {
         cwd: base,
         timeout: 18e4,
         maxBuffer: 8 * 1024 * 1024,
-        env: {
-          ...import_node_process.default.env,
-          [SESSION_ID_ENV]: UI_SESSION_ID,
-          [CLIENT_ENV]: uiClientMarker(),
-          ...traceParent === void 0 ? {} : {
-            TRACEPARENT: traceParent,
-            ...owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }
-          }
-        }
+        env: buildCoreChildEnv(import_node_process.default.env, traceParent)
       },
       callback
     );

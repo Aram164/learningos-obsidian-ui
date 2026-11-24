@@ -240,6 +240,21 @@ function parseSegment(value: string): readonly [string, string] {
   return at < 0 ? [value, ''] : [value.slice(0, at), value.slice(at + 1)];
 }
 
+/** Reject lexical escapes (`.`, `..`, backslashes, leading/trailing/empty parts). */
+function normalizeRelativePath(raw: string): string | null {
+  if (!raw || raw.includes('\\') || raw.includes('\0')
+    || raw.startsWith('/') || raw.endsWith('/')) {
+    return null;
+  }
+  const parts = raw.split('/');
+  if (parts.some((part) => !part || part === '.' || part === '..')) return null;
+  return parts.join('/');
+}
+
+function isStrictChildPath(parentPath: string, childPath: string): boolean {
+  return childPath.startsWith(`${parentPath}/`);
+}
+
 function titleOf(record: ProjectionRecord | null): string {
   if (!record) return 'Unknown';
   return projectedText(record.title) ?? projectedString(record.id) ?? 'Unknown';
@@ -1072,17 +1087,37 @@ function shelfFolder(
         entries: unregisteredMaterial(context),
       });
     }
-    // Below the shelf this is an ordinary walk of the physical tree.
-    const [lastPrefix, path] = parseSegment(rest[rest.length - 1] ?? '');
-    if (lastPrefix !== 'at' || !context.materials.isDirectory(path)) {
-      return unavailable(full);
+    // Below the shelf every `at:` segment must start at an unregistered root
+    // and descend strictly inside it without crossing into claimed paths.
+    const allowedRoots = new Set(
+      unregisteredMaterial(context)
+        .map((entry) => entry.materialPath)
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    );
+    let currentPath: string | null = null;
+    for (const seg of rest) {
+      const [segPrefix, rawPath] = parseSegment(seg);
+      if (segPrefix !== 'at') return unavailable(full);
+      const segPath = normalizeRelativePath(rawPath);
+      if (!segPath
+        || !context.materials.isDirectory(segPath)
+        || context.index.claimedMaterial.has(segPath)) {
+        return unavailable(full);
+      }
+      if (currentPath === null) {
+        if (!allowedRoots.has(segPath)) return unavailable(full);
+      } else if (!isStrictChildPath(currentPath, segPath)) {
+        return unavailable(full);
+      }
+      currentPath = segPath;
     }
+    if (!currentPath) return unavailable(full);
     return folder({
       path: full,
-      name: path.split('/').pop() || path,
+      name: currentPath.split('/').pop() || currentPath,
       icon: 'folder-open',
       kindLabel: 'Folder',
-      entries: context.materials.list(path).map(materialEntry),
+      entries: context.materials.list(currentPath).map(materialEntry),
     });
   }
 
@@ -1142,10 +1177,9 @@ function shelfFolder(
 /**
  * A source folder, and everything below it.
  *
- * The first segment names the source; each further `at:` segment is one step
- * into its real material directory. Only the LAST segment is resolved, because
- * it already carries the whole `materials/…` path — so a folder six levels down
- * costs one containment check rather than six.
+ * The first segment names the source; each further `at:` segment is strictly
+ * contained within the owner source's real `material_path` and descends
+ * monotonically inside the preceding segment.
  */
 function sourceFolder(
   context: FinderContext,
@@ -1159,12 +1193,13 @@ function sourceFolder(
   const source = store.get(sourceId);
   if (source?.type !== 'source') return unavailable(full);
 
+  const materialPath = normalizeRelativePath(projectedString(source.material_path) ?? '');
+  if (!materialPath || source.material_exists !== true
+    || !materials.isDirectory(materialPath)) {
+    return unavailable(full);
+  }
+
   if (!tail.length) {
-    const materialPath = projectedString(source.material_path);
-    if (!materialPath || source.material_exists !== true
-      || !materials.isDirectory(materialPath)) {
-      return unavailable(full);
-    }
     return folder({
       path: full,
       name: titleOf(source),
@@ -1176,14 +1211,24 @@ function sourceFolder(
     });
   }
 
-  const [lastPrefix, path] = parseSegment(tail[tail.length - 1] ?? '');
-  if (lastPrefix !== 'at' || !materials.isDirectory(path)) return unavailable(full);
+  let currentPath = materialPath;
+  for (const seg of tail) {
+    const [segPrefix, rawPath] = parseSegment(seg);
+    if (segPrefix !== 'at') return unavailable(full);
+    const segPath = normalizeRelativePath(rawPath);
+    if (!segPath
+      || !isStrictChildPath(currentPath, segPath)
+      || !materials.isDirectory(segPath)) {
+      return unavailable(full);
+    }
+    currentPath = segPath;
+  }
   return folder({
     path: full,
-    name: path.split('/').pop() || path,
+    name: currentPath.split('/').pop() || currentPath,
     icon: 'folder-open',
     kindLabel: 'Folder',
-    entries: materials.list(path).map(materialEntry),
+    entries: materials.list(currentPath).map(materialEntry),
     sourceId,
   });
 }

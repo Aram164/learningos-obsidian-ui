@@ -13,7 +13,7 @@ const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
 function buildOnce(env = {}) {
   const result = spawnSync(process.execPath, ['build.mjs'], {
-    cwd: root, encoding: 'utf8', env: { ...process.env, ...env },
+    cwd: root, encoding: 'utf8', timeout: 120_000, env: { ...process.env, ...env },
   });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout || 'build failed');
   return {
