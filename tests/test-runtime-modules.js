@@ -36,6 +36,7 @@ const { ApplicationRouter } = load('src/app/router.ts');
 const { asPlanTemplate } = load('src/features/plan-template.ts');
 const { enableButtonGroupKeyboardNavigation } = load('src/accessibility/button-group.ts');
 const constants = load('src/constants.ts');
+const { readBuildInfo, fallbackBuildInfo } = load('src/infrastructure/build-info.ts');
 
 const SNAPSHOT = `sha256:${'1'.repeat(64)}`;
 const gatewayFileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-ui-gateway-'));
@@ -2322,7 +2323,7 @@ function routerPlugin(settings = {}) {
     };
     const gateway = new GatewayClient(plugin);
     await gateway.progress('u', 's', 'complete');
-    await gateway.sourceSelection('u', 'route-u-chapter-2', 'src', 'Chapter 2', 'Worked derivation', true);
+    await gateway.sourceSelection('u', 'src', 'Chapter 2', 'Worked derivation', true);
     await gateway.feedback('u', 's', 'src', 'helpful');
     await gateway.detour('u', 's', 'a gap');
     await gateway.resolveDetour('u', 'd', 'done');
@@ -2334,6 +2335,8 @@ function routerPlugin(settings = {}) {
       text: 'body', stageIds: ['s'], filePaths: [gatewayFile],
     });
 
+    const selection = calls.find((c) => c.envelope.capability === 'unit.source-selection.set');
+    assert.ok(!('route_id' in selection.envelope.payload), 'unit.source-selection.set must not transmit undeclared route_id');
     assert.deepEqual(calls.map((c) => c.envelope.capability), [
       'stage.progress.update', 'unit.source-selection.set', 'source.feedback.record', 'detour.create',
       'detour.resolve', 'stage.attachment.add', 'capture.create',
@@ -3156,6 +3159,134 @@ function routerPlugin(settings = {}) {
       null,
     );
     assert.equal('ability-claim-1' in legacyAbility.abilityDrafts, true);
+  });
+
+  await test('legacy V1 ability recovery records retire only exact unedited single matches (#26)', async () => {
+    const idempotencyKey = 'idem-req-legacy-v1-ability';
+    const claimDraft = {
+      kind: 'claim',
+      id: 'ability-claim-legacy',
+      abilityId: 'ability-sad-ols',
+      abilityTitle: 'OLS derivation',
+      workspace: 'workspace-demo',
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      conditionsMet: ['specified differentiable graph and loss'],
+      conditionsNotMet: [],
+      evidenceTags: ['correct local derivative chain'],
+      workRef: 'conversation://synthetic/1',
+      claim: 'Exact claim',
+      supersedes: null,
+      createdAt: '2026-11-21T08:59:00.000Z',
+      updatedAt: '2026-11-21T09:00:00.000Z',
+    };
+    const connectionDraft = {
+      kind: 'connection',
+      id: 'ability-conn-legacy',
+      fromAbility: 'ability-sad-ols',
+      fromTitle: 'OLS',
+      toAbility: 'ability-aml-ols',
+      toTitle: 'AML OLS',
+      connection: 'connection',
+      carries: 'Same normal equation',
+      changes: 'Regularizer added',
+      conditions: ['linear model'],
+      sourceRef: '',
+      createdAt: '2026-11-21T08:59:00.000Z',
+      updatedAt: '2026-11-21T09:00:00.000Z',
+    };
+
+    const claimPayload = {
+      workspace: 'workspace-demo',
+      ability: 'ability-sad-ols',
+      claim: 'Exact claim',
+      work_ref: 'conversation://synthetic/1',
+      confirmation_ref: `conversation://learningos-app/${idempotencyKey}`,
+      activity: 'Worked problem 1',
+      result: 'correct',
+      assistance: 'none',
+      condition: ['specified differentiable graph and loss'],
+      condition_not_met: [],
+      evidence_tag: ['correct local derivative chain'],
+    };
+
+    const makeV1Envelope = (capability, payload) => {
+      const req = {
+        schema_version: 2,
+        request_id: 'req-legacy-v1',
+        idempotency_key: idempotencyKey,
+        capability,
+        channel: 'ui',
+        expected_snapshot: SNAPSHOT,
+        expected_revisions: { 'workspace-demo': 0 },
+        approval: { kind: 'direct-user-gesture', subject_sha256: '' },
+        payload,
+      };
+      req.approval.subject_sha256 = approvalSubjectSha256(req);
+      return req;
+    };
+
+    // Full V1 learner.ability-observation.append record settled via SettingsGatewayRecoveryStore
+    const claimEnv = makeV1Envelope('learner.ability-observation.append', claimPayload);
+    const v1ClaimSettings = {
+      gatewayRecovery: {
+        schema_version: 1,
+        phase: 'confirmed',
+        created_at: '2026-11-21T09:00:05.000Z',
+        envelope_json: JSON.stringify(claimEnv),
+        confirmation: JSON.parse(gatewayConfirmation(JSON.stringify(claimEnv))),
+        last_error: null,
+      },
+      uiDrafts: emptyUiDrafts(),
+    };
+    v1ClaimSettings.uiDrafts.abilityDrafts[claimDraft.id] = claimDraft;
+    v1ClaimSettings.uiDrafts.abilityDrafts['unrelated-claim'] = {
+      ...claimDraft,
+      id: 'unrelated-claim',
+      claim: 'Different claim text',
+    };
+    const v1Store = new SettingsGatewayRecoveryStore(v1ClaimSettings, async () => {});
+    assert.equal((await v1Store.load()).kind, 'record');
+    await v1Store.settleConfirmed();
+    assert.equal(claimDraft.id in v1ClaimSettings.uiDrafts.abilityDrafts, false,
+      'exact single V1 claim draft retires on confirmation settlement');
+    assert.equal('unrelated-claim' in v1ClaimSettings.uiDrafts.abilityDrafts, true,
+      'unrelated ability draft survives');
+
+    // Full V1 ability.candidate.append record clears exact single matching connection draft
+    const connEnv = makeV1Envelope('ability.candidate.append', {
+      from_ability: 'ability-sad-ols',
+      to_ability: 'ability-aml-ols',
+      kind: 'connection',
+      carries: 'Same normal equation',
+      changes: 'Regularizer added',
+      condition: ['linear model'],
+      source_ref: `conversation://learningos-app/${idempotencyKey}`,
+    });
+    const connDrafts = emptyUiDrafts();
+    connDrafts.abilityDrafts[connectionDraft.id] = connectionDraft;
+    clearDraftsOwnedBy(connDrafts, connEnv, null, '2026-11-21T09:00:05.000Z');
+    assert.equal(connectionDraft.id in connDrafts.abilityDrafts, false,
+      'exact single V1 connection draft retires');
+
+    // Newer draft edit (updatedAt > record.created_at) survives
+    const editedDrafts = emptyUiDrafts();
+    editedDrafts.abilityDrafts[claimDraft.id] = {
+      ...claimDraft,
+      updatedAt: '2026-11-21T09:01:00.000Z',
+    };
+    clearDraftsOwnedBy(editedDrafts, claimEnv, null, '2026-11-21T09:00:05.000Z');
+    assert.equal(claimDraft.id in editedDrafts.abilityDrafts, true,
+      'V1 claim draft edited after record.created_at survives');
+
+    // Ambiguous duplicate identical siblings both survive
+    const dupDrafts = emptyUiDrafts();
+    dupDrafts.abilityDrafts['dup-1'] = { ...claimDraft, id: 'dup-1' };
+    dupDrafts.abilityDrafts['dup-2'] = { ...claimDraft, id: 'dup-2' };
+    clearDraftsOwnedBy(dupDrafts, claimEnv, null, '2026-11-21T09:00:05.000Z');
+    assert.equal('dup-1' in dupDrafts.abilityDrafts, true);
+    assert.equal('dup-2' in dupDrafts.abilityDrafts, true);
   });
 
   await test('recovery schema_version 2 validates draft_owner strictly and leaves V1 records as V1', async () => {
@@ -4013,6 +4144,43 @@ function routerPlugin(settings = {}) {
     await assert.rejects(recovery.settleConfirmed(owner), /older result/);
     await assert.rejects(recovery.settleConfirmed(), /Only a confirmed/);
     assert.deepEqual(settings, before);
+  });
+
+  await test('readBuildInfo returns unavailable sentinels and null dirty flag when missing or corrupt (#11)', async () => {
+    const tmpVault = fs.mkdtempSync(path.join(os.tmpdir(), 'los-build-info-'));
+    try {
+      const missing = readBuildInfo({ basePath: tmpVault, uiVersion: '9.9.9' });
+      assert.deepEqual(missing, fallbackBuildInfo('9.9.9'));
+      assert.equal(missing.source_revision, 'unavailable');
+      assert.equal(missing.source_dirty, null);
+      assert.equal(missing.bundle_sha256, 'unavailable');
+
+      const pluginDir = path.join(tmpVault, '.obsidian', 'plugins', 'learningos-ui');
+      fs.mkdirSync(pluginDir, { recursive: true });
+      const infoPath = path.join(pluginDir, 'build-info.json');
+
+      fs.writeFileSync(infoPath, '{not valid json', 'utf8');
+      const corrupt = readBuildInfo({ basePath: tmpVault, uiVersion: '9.9.9' });
+      assert.deepEqual(corrupt, fallbackBuildInfo('9.9.9'));
+
+      fs.writeFileSync(infoPath, JSON.stringify({
+        ui_version: '0.2.0',
+        source_revision: 'abc1234',
+        source_dirty: false,
+        bundle_sha256: 'deadbeef',
+      }), 'utf8');
+      const partial = readBuildInfo({ basePath: tmpVault, uiVersion: '9.9.9' });
+      assert.equal(partial.ui_version, '0.2.0');
+      assert.equal(partial.source_revision, 'abc1234');
+      assert.equal(partial.source_dirty, false);
+      assert.equal(partial.source_fingerprint, 'unavailable');
+      assert.equal(partial.bundle_sha256, 'deadbeef');
+
+      const noDirty = readBuildInfo({ basePath: '', uiVersion: '9.9.9' });
+      assert.deepEqual(noDirty, fallbackBuildInfo('9.9.9'));
+    } finally {
+      fs.rmSync(tmpVault, { recursive: true, force: true });
+    }
   });
 
   if (failures) {

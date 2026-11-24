@@ -290,7 +290,9 @@ module.exports = async function run() {
     await waitFor(() => calls.envelopes.length > before);
     const choice = calls.envelope('unit.source-selection.set');
     check('Choose for this lecture is the same guarded source selection',
-      Boolean(choice) && JSON.stringify(choice).includes('route-fx-sheet'));
+      choice?.payload?.source_id === 'source-fixture-slides'
+      && choice?.payload?.locator === 'exercises/blatt-04.pdf'
+      && !('route_id' in (choice?.payload ?? {})));
 
     const stageChip = root().find('sd-chip-select-input').find((node) => node.getAttribute('aria-label') === 'Stage');
     stageChip.value = '2'; stageChip.fire('change');

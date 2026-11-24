@@ -21,7 +21,8 @@ const names = ['HealthReportV1', 'LegacyArchiveLockV1', 'LegacyArchiveStatusV1',
   'GatewaySuccessV2', 'GatewayFailureV2', 'GatewayRequestV2', 'MaterialSpanWire',
   'AbilityBriefWire', 'AbilityFocusWire', 'AbilityUnmappedWire', 'ProjectionSettlementWire',
   'StudySequenceV1', 'SessionEndV1', 'StatusV1', 'PlanTemplateV1',
-  'AiActionPrepareV1', 'AiActionStatusV1', 'UnitMapImportCheckV1'];
+  'AiActionPrepareV1', 'AiActionStatusV1', 'AiActionDeliveryPreviewV1',
+  'UnitMapImportCheckV1', 'UnitMapImportPreviewV1'];
 try {
   const info = findCorePython(core);
   if (!info) throw new Error('Core with its dependencies is required to generate or check response contracts.');

@@ -12,6 +12,13 @@ const LearningOSUI = require(
 const FIXTURE_SNAPSHOT = JSON.parse(fs.readFileSync(
   path.join(FIXTURE, 'generated', 'manifest.json'), 'utf8'))._generated.snapshot_id;
 const tick = () => new Promise((resolve) => setImmediate(resolve));
+async function waitFor(predicate, label = 'condition') {
+  const deadline = Date.now() + 5000;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error(`Timed out waiting for ${label}`);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
 let failures = 0;
 function check(name, condition, detail = '') {
   if (condition) { console.log(`  ok   ${name}`); return; }
@@ -23,17 +30,41 @@ async function main() {
   console.log('\nLearningOS AI-action tests (synthetic fixture only)');
   const app = makeApp(FIXTURE);
   const calls = [];
+  const envelopes = [];
   const plugin = new LearningOSUI(app, { id: 'learningos-ui', version: 'test' });
-  plugin.runLos = (args, callback) => {
+  plugin.runLos = (args, callback, stdin) => {
     calls.push(args);
     if (args[0] === 'ai-action-prepare') return callback(null, JSON.stringify({
       ok: true,
       request: { id: 'ai-request-new', status: 'prepared', bundle_path: 'operations/ai-actions/requests/ai-request-new' },
       bundle_path: 'operations/ai-actions/requests/ai-request-new',
     }), '');
-    if (args[0] === 'ai-action-apply-delivery') return callback(null, JSON.stringify({
-      ok: true, receipt: { id: 'ai-receipt-fixture' },
+    if (args[0] === 'ai-action-apply-preview') return callback(null, JSON.stringify({
+      ok: true,
+      delivery_id: args[1],
+      request_id: 'ai-request-fixture',
+      delivery_sha256: `sha256:${'b'.repeat(64)}`,
+      artifact_sha256: { 'artifacts/note.md': `sha256:${'c'.repeat(64)}` },
+      expected_snapshot: FIXTURE_SNAPSHOT,
+      expected_revisions: { 'garden-note-fixture-soft-knn': 0 },
     }), '');
+    if (args[0] === 'capability' && stdin) {
+      const env = JSON.parse(stdin);
+      envelopes.push(env);
+      return callback(null, JSON.stringify({
+        schema_version: 2,
+        request_id: env.request_id,
+        idempotency_key: env.idempotency_key,
+        capability: env.capability,
+        ok: true,
+        replayed: false,
+        transaction_id: 'tx-ai-fixture',
+        receipt_path: 'operations/transactions/tx-ai-fixture.yaml',
+        snapshot_after: FIXTURE_SNAPSHOT,
+        result: { receipt: { id: 'ai-receipt-fixture' } },
+        error: null,
+      }), '');
+    }
     return callback(null, JSON.stringify({ ok: true }), '');
   };
   app._plugin = plugin;
@@ -61,10 +92,19 @@ async function main() {
     && prepare?.includes('manual-bundle'));
   check('ordinary learning needs no Job export ceremony', !prepare?.includes('--confirm-job-export'));
 
-  root.findText('los-btn', 'Apply approved delivery').fire('click');
-  await tick(); await tick();
-  const apply = calls.find((args) => args[0] === 'ai-action-apply-delivery');
-  check('approved delivery application uses its exact delivery ID', apply?.[1] === 'ai-delivery-fixture');
+  const applyBtn = root.findText('los-btn', 'Apply approved delivery');
+  applyBtn.fire('click');
+  check('apply button disables immediately while delivery application is in flight', applyBtn.disabled === true);
+  applyBtn.fire('click');
+  await waitFor(() => envelopes.length === 1 && !plugin.gateway.isBusy, 'delivery apply envelope');
+  const previewCall = calls.find((args) => args[0] === 'ai-action-apply-preview');
+  const applyEnvelope = envelopes.find((env) => env.capability === 'ai-action.delivery.apply');
+  check('approved delivery application previews digests first', previewCall?.[1] === 'ai-delivery-fixture');
+  check('approved delivery application sends Gateway V2 approved-delivery envelope once',
+    envelopes.length === 1
+    && applyEnvelope?.payload?.delivery_id === 'ai-delivery-fixture'
+    && applyEnvelope?.approval?.kind === 'approved-delivery'
+    && applyEnvelope?.expected_snapshot === FIXTURE_SNAPSHOT);
   check('successful preparation is reported without provider access',
     Notice.log.some((message) => message.includes('operations/ai-actions/requests/ai-request-new')));
 

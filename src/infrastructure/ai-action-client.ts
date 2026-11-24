@@ -1,3 +1,4 @@
+import type { GatewaySuccessV2 } from '../contracts/gateway-v2';
 import type {
   ProjectionRecord,
 } from '../contracts/manifest';
@@ -5,7 +6,7 @@ import type { GatewayClient } from '../gateway-client';
 import type { ManifestStore } from '../manifest-store';
 
 type AIActionPlugin = {
-  readonly gateway: Pick<GatewayClient, 'call' | 'guard'>;
+  readonly gateway: Pick<GatewayClient, 'call' | 'guard' | 'applyApprovedDelivery'>;
   readonly store: Pick<ManifestStore, 'aiProviders'>;
   mutate<T>(action: () => T | PromiseLike<T>): Promise<T>;
 };
@@ -62,12 +63,9 @@ export class AIActionClient {
 
   applyApprovedDelivery(
     deliveryId: string,
-  ): Promise<ProjectionRecord> {
+  ): Promise<GatewaySuccessV2> {
     return this.plugin.mutate(
-      () => this.plugin.gateway.call([
-        'ai-action-apply-delivery',
-        deliveryId,
-      ]),
+      () => this.plugin.gateway.applyApprovedDelivery(deliveryId),
     );
   }
 }

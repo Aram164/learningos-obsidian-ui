@@ -279,6 +279,55 @@ export function renderRouteSpan(parent: HTMLElement, deps: MaterialCardDeps, rou
   renderSpan(parent, deps, routeId, placement);
 }
 
+const inFlightRouteChoices = new WeakMap<object, Set<string>>();
+const routeChoiceButtons = new WeakMap<object, Map<string, Set<HTMLButtonElement>>>();
+
+function routeChoiceKey(unitId: string, option: MaterialOptionView): string {
+  return `${unitId}::${option.routeId || `${option.sourceId ?? ''}::${option.locator ?? ''}`}`;
+}
+
+function registerRouteChoiceButton(
+  plugin: object,
+  key: string,
+  buttonEl: HTMLButtonElement,
+): void {
+  let byKey = routeChoiceButtons.get(plugin);
+  if (!byKey) {
+    byKey = new Map();
+    routeChoiceButtons.set(plugin, byKey);
+  }
+  let buttons = byKey.get(key);
+  if (!buttons) {
+    buttons = new Set();
+    byKey.set(key, buttons);
+  }
+  for (const existing of buttons) {
+    if (existing.isConnected === false) buttons.delete(existing);
+  }
+  buttons.add(buttonEl);
+}
+
+function syncRouteChoiceButtons(plugin: object, key: string, busy: boolean): void {
+  const buttons = routeChoiceButtons.get(plugin)?.get(key);
+  if (!buttons) return;
+  for (const btn of buttons) {
+    if (btn.isConnected === false) {
+      buttons.delete(btn);
+      continue;
+    }
+    btn.disabled = busy;
+    btn.setAttr('aria-busy', String(busy));
+  }
+}
+
+export function isRouteChoiceInFlight(
+  plugin: object,
+  unitId: string,
+  option: MaterialOptionView,
+): boolean {
+  return inFlightRouteChoices.get(plugin)?.has(routeChoiceKey(unitId, option)) ?? false;
+}
+
 /**
  * Choose a route for this lecture, or remove the choice: the one guarded
  * source-selection write every surface uses (`unit.source-selection.set`).
@@ -291,13 +340,60 @@ export function toggleRouteChoice(
 ): Promise<unknown> {
   return plugin.mutate(() => plugin.gateway.sourceSelection(
     unitId,
-    option.routeId,
     option.sourceId ?? '',
     option.locator ?? '',
     asText(option.angle) ?? option.angle,
     !option.selected,
     expectedRevisions,
   ));
+}
+
+export function renderRouteChoiceButton(
+  parent: HTMLElement,
+  plugin: Pick<UnitPlugin, 'gateway' | 'mutate'>,
+  unitId: string,
+  option: MaterialOptionView,
+  expectedRevisions: Readonly<Record<string, number>>,
+  {
+    label,
+    variant = 'choice',
+    onSuccess,
+  }: {
+    readonly label: string;
+    readonly variant?: 'choice' | 'quiet';
+    readonly onSuccess?: () => void;
+  },
+): HTMLButtonElement {
+  const key = routeChoiceKey(unitId, option);
+  const wasSelected = option.selected;
+  const choice = button(parent, label, () => {
+    let locked = inFlightRouteChoices.get(plugin);
+    if (locked?.has(key) || choice.disabled) return;
+    if (!locked) {
+      locked = new Set();
+      inFlightRouteChoices.set(plugin, locked);
+    }
+    locked.add(key);
+    syncRouteChoiceButtons(plugin, key, true);
+    void toggleRouteChoice(plugin, unitId, option, expectedRevisions)
+      .then(() => {
+        new Notice(wasSelected ? 'Material choice removed.' : 'Material chosen for this lecture.');
+        onSuccess?.();
+      })
+      .catch((error: unknown) => {
+        new Notice(errorMessage(error));
+      })
+      .finally(() => {
+        locked?.delete(key);
+        syncRouteChoiceButtons(plugin, key, false);
+      });
+  }, variant);
+  const busy = isRouteChoiceInFlight(plugin, unitId, option);
+  choice.disabled = busy;
+  choice.setAttr('aria-busy', String(busy));
+  choice.setAttr('aria-pressed', String(option.selected));
+  registerRouteChoiceButton(plugin, key, choice);
+  return choice;
 }
 
 const SPAN_AVAILABILITY: Readonly<Record<MaterialSpanV1['availability'], string>> = {

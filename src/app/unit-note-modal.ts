@@ -9,7 +9,8 @@ import { makeModalAccessible } from '../accessibility/modal';
 
 type UnitNotePlugin = {
   readonly gateway: Pick<GatewayClient, 'isBusy' | 'saveUnitNote'>;
-  readonly store: Pick<ManifestStore, 'artifactGuard'>;
+  readonly store: Pick<ManifestStore, 'artifactGuard'>
+    & Partial<Pick<ManifestStore, 'get' | 'mapForUnit'>>;
   getUnitNoteDraft(unitId: string, stages?: ProjectionRecord[]): UnitNoteDraft;
   setUnitNoteDraft(
     unitId: string,
@@ -45,6 +46,7 @@ export class UnitNoteModal extends Modal {
   private editor!: HTMLTextAreaElement;
   private fileInput!: HTMLInputElement;
   private fileSummary!: HTMLDivElement;
+  private stageSummary!: HTMLDivElement;
   private restoreAccessibility: (() => void) | null = null;
 
   /* Suppresses a second Save on this modal. The gateway's own lock already
@@ -75,27 +77,46 @@ export class UnitNoteModal extends Modal {
       empty(root, 'Unit unavailable', 'The projection returned a unit without an identity.');
       return;
     }
-    this.expectedRevisions = this.plugin.store.artifactGuard(
-      unitId,
-      typeof this.studyMap?.id === 'string' ? this.studyMap.id : null,
+    this.expectedRevisions = this.plugin.store.artifactGuard(unitId);
+    const liveUnit = this.plugin.store.get?.(unitId) ?? this.unit;
+    const liveStudyMap = this.plugin.store.mapForUnit?.(unitId) ?? this.studyMap;
+    const stages = asRecords(liveStudyMap?.stages);
+    const validStageIds = new Set(
+      stages
+        .map((stage: ProjectionRecord) => stage.id)
+        .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
     );
-    const stages = asRecords(this.studyMap?.stages);
     const draft = this.plugin.getUnitNoteDraft(unitId, stages);
-    if (Object.keys(draft.expectedRevisions).length) {
-      this.expectedRevisions = draft.expectedRevisions;
-    }
-    const recoveredStageIds: string[] = Array.isArray(
-      draft.recoveredStageIds,
-    )
-      ? draft.recoveredStageIds.filter(
-        (id: unknown): id is string => typeof id === 'string',
-      )
+    const recoveredStageIds: string[] = Array.isArray(draft.recoveredStageIds)
+      ? draft.recoveredStageIds.filter((id: unknown): id is string => typeof id === 'string')
       : [];
-    this.recoveredStages = draft.recoveredStages || {};
+    const rawRecovered = draft.recoveredStages || {};
+    const validRecoveredStages: Record<string, string> = {};
+    for (const [stageId, text] of Object.entries(rawRecovered)) {
+      if (validStageIds.has(stageId)) validRecoveredStages[stageId] = text;
+    }
+    const validRecoveredIds = recoveredStageIds.filter((id) => validStageIds.has(id));
+    const droppedStageIds = [
+      ...new Set([
+        ...recoveredStageIds.filter((id) => !validStageIds.has(id)),
+        ...Object.keys(rawRecovered).filter((id) => !validStageIds.has(id)),
+      ]),
+    ];
+    this.recoveredStages = validRecoveredStages;
+    if (droppedStageIds.length && (draft.title.trim() || draft.text.trim())) {
+      this.plugin.setUnitNoteDraft(
+        unitId,
+        draft.title,
+        draft.text,
+        this.expectedRevisions,
+        this.recoveredStages,
+      );
+      new Notice(`Removed retired stage reference(s) from this note draft: ${droppedStageIds.join(', ')}.`);
+    }
     this.referencedStageIds = [
       ...new Set<string>([
-        ...this.unrecordedCompletedStages(stages),
-        ...recoveredStageIds,
+        ...this.unrecordedCompletedStages(stages, liveUnit),
+        ...validRecoveredIds,
       ]),
     ];
 
@@ -111,15 +132,13 @@ export class UnitNoteModal extends Modal {
 
     const context = root.createDiv({ cls: 'los-unit-note-context' });
     context.createDiv({ cls: 'los-kicker', text: 'Stages covered' });
-    if (this.referencedStageIds.length) {
-      const names = this.referencedStageIds.map(
-        (id: string) => stages.find(
-          (stage: ProjectionRecord) => stage.id === id,
-        )?.title || id,
-      );
-      context.createDiv({ text: names.join(' · ') });
-    } else {
-      context.createDiv({ cls: 'los-micro', text: 'No newly completed stage is required. You may still record a unit-level observation.' });
+    this.stageSummary = context.createDiv();
+    this.renderStageSummary(stages);
+    if (droppedStageIds.length) {
+      context.createDiv({
+        cls: 'los-micro',
+        text: `Retired stage reference(s) removed after study-map update: ${droppedStageIds.join(', ')}.`,
+      });
     }
 
     this.titleInput = root.createEl('input', {
@@ -153,12 +172,13 @@ export class UnitNoteModal extends Modal {
     button(actions, 'Cancel', () => this.close(), 'quiet');
     const saveButton = button(actions, 'Save note', () => this.save(), 'cta');
     const persist = () => {
+      this.expectedRevisions = this.plugin.store.artifactGuard(unitId);
       this.plugin.setUnitNoteDraft(
         unitId,
         this.titleInput.value,
         this.editor.value,
         this.expectedRevisions,
-        draft.recoveredStages,
+        this.recoveredStages,
       );
       const hasNote = Boolean(this.editor.value.trim());
       status.setText(hasNote ? 'Draft kept locally until the core confirms the save.' : 'Write a note to enable saving.');
@@ -171,11 +191,28 @@ export class UnitNoteModal extends Modal {
     persist();
   }
 
+  private renderStageSummary(stages: ProjectionRecord[]): void {
+    if (!this.stageSummary) return;
+    this.stageSummary.empty();
+    if (this.referencedStageIds.length) {
+      const names = this.referencedStageIds.map(
+        (id: string) => stages.find(
+          (stage: ProjectionRecord) => stage.id === id,
+        )?.title || id,
+      );
+      this.stageSummary.setText(names.join(' · '));
+    } else {
+      this.stageSummary.addClass('los-micro');
+      this.stageSummary.setText('No newly completed stage is required. You may still record a unit-level observation.');
+    }
+  }
+
   unrecordedCompletedStages(
     stages: ProjectionRecord[],
+    unit: ProjectionRecord = this.unit,
   ): string[] {
     const already = new Set<string>(
-      asRecords(this.unit.note_sections).flatMap(
+      asRecords(unit.note_sections).flatMap(
         (section: ProjectionRecord) => Array.isArray(section.stage_ids)
           ? section.stage_ids.filter(
             (id: unknown): id is string => typeof id === 'string',
@@ -206,6 +243,25 @@ export class UnitNoteModal extends Modal {
     if (filePaths.length !== this.files.length) {
       new Notice('One selected attachment has no readable local path. Remove it and choose the file again.');
       return;
+    }
+    this.expectedRevisions = this.plugin.store.artifactGuard(unitId);
+    const liveStudyMap = this.plugin.store.mapForUnit?.(unitId) ?? this.studyMap;
+    const liveStages = asRecords(liveStudyMap?.stages);
+    const validStageIds = new Set(
+      liveStages
+        .map((stage: ProjectionRecord) => stage.id)
+        .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
+    );
+    const dropped = this.referencedStageIds.filter((id) => !validStageIds.has(id));
+    if (dropped.length) {
+      this.referencedStageIds = this.referencedStageIds.filter((id) => validStageIds.has(id));
+      const nextRecovered: Record<string, string> = {};
+      for (const [stageId, value] of Object.entries(this.recoveredStages)) {
+        if (validStageIds.has(stageId)) nextRecovered[stageId] = value;
+      }
+      this.recoveredStages = nextRecovered;
+      this.renderStageSummary(liveStages);
+      new Notice(`Removed retired stage reference(s) before saving: ${dropped.join(', ')}.`);
     }
     this.saving = true;
     try {

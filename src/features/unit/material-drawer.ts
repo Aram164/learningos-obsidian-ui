@@ -1,4 +1,4 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal } from 'obsidian';
 import { makeModalAccessible } from '../../accessibility/modal';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import { foldCase } from '../../sorting';
@@ -12,8 +12,8 @@ import {
   purposeLabel,
   renderPlacementCard,
   renderRouteCard,
+  renderRouteChoiceButton,
   routeForResource,
-  toggleRouteChoice,
   type MaterialCardDeps,
 } from './material-card';
 
@@ -352,11 +352,13 @@ export class MaterialComparisonModal extends Modal {
   private renderChoose(actions: HTMLElement, option: MaterialOptionView): void {
     if (!option.canChoose || !option.sourceId || !option.locator) return;
     const { plugin, unit, expectedRevisions, onChanged } = this.options;
-    const choice = button(actions, option.selected ? 'Remove choice' : 'Choose', () => {
-      void toggleRouteChoice(plugin, unit.id, option, expectedRevisions)
-        .then(() => { new Notice(option.selected ? 'Material choice removed.' : 'Material chosen for this lecture.'); onChanged(); this.close(); })
-        .catch((error: unknown) => { new Notice(error instanceof Error ? error.message : String(error)); });
-    }, 'choice');
-    choice.setAttr('aria-pressed', String(option.selected));
+    renderRouteChoiceButton(actions, plugin, unit.id, option, expectedRevisions, {
+      label: option.selected ? 'Remove choice' : 'Choose',
+      variant: 'choice',
+      onSuccess: () => {
+        onChanged();
+        this.close();
+      },
+    });
   }
 }

@@ -608,7 +608,7 @@ module.exports = async function run() {
     const selection = calls.envelope('unit.source-selection.set');
     check('choosing from the drawer sends the unchanged governed selection',
       selection?.payload.unit_id === 'unit-fixture-sad-l04'
-      && selection?.payload.route_id === 'route-drawer-intuition'
+      && !('route_id' in selection?.payload)
       && selection?.payload.source_id === 'source-fixture-book'
       && selection?.payload.locator === 'papers/domingos.pdf'
       && selection?.payload.action === 'select'
@@ -805,7 +805,7 @@ module.exports = async function run() {
     const selection = calls.envelope('unit.source-selection.set');
     check('choosing a material persists the exact lecture option through the guarded gateway',
       selection?.payload.unit_id === 'unit-fixture-analysis'
-      && selection?.payload.route_id === 'route-fixture-analysis-book'
+      && !('route_id' in selection?.payload)
       && selection?.payload.source_id === 'source-fixture-book'
       && selection?.payload.locator === 'Chapter 2 §§2.1–2.3'
       && selection?.payload.action === 'select'
@@ -1358,6 +1358,142 @@ module.exports = async function run() {
     check('a printed page beside a physical one never becomes the destination',
       seen.length === 1 && seen[0][2] && seen[0][2].page === 11);
 
+    plugin.onunload();
+  }
+
+  heading('UnitNoteModal recomputes fresh unit artifactGuard and drops retired stage references (#24)');
+  {
+    const { gatewayConfirmation } = require('./support');
+    let retireRemainingStage = false;
+    Notice.log.length = 0;
+    const { plugin, calls } = await boot({
+      settings: {
+        uiDrafts: {
+          inbox: { title: '', text: '' },
+          garden: { title: '', text: '' },
+          stages: {},
+          unitNotes: {
+            'unit-fixture-sad-l04': {
+              title: 'Draft title',
+              text: 'Carried session synthesis',
+              expectedRevisions: {
+                'unit-fixture-sad-l04': 0,
+                'study-map-fixture-sad-l04': 77,
+              },
+              recoveredStages: {
+                'stage-fixture-conditioning': 'Conditioning scratch',
+                'stage-retired-legacy': 'Retired stage scratch',
+              },
+            },
+          },
+          doneWhen: {},
+          abilityDrafts: {},
+        },
+      },
+      patchManifest: (manifest) => {
+        if (!retireRemainingStage) return;
+        const map = manifest.study_maps.find((m) => m.unit_id === 'unit-fixture-sad-l04');
+        map.stages = map.stages.filter((s) => s.id !== 'stage-fixture-conditioning');
+      },
+    });
+    const unit = plugin.store.get('unit-fixture-sad-l04');
+    const studyMap = plugin.store.mapForUnit('unit-fixture-sad-l04');
+    const expectedGuard = plugin.store.artifactGuard('unit-fixture-sad-l04');
+    Notice.log.length = 0;
+    const modal = plugin.openUnitNote(unit, studyMap);
+    await frame();
+    check('UnitNoteModal drops retired recovered stage on open with notice and fresh artifactGuard',
+      JSON.stringify(modal.expectedRevisions) === JSON.stringify(expectedGuard)
+      && !('study-map-fixture-sad-l04' in modal.expectedRevisions)
+      && !modal.referencedStageIds.includes('stage-retired-legacy')
+      && modal.referencedStageIds.includes('stage-fixture-conditioning')
+      && !('stage-retired-legacy' in (plugin.getUnitNoteDraft('unit-fixture-sad-l04').recoveredStages || {}))
+      && Notice.log.some((msg) => msg.includes('stage-retired-legacy'))
+      && modal.contentEl.allText().includes('Retired stage reference(s) removed after study-map update: stage-retired-legacy.'));
+
+    retireRemainingStage = true;
+    await plugin.reloadStore();
+    Notice.log.length = 0;
+    modal.contentEl.findText('los-btn', 'Save note').fire('click');
+    await waitFor(() => Boolean(calls.envelope('unit.note.append')) && !plugin.gateway.isBusy);
+    const noteEnvelope = calls.envelope('unit.note.append');
+    check('UnitNoteModal save revalidates retired stages against live map and submits fresh artifactGuard',
+      JSON.stringify(noteEnvelope?.expected_revisions) === JSON.stringify(plugin.store.artifactGuard('unit-fixture-sad-l04'))
+      && !noteEnvelope?.payload?.stage_id?.includes('stage-fixture-conditioning')
+      && !noteEnvelope?.payload?.stage_id?.includes('stage-retired-legacy')
+      && Notice.log.some((msg) => msg.includes('stage-fixture-conditioning')));
+    plugin.onunload();
+  }
+
+  heading('per-route source selection toggle prevents concurrent duplicate requests (#36)');
+  {
+    const { gatewayConfirmation, gatewayRefusal } = require('./support');
+    let finishSelection = null;
+    let shouldFail = true;
+    const { app, plugin, calls } = await boot({
+      patchManifest: (manifest) => {
+        const sourceMap = manifest.module_source_maps.find((row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes.push({
+          id: 'route-fixture-analysis-lock',
+          unit_id: 'unit-fixture-analysis',
+          title: 'Fixture lock route — derivation angle',
+          format: 'book',
+          angle: 'Builds the generalization argument cleanly.',
+          covers: ['knowledge-fixture-formulation'],
+          depth: 'derivation',
+          scope: 'current',
+          locator: 'Chapter 2 §§2.1–2.3',
+          source_id: 'source-fixture-book',
+          material_path: '.flat/source-fixture-book/chapter-2.pdf',
+        });
+      },
+      runLosOverride: (args, callback, stdin) => {
+        const envelope = stdin ? JSON.parse(stdin) : null;
+        if (envelope?.capability === 'unit.source-selection.set') {
+          finishSelection = () => {
+            if (shouldFail) {
+              return callback(null, JSON.stringify(
+                gatewayRefusal(envelope, 'REVISION_CONFLICT', 'Retry needed'),
+              ), '');
+            }
+            return callback(null, JSON.stringify(gatewayConfirmation(envelope)), '');
+          };
+          return;
+        }
+        return callback(null, JSON.stringify({ ok: true }), '');
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-analysis');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const chooseBtn = () => view.contentEl.findText('los-btn', 'Choose');
+    const selectionCalls = () => calls.envelopes.filter((e) => e.capability === 'unit.source-selection.set');
+
+    chooseBtn().fire('click');
+    check('clicking Choose locks and disables the route choice button synchronously',
+      chooseBtn().disabled === true
+      && chooseBtn().getAttribute('aria-busy') === 'true');
+    chooseBtn().fire('click');
+    view.render();
+    check('re-rendering the unit view keeps the in-flight route choice button disabled',
+      chooseBtn().disabled === true);
+    chooseBtn().fire('click');
+    await waitFor(() => selectionCalls().length === 1);
+    await frame();
+    check('rapid double-clicks and post-redraw clicks send only one source-selection write',
+      selectionCalls().length === 1);
+
+    finishSelection();
+    await waitFor(() => !plugin.gateway.isBusy && chooseBtn().disabled === false);
+    check('failed source-selection toggle re-enables the button cleanly',
+      chooseBtn().disabled === false && chooseBtn().getAttribute('aria-busy') === 'false');
+
+    shouldFail = false;
+    chooseBtn().fire('click');
+    await waitFor(() => selectionCalls().length === 2);
+    finishSelection();
+    await waitFor(() => !plugin.gateway.isBusy && chooseBtn().disabled === false);
+    check('subsequent source-selection toggle after error proceeds normally',
+      selectionCalls().length === 2);
     plugin.onunload();
   }
 };

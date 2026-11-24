@@ -1,5 +1,13 @@
-import { validateProjectionSettlementWire } from './contracts/generated/responses.validator.cjs';
-import type { ProjectionSettlementWire } from './contracts/generated/responses.types';
+import {
+  validateAiActionDeliveryPreviewV1,
+  validateProjectionSettlementWire,
+  validateUnitMapImportPreviewV1,
+} from './contracts/generated/responses.validator.cjs';
+import type {
+  AiActionDeliveryPreviewV1,
+  ProjectionSettlementWire,
+  UnitMapImportPreviewV1,
+} from './contracts/generated/responses.types';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
@@ -26,6 +34,7 @@ import {
   isRequestScopedCapability,
   isSha256,
   requestArtifactId,
+  type GatewayApprovalKindV2,
   type GatewayFailureV2,
   type GatewaySuccessV2,
 } from './contracts/gateway-v2';
@@ -78,11 +87,20 @@ interface GatewayHost {
   isLifecycleActive?(): boolean;
 }
 
+/** Explicit learner-supplied override decisions for a study-map replacement. */
+export interface UnitMapImportOverrides {
+  readonly intentionalReorder?: string;
+  readonly intentionalStateReset?: string;
+  readonly retireStages?: readonly string[];
+  readonly retireReason?: string;
+}
+
 /** The exact file and repository state inspected by the import preflight. */
 export interface UnitMapImportReview {
   unitId: string;
   file: string;
   replace: boolean;
+  overrides?: UnitMapImportOverrides;
   fileSha256: string;
   expectedSnapshot: string;
   expectedRevisions: Readonly<Record<string, number>>;
@@ -456,9 +474,24 @@ export class GatewayClient {
     trace?: TraceContext,
     identity?: GatewayIdentity,
     draftOwner?: GatewayDraftOwnerRef | null,
+    approvalKind: GatewayApprovalKindV2 = 'direct-user-gesture',
   ): Promise<string> {
     this.assertLifecycleActive();
     this.assertFreshSnapshot();
+    if (approvalKind === 'approved-delivery' && name !== 'ai-action.delivery.apply') {
+      throw new GatewayError(
+        `approved-delivery approval only applies to ai-action.delivery.apply, not ${name}.`,
+        null,
+        { code: 'INVALID_REQUEST', retryable: false },
+      );
+    }
+    if (name === 'ai-action.delivery.apply' && approvalKind !== 'approved-delivery') {
+      throw new GatewayError(
+        'ai-action.delivery.apply requires approved-delivery approval.',
+        null,
+        { code: 'UNCONFIRMED', retryable: false },
+      );
+    }
     const requestId = identity?.requestId ?? nextRequestId(name);
     const idempotencyKey = identity?.idempotencyKey ?? nextIdempotencyKey(requestId);
     // Order matters, and it is the whole defect this method once had. A
@@ -487,7 +520,7 @@ export class GatewayClient {
       expected_snapshot: expectedSnapshot,
       expected_revisions: effectiveRevisions,
       approval: {
-        kind: 'direct-user-gesture',
+        kind: approvalKind,
         subject_sha256: await gatewaySubjectSha256(subject),
       },
       payload,
@@ -758,13 +791,14 @@ export class GatewayClient {
     expectedRevisions: Readonly<Record<string, number>>,
     identity?: GatewayIdentity,
     draftOwner?: GatewayDraftOwnerRef | null,
+    approvalKind: GatewayApprovalKindV2 = 'direct-user-gesture',
   ): Promise<GatewaySuccessV2> {
     // One operation for the send and its in-session replay: the same trace
     // id reaches Core on every event and both attempts, each attempt with
     // its own span id.
     const operation = newOperationContext();
     const envelopeJson = await this.prepareCapability(
-      name, payload, expectedSnapshot, expectedRevisions, operation, identity, draftOwner,
+      name, payload, expectedSnapshot, expectedRevisions, operation, identity, draftOwner, approvalKind,
     );
     let result = await this.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     if (result.outcome === 'ambiguous') {
@@ -919,7 +953,6 @@ export class GatewayClient {
   }
   sourceSelection(
     unitId: string,
-    routeId: string,
     sourceId: string,
     locator: string,
     purpose: string,
@@ -930,7 +963,6 @@ export class GatewayClient {
       'unit.source-selection.set',
       {
         unit_id: unitId,
-        route_id: routeId,
         source_id: sourceId,
         locator,
         action: selected ? 'select' : 'remove',
@@ -1082,6 +1114,65 @@ export class GatewayClient {
   }
 
   /**
+   * Read-only preview measuring exact delivery/artifact digests, snapshot,
+   * and expected revisions before applying an approved AI delivery.
+   */
+  async previewDelivery(deliveryId: string): Promise<AiActionDeliveryPreviewV1> {
+    const trimmed = deliveryId.trim();
+    if (!trimmed) {
+      throw new GatewayError(
+        'An approved AI delivery requires a non-empty delivery id.',
+        null,
+        { code: 'INVALID_REQUEST', retryable: false },
+      );
+    }
+    const raw: unknown = await this.call(['ai-action-apply-preview', trimmed, '--json']);
+    if (!validateAiActionDeliveryPreviewV1(raw) || raw.delivery_id !== trimmed) {
+      throw new GatewayError(
+        'LearningOS could not provide a complete, bound AI delivery preview. Nothing was applied.',
+        null,
+        { code: 'UNCONFIRMED', retryable: false },
+      );
+    }
+    return raw;
+  }
+
+  /**
+   * Apply an approved AI delivery over Gateway V2 using a previewed
+   * `(expected_snapshot, expected_revisions, delivery_sha256, artifact_sha256)` subject.
+   */
+  async applyApprovedDelivery(
+    deliveryId: string,
+    preview?: AiActionDeliveryPreviewV1,
+  ): Promise<GatewaySuccessV2> {
+    this.assertLifecycleActive();
+    this.assertFreshSnapshot();
+    this.assertMutationAllowed();
+    const reviewed = preview ?? await this.previewDelivery(deliveryId);
+    if (!validateAiActionDeliveryPreviewV1(reviewed) || reviewed.delivery_id !== deliveryId.trim()) {
+      throw new GatewayError(
+        'LearningOS has no complete AI delivery preview to approve. Nothing was applied.',
+        null,
+        { code: 'UNCONFIRMED', retryable: false },
+      );
+    }
+    const payload: Record<string, unknown> = {
+      delivery_id: reviewed.delivery_id,
+      delivery_sha256: reviewed.delivery_sha256,
+      artifact_sha256: { ...reviewed.artifact_sha256 },
+    };
+    return this.sendCapability(
+      'ai-action.delivery.apply',
+      payload,
+      reviewed.expected_snapshot,
+      reviewed.expected_revisions,
+      undefined,
+      undefined,
+      'approved-delivery',
+    );
+  }
+
+  /**
    * Apply a study map that has already been through the SOP's coverage audit.
    * The interface carries the reviewed file's path and exact content digest.
    * Core reads it once, verifies those approved bytes, checks them against the
@@ -1096,12 +1187,58 @@ export class GatewayClient {
     if (await fileSha256(review.file) !== review.fileSha256) {
       throw new Error('The map file changed after review. Check it again before importing.');
     }
+    const intentionalReorder = review.overrides?.intentionalReorder?.trim();
+    const intentionalStateReset = review.overrides?.intentionalStateReset?.trim();
+    const retireStages = (review.overrides?.retireStages ?? [])
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+    const retireReason = review.overrides?.retireReason?.trim();
     return this.capability('unit.map.import', {
       unit_id: review.unitId,
       file: review.file,
       file_sha256: review.fileSha256,
       ...(review.replace ? { replace: true } : {}),
+      ...(intentionalReorder ? { intentional_reorder: intentionalReorder } : {}),
+      ...(intentionalStateReset ? { intentional_state_reset: intentionalStateReset } : {}),
+      ...(retireStages.length > 0 ? { retire_stage: retireStages } : {}),
+      ...(retireReason ? { retire_reason: retireReason } : {}),
     }, { expectedRevisions: review.expectedRevisions, expectedSnapshot: review.expectedSnapshot });
+  }
+
+  /**
+   * Read-only study-map replacement discovery (`unit-map-import-preview`).
+   * Surfaces required string override reasons, stage retirements, and shadow
+   * errors before `unit-map-import --check` refuses replacement.
+   */
+  async previewUnitMapImport(
+    unitId: string,
+    file: string,
+    replace = false,
+    overrides: UnitMapImportOverrides = {},
+  ): Promise<UnitMapImportPreviewV1> {
+    const digest = await fileSha256(file);
+    const args = ['unit-map-import-preview', unitId, '--file', file, '--file-sha256', digest];
+    if (replace) args.push('--replace');
+    if (overrides.intentionalReorder?.trim()) {
+      args.push('--intentional-reorder', overrides.intentionalReorder.trim());
+    }
+    if (overrides.intentionalStateReset?.trim()) {
+      args.push('--intentional-state-reset', overrides.intentionalStateReset.trim());
+    }
+    for (const stageId of overrides.retireStages ?? []) {
+      if (stageId.trim()) args.push('--retire-stage', stageId.trim());
+    }
+    if (overrides.retireReason?.trim()) {
+      args.push('--retire-reason', overrides.retireReason.trim());
+    }
+    args.push('--json');
+    const raw: unknown = await this.call(args);
+    if (!validateUnitMapImportPreviewV1(raw)
+      || raw.unit_id !== unitId
+      || raw.file_sha256 !== digest) {
+      throw new Error('LearningOS could not provide a complete, bound no-write map preview. Nothing was imported.');
+    }
+    return raw;
   }
 
   /**
@@ -1114,26 +1251,53 @@ export class GatewayClient {
    * `workbench/audits/repair-review-2026-09-13`, D1). No snapshot guard:
    * nothing is written, so there is nothing to guard against.
    */
-  async checkUnitMapImport(unitId: string, file: string, replace = false): Promise<UnitMapImportReview> {
+  async checkUnitMapImport(
+    unitId: string,
+    file: string,
+    replace = false,
+    overrides: UnitMapImportOverrides = {},
+  ): Promise<UnitMapImportReview> {
     const digest = await fileSha256(file);
     const args = ['unit-map-import', unitId, '--file', file,
       '--file-sha256', digest, '--check'];
     if (replace) args.push('--replace');
+    if (overrides.intentionalReorder?.trim()) {
+      args.push('--intentional-reorder', overrides.intentionalReorder.trim());
+    }
+    if (overrides.intentionalStateReset?.trim()) {
+      args.push('--intentional-state-reset', overrides.intentionalStateReset.trim());
+    }
+    for (const stageId of overrides.retireStages ?? []) {
+      if (stageId.trim()) args.push('--retire-stage', stageId.trim());
+    }
+    if (overrides.retireReason?.trim()) {
+      args.push('--retire-reason', overrides.retireReason.trim());
+    }
     args.push('--json');
     const result = record(await this.call(args));
     const revisions = record(result?.expected_revisions);
+    const studyMapId = typeof result?.study_map_id === 'string' && result.study_map_id.length > 0
+      ? result.study_map_id
+      : null;
     if (!result || result.ok !== true || result.mode !== 'check'
       || result.canonical_files_written !== 0 || !record(result.diff)
       || result.unit_id !== unitId || result.file_sha256 !== digest
       || !isSha256(result.snapshot_id) || !revisions
-      || Object.keys(revisions).length !== 2
-      || !Object.values(revisions).every(v => Number.isInteger(v) && Number(v) >= 0)
-      || !(unitId in revisions) || !(String(result.study_map_id) in revisions)) {
+      || !studyMapId
+      || !Object.values(revisions).every(v => typeof v === 'number' && Number.isInteger(v) && v >= 0)
+      || !(unitId in revisions) || !(studyMapId in revisions)) {
       throw new Error('LearningOS could not provide a complete, bound no-write review. Nothing was imported.');
     }
-    return { unitId, file, replace, fileSha256: digest,
+    return {
+      unitId,
+      file,
+      replace,
+      overrides: { ...overrides },
+      fileSha256: digest,
       expectedSnapshot: result.snapshot_id,
-      expectedRevisions: revisions as Record<string, number>, result };
+      expectedRevisions: revisions as Record<string, number>,
+      result,
+    };
   }
 
   /** Read-only temporary Unit-stage order, pinned to the displayed snapshot. */

@@ -717,4 +717,20 @@ assert.deepEqual(linkedConceptNotes(linkStore, 'concept-centre').map((note) => n
 assert.deepEqual(linkedConceptNotes(linkStore, 'concept-centre'), buildConceptContext(linkStore, 'concept-centre').notes);
 assert.deepEqual(linkedConceptNotes({ related: () => [] }, 'concept-empty'), []);
 
+// Deprecated concepts are excluded from live graph concepts and surfaced in diagnostics.
+const deprecatedGraph = buildAtlasGraph({
+  ...storeOf({
+    records: [
+      { id: 'concept-active', type: 'concept', title: 'Active', deprecated: false },
+      { id: 'concept-old', type: 'concept', title: 'Old', deprecated: true },
+    ],
+  }),
+  deprecatedConceptIds: () => ['concept-old', 'concept-filtered'],
+});
+assert.deepEqual(deprecatedGraph.concepts.map((c) => c.id), ['concept-active']);
+assert.deepEqual(deprecatedGraph.deprecatedConceptIds, ['concept-filtered', 'concept-old']);
+const depDiag = diagnosticOf(diagnostics(deprecatedGraph), 'deprecated-concepts');
+assert.deepEqual(depDiag.conceptIds, ['concept-filtered', 'concept-old']);
+assert.equal(depDiag.count, 2);
+
 console.log('Atlas graph OK: layers, direction, provenance, remainders, cycles, and determinism.');

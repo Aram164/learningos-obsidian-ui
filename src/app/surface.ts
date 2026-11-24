@@ -38,6 +38,7 @@ import type { PageDestination } from '../infrastructure/resource-target';
 import type { GatewayClient } from '../gateway-client';
 import type { AIActionClient } from '../infrastructure/ai-action-client';
 import type { PythonResolution } from '../infrastructure/los-runtime';
+import type { BuildInfo } from '../infrastructure/build-info';
 import type { ResourceOpener } from '../infrastructure/resource-opener';
 import type { ManifestStore } from '../manifest-store';
 import type { ShelvingChoiceStore } from '../features/shelving/selection';
@@ -107,6 +108,8 @@ export interface AppSurface {
 
   // -------------------------------------------------------------- diagnostics
   uiVersion(): string;
+  /** Read installed `build-info.json` beside the bundle, with `'unavailable'` fallback. */
+  readBuildInfo(): BuildInfo;
   /** The fingerprint and contract version compiled into this running bundle. */
   runtimeBuildIdentity(): { fingerprint: string; contractVersion: number };
   resolvePython(): PythonResolution;
@@ -164,6 +167,7 @@ export interface AppSurface {
     title: string,
     text: string,
     expectedRevisions?: Readonly<Record<string, number>>,
+    recoveredStages?: Readonly<Record<string, string>>,
   ): void;
   /**
    * `match` is what makes clearing safe after an awaited write: the draft goes
@@ -194,4 +198,6 @@ export interface AppSurface {
   saveAbilityDraft(draft: AbilityDraft): void;
   saveAbilityDraftEdit(draft: AbilityDraft): AbilityDraft;
   discardAbilityDraft(id: string, updatedAt?: string | null): void;
+  isAbilityDraftConfirming(id: string): boolean;
+  confirmAbilityDraft(id: string, action: () => Promise<unknown>): Promise<boolean>;
 }

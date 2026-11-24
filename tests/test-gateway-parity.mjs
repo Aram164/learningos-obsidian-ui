@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PRE_PHASE_3_KNOWN_DRIFT,
   checkUnitMapImportAudit,
   evaluateParityResult,
   extractImportUnitMapPayloadKeys,
@@ -47,10 +46,7 @@ assert.deepEqual(
   ['intentional_reorder', 'intentional_state_reset', 'retire_stage', 'retire_reason'],
   'comment-only mentions must leave all four override flags flagged as missing',
 );
-assert.equal(
-  commentAudit.driftHits.has('unit-map-import-override-flags-and-revision-pin'),
-  true,
-);
+assert.equal(commentAudit.hardFailures.length, 1);
 
 // 2. Real transmitted payload object properties (both inline spread and local object builds) pass AST audit.
 const spreadGatewaySource = `
@@ -70,7 +66,7 @@ export class GatewayClient {
 `;
 const spreadAudit = checkUnitMapImportAudit([], mirror, spreadGatewaySource);
 assert.deepEqual(spreadAudit.missingOverrideSupport, []);
-assert.equal(spreadAudit.driftHits.size, 0);
+assert.deepEqual(spreadAudit.hardFailures, []);
 
 const localVarGatewaySource = `
 export class GatewayClient {
@@ -92,43 +88,47 @@ export class GatewayClient {
 `;
 const localVarAudit = checkUnitMapImportAudit([], mirror, localVarGatewaySource);
 assert.deepEqual(localVarAudit.missingOverrideSupport, []);
-assert.equal(localVarAudit.driftHits.size, 0);
+assert.deepEqual(localVarAudit.hardFailures, []);
+
+// 2b. Any Object.keys(revisions).length pin in src/gateway-client.ts is a hard failure.
+const pinAudit = checkUnitMapImportAudit(
+  [{ file: 'src/gateway-client.ts', line: 123, expr: 'Object.keys(revisions).length !== 2' }],
+  mirror,
+  spreadGatewaySource,
+);
+assert.equal(pinAudit.hardFailures.length, 1);
 
 // 3. Disabling or throwing early in AIActionClient.applyApprovedDelivery without Gateway V2 fails strict & normal modes.
 const disabledStrict = evaluateParityResult({
   strict: true,
   hardFailures: [],
-  driftHits: new Set(),
   capturedCapabilities: new Set(['unit.source-selection.set', 'unit.map.import']),
   aiApplyThrew: null,
 });
 assert.equal(disabledStrict.ok, false, '--strict must fail if ai-action.delivery.apply is left unexercised');
 assert.equal(disabledStrict.exitCode, 1);
 
+const disabledNormal = evaluateParityResult({
+  strict: false,
+  hardFailures: [],
+  capturedCapabilities: new Set(['unit.source-selection.set', 'unit.map.import']),
+  aiApplyThrew: null,
+});
+assert.equal(disabledNormal.ok, false, 'normal parity must fail if ai-action.delivery.apply is left unexercised');
+assert.equal(disabledNormal.exitCode, 1);
+
 const thrownStrict = evaluateParityResult({
   strict: true,
   hardFailures: [],
-  driftHits: new Set(),
   capturedCapabilities: new Set(['unit.source-selection.set', 'unit.map.import', 'ai-action.delivery.apply']),
   aiApplyThrew: 'button disabled before send',
 });
 assert.equal(thrownStrict.ok, false, '--strict must fail if applyApprovedDelivery threw');
 assert.equal(thrownStrict.exitCode, 1);
 
-const phase2Strict = evaluateParityResult({
-  strict: true,
-  hardFailures: [],
-  driftHits: new Set(Object.keys(PRE_PHASE_3_KNOWN_DRIFT)),
-  capturedCapabilities: new Set(['unit.source-selection.set', 'unit.map.import']),
-  aiApplyThrew: null,
-});
-assert.equal(phase2Strict.ok, false);
-assert.equal(phase2Strict.failures.length, 3);
-
 const phase3CleanStrict = evaluateParityResult({
   strict: true,
   hardFailures: [],
-  driftHits: new Set(),
   capturedCapabilities: new Set(['unit.source-selection.set', 'unit.map.import', 'ai-action.delivery.apply']),
   aiApplyThrew: null,
 });

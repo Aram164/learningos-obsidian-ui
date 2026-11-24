@@ -3041,6 +3041,39 @@
         }
       }
     },
+    "ai-action-apply-preview": {
+      "operation": "ai-action.delivery.preview",
+      "handler": "learning_os.adapters.cli.invoke:ai-action.delivery.preview",
+      "operation_kind": null,
+      "required": [
+        "delivery_id"
+      ],
+      "mutually_exclusive": [],
+      "properties": {
+        "json": {
+          "flags": [
+            "--json"
+          ],
+          "position": null,
+          "action": "store_true",
+          "nargs": 0,
+          "required": false,
+          "choices": null,
+          "transport_only": true,
+          "envelope_owned": false
+        },
+        "delivery_id": {
+          "flags": [],
+          "position": 0,
+          "action": "store",
+          "nargs": null,
+          "required": true,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        }
+      }
+    },
     "ai-action-import-delivery": {
       "operation": "ai-action.delivery.import",
       "handler": "learning_os.adapters.cli.invoke:ai-action.delivery.import",
@@ -9886,6 +9919,124 @@
           "choices": null,
           "transport_only": false,
           "envelope_owned": true
+        },
+        "json": {
+          "flags": [
+            "--json"
+          ],
+          "position": null,
+          "action": "store_true",
+          "nargs": 0,
+          "required": false,
+          "choices": null,
+          "transport_only": true,
+          "envelope_owned": false
+        }
+      }
+    },
+    "unit-map-import-preview": {
+      "operation": "unit.map.import.preview",
+      "handler": "learning_os.adapters.cli.invoke:unit.map.import.preview",
+      "operation_kind": null,
+      "required": [
+        "file",
+        "unit_id"
+      ],
+      "mutually_exclusive": [],
+      "properties": {
+        "unit_id": {
+          "flags": [],
+          "position": 0,
+          "action": "store",
+          "nargs": null,
+          "required": true,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "file": {
+          "flags": [
+            "--file"
+          ],
+          "position": null,
+          "action": "store",
+          "nargs": null,
+          "required": true,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "file_sha256": {
+          "flags": [
+            "--file-sha256"
+          ],
+          "position": null,
+          "action": "store",
+          "nargs": null,
+          "required": false,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "replace": {
+          "flags": [
+            "--replace"
+          ],
+          "position": null,
+          "action": "store_true",
+          "nargs": 0,
+          "required": false,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "intentional_reorder": {
+          "flags": [
+            "--intentional-reorder"
+          ],
+          "position": null,
+          "action": "store",
+          "nargs": null,
+          "required": false,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "intentional_state_reset": {
+          "flags": [
+            "--intentional-state-reset"
+          ],
+          "position": null,
+          "action": "store",
+          "nargs": null,
+          "required": false,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "retire_stage": {
+          "flags": [
+            "--retire-stage"
+          ],
+          "position": null,
+          "action": "append",
+          "nargs": null,
+          "required": false,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "retire_reason": {
+          "flags": [
+            "--retire-reason"
+          ],
+          "position": null,
+          "action": "store",
+          "nargs": null,
+          "required": false,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
         },
         "json": {
           "flags": [

@@ -20,4 +20,6 @@ export function validateStatusV1(value: unknown): value is Wire.StatusV1;
 export function validatePlanTemplateV1(value: unknown): value is Wire.PlanTemplateV1;
 export function validateAiActionPrepareV1(value: unknown): value is Wire.AiActionPrepareV1;
 export function validateAiActionStatusV1(value: unknown): value is Wire.AiActionStatusV1;
+export function validateAiActionDeliveryPreviewV1(value: unknown): value is Wire.AiActionDeliveryPreviewV1;
 export function validateUnitMapImportCheckV1(value: unknown): value is Wire.UnitMapImportCheckV1;
+export function validateUnitMapImportPreviewV1(value: unknown): value is Wire.UnitMapImportPreviewV1;

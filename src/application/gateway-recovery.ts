@@ -479,7 +479,12 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
     const version = ++this.saveVersion;
 
     const draftOwner = entry.record.schema_version === 2 ? entry.record.draft_owner : null;
-    clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope, draftOwner);
+    clearDraftsOwnedBy(
+      this.settings.uiDrafts,
+      entry.envelope,
+      draftOwner,
+      entry.record.created_at,
+    );
     const postCleanupDrafts = structuredClone(this.settings.uiDrafts);
 
     this.settings.gatewayRecovery = null;
@@ -528,6 +533,75 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
   }
 }
 
+function sameStringList(left: readonly string[], right: unknown): boolean {
+  return Array.isArray(right)
+    && left.length === right.length
+    && left.every((item, index) => right[index] === item);
+}
+
+/**
+ * Narrow, unambiguous V1 ability draft retirement when no V2 `draft_owner`
+ * exists: matches only when EVERY serialized payload field and the exact
+ * app confirmation ref match one single un-edited draft in `abilityDrafts`.
+ * Partial payloads, multi-sibling ambiguity, and newer edits stay untouched.
+ */
+function findUnambiguousLegacyAbilityDraftId(
+  drafts: LearningOSUiDrafts,
+  envelope: GatewayRequestV2,
+  recordCreatedAt: string | null,
+): string | null {
+  const payload = envelope.payload;
+  const createdMs = recordCreatedAt ? Date.parse(recordCreatedAt) : NaN;
+  const confirmationRef = `conversation://learningos-app/${envelope.idempotency_key}`;
+  const matches: string[] = [];
+
+  for (const [id, raw] of Object.entries(drafts.abilityDrafts ?? {})) {
+    const draft = asAbilityDraft(raw);
+    if (!draft) continue;
+    if (Number.isFinite(createdMs)) {
+      const updatedMs = Date.parse(draft.updatedAt);
+      if (!Number.isFinite(updatedMs) || updatedMs > createdMs) continue;
+    }
+    if (envelope.capability === 'learner.ability-observation.append' && draft.kind === 'claim') {
+      const supersedes = typeof payload.supersedes === 'string' && payload.supersedes
+        ? payload.supersedes
+        : null;
+      if (
+        draft.workspace === payload.workspace
+        && draft.abilityId === payload.ability
+        && draft.claim.trim() === payload.claim
+        && draft.workRef.trim() === payload.work_ref
+        && payload.confirmation_ref === confirmationRef
+        && draft.activity.trim() === payload.activity
+        && draft.result === payload.result
+        && draft.assistance.trim() === payload.assistance
+        && sameStringList(draft.conditionsMet, payload.condition)
+        && sameStringList(draft.conditionsNotMet, payload.condition_not_met)
+        && sameStringList(draft.evidenceTags, payload.evidence_tag)
+        && (draft.supersedes ?? null) === supersedes
+      ) {
+        matches.push(id);
+      }
+    } else if (envelope.capability === 'ability.candidate.append' && draft.kind === 'connection') {
+      const expectedConditions = draft.conditions.map((item) => item.trim()).filter(Boolean);
+      const expectedSourceRef = draft.sourceRef.trim() || confirmationRef;
+      if (
+        draft.fromAbility === payload.from_ability
+        && draft.toAbility === payload.to_ability
+        && draft.connection === payload.kind
+        && draft.carries.trim() === payload.carries
+        && draft.changes.trim() === payload.changes
+        && sameStringList(expectedConditions, payload.condition)
+        && expectedSourceRef === payload.source_ref
+      ) {
+        matches.push(id);
+      }
+    }
+  }
+
+  return matches.length === 1 ? matches[0]! : null;
+}
+
 /**
  * Clear only the draft this envelope actually carried.
  *
@@ -541,6 +615,7 @@ export function clearDraftsOwnedBy(
   drafts: LearningOSUiDrafts,
   envelope: GatewayRequestV2,
   draftOwner: GatewayDraftOwnerRef | null = null,
+  recordCreatedAt: string | null = null,
 ): void {
   const payload = envelope.payload;
   const text = typeof payload.text === 'string' ? payload.text : null;
@@ -548,7 +623,11 @@ export function clearDraftsOwnedBy(
 
   if (envelope.capability === 'learner.ability-observation.append'
     || envelope.capability === 'ability.candidate.append') {
-    if (!draftOwner) return;
+    if (!draftOwner) {
+      const legacyId = findUnambiguousLegacyAbilityDraftId(drafts, envelope, recordCreatedAt);
+      if (legacyId) delete drafts.abilityDrafts[legacyId];
+      return;
+    }
     const expectedKind = envelope.capability === 'learner.ability-observation.append'
       ? 'claim'
       : 'connection';

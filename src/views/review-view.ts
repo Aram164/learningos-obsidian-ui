@@ -1,8 +1,6 @@
 import { manifestFreshness } from '../components';
 import { withRenderFocus } from '../accessibility/render-focus';
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
-import * as fs from 'node:fs';
-import * as nodePath from 'node:path';
 import {
   badge,
   button,
@@ -20,6 +18,7 @@ import { renderReviewEntry } from '../features/review/detail';
 import type { ReviewHost, ReviewPlugin } from '../features/review/ports';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
 import type { AppSurface } from '../app/surface';
+import type { BuildInfo } from '../infrastructure/build-info';
 import { errorMessage, isRecord } from '../projection/readers';
 import { gatewayRecoverySummary } from '../application/gateway-recovery';
 import {
@@ -38,26 +37,6 @@ import {
   type OperationRowV1,
 } from '../contracts/operations';
 
-interface BuildInfo {
-  ui_version: string;
-  manifest_contract_version: number;
-  source_revision: string;
-  /** null when the build could not ask Git — "unknown", not "clean". */
-  source_dirty: boolean | null;
-  source_committed_at: string;
-  source_fingerprint: string;
-  bundle_sha256: string;
-  node_version: string;
-}
-
-interface DiagnosticsApp {
-  readonly vault: {
-    readonly adapter: {
-      getBasePath(): string;
-    };
-  };
-}
-
 interface DiagnosticsGenerated {
   readonly contract_version?: string | number;
   readonly schema_sha256?: string;
@@ -75,6 +54,7 @@ type DiagnosticsPlugin = Pick<
   | 'gatewayRecoveryState'
   | 'generate'
   | 'manifest'
+  | 'readBuildInfo'
   | 'resolvePython'
   | 'retryRecoveredWrite'
   | 'runtimeBuildIdentity'
@@ -555,88 +535,7 @@ export class DiagnosticsView extends ItemView {
   }
 
   buildInfo(): BuildInfo {
-    const fallback: BuildInfo = {
-      ui_version: this.plugin.uiVersion(),
-      manifest_contract_version: CONTRACT_VERSION,
-      source_revision: 'unavailable',
-      source_dirty: null,
-      source_committed_at: 'unavailable',
-      source_fingerprint: 'unavailable',
-      bundle_sha256: 'unavailable',
-      node_version: 'unavailable',
-    };
-
-    try {
-      const app = this.app as DiagnosticsApp;
-      const base = app.vault.adapter.getBasePath();
-      const pluginInfo = this.plugin.manifest as unknown as {
-        readonly dir?: string;
-        readonly id?: string;
-      } | undefined;
-      const directory = pluginInfo?.dir
-        || nodePath.join(
-          '.obsidian',
-          'plugins',
-          pluginInfo?.id || 'learningos-ui',
-        );
-      const target = nodePath.join(
-        base,
-        directory,
-        'build-info.json',
-      );
-
-      if (!fs.existsSync(target)) {
-        return fallback;
-      }
-
-      const parsed: unknown = JSON.parse(
-        fs.readFileSync(target, 'utf8'),
-      );
-
-      if (!isRecord(parsed)) {
-        return fallback;
-      }
-
-      return {
-        ui_version:
-          typeof parsed.ui_version === 'string'
-            ? parsed.ui_version
-            : fallback.ui_version,
-        manifest_contract_version:
-          typeof parsed.manifest_contract_version === 'number'
-            ? parsed.manifest_contract_version
-            : fallback.manifest_contract_version,
-        source_revision:
-          typeof parsed.source_revision === 'string'
-            ? parsed.source_revision
-            : fallback.source_revision,
-        // A missing flag stays null: an older build-info predates the field,
-        // and reading that absence as "clean" is the exact false reassurance
-        // this row exists to remove.
-        source_dirty:
-          typeof parsed.source_dirty === 'boolean'
-            ? parsed.source_dirty
-            : fallback.source_dirty,
-        source_committed_at:
-          typeof parsed.source_committed_at === 'string'
-            ? parsed.source_committed_at
-            : fallback.source_committed_at,
-        source_fingerprint:
-          typeof parsed.source_fingerprint === 'string'
-            ? parsed.source_fingerprint
-            : fallback.source_fingerprint,
-        bundle_sha256:
-          typeof parsed.bundle_sha256 === 'string'
-            ? parsed.bundle_sha256
-            : fallback.bundle_sha256,
-        node_version:
-          typeof parsed.node_version === 'string'
-            ? parsed.node_version
-            : fallback.node_version,
-      };
-    } catch (_) {
-      return fallback;
-    }
+    return this.plugin.readBuildInfo();
   }
 
   state(): [string, string, string] {

@@ -7,11 +7,6 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const sourceRoot = path.join(root, 'src');
 const entry = 'src/main.ts';
 
-// Temporary Phase 2 baseline for pre-existing UI view node:* debt removed in Phase 3.
-const PRE_PHASE_3_NODE_IMPORT_DEBT = new Set([
-  'src/views/review-view.ts',
-]);
-
 function sourceModules(directory) {
   return fs.readdirSync(directory, { withFileTypes: true })
     .flatMap((entryValue) => {
@@ -61,7 +56,6 @@ if (!sourceSet.has(entry)) {
 const graph = new Map();
 const forbidden = [];
 const disallowedNodeImports = [];
-const observedNodeDebt = new Set();
 
 for (const source of sources) {
   const text = fs.readFileSync(path.join(root, source), 'utf8');
@@ -79,12 +73,8 @@ for (const source of sources) {
         .filter((fileName) => fileName.startsWith('node:')),
     )];
     if (nodeBuiltins.length > 0) {
-      if (PRE_PHASE_3_NODE_IMPORT_DEBT.has(source)) {
-        observedNodeDebt.add(source);
-      } else {
-        for (const specifier of nodeBuiltins) {
-          disallowedNodeImports.push(`${source} imports ${specifier}`);
-        }
+      for (const specifier of nodeBuiltins) {
+        disallowedNodeImports.push(`${source} imports ${specifier}`);
       }
     }
   }
@@ -169,17 +159,9 @@ if (forbidden.length) {
     `Feature modules must depend on feature-owned ports, not concrete views:\n${forbidden.map((edge) => `  ${edge}`).join('\n')}`,
   );
 }
-const staleNodeDebt = [...PRE_PHASE_3_NODE_IMPORT_DEBT]
-  .filter((source) => !observedNodeDebt.has(source))
-  .sort();
 if (disallowedNodeImports.length) {
   failures.push(
     `Feature and view modules must not import Node builtins directly:\n${disallowedNodeImports.map((edge) => `  ${edge}`).join('\n')}`,
-  );
-}
-if (staleNodeDebt.length) {
-  failures.push(
-    `Stale entries in PRE_PHASE_3_NODE_IMPORT_DEBT (remove resolved allowlist entries):\n${staleNodeDebt.map((source) => `  ${source}`).join('\n')}`,
   );
 }
 if (cycles.length) {
@@ -193,6 +175,6 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Source graph OK: ${reachable.size} TypeScript source modules reachable; 0 dependency cycles; 0 feature-to-view imports; ${observedNodeDebt.size} bounded pre-Phase-3 node:* view debt.`,
+    `Source graph OK: ${reachable.size} TypeScript source modules reachable; 0 dependency cycles; 0 feature-to-view imports; 0 node:* imports in features/views.`,
   );
 }

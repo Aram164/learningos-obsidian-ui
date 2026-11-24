@@ -618,7 +618,7 @@ function session(root: HTMLElement, context: Context): void {
       unit.id,
       draft.title,
       scratchEditor.value,
-      Object.keys(draft.expectedRevisions).length ? draft.expectedRevisions : context.guards,
+      view.plugin.store.artifactGuard(unit.id),
     );
     syncScratchHint();
   });
@@ -938,7 +938,7 @@ function wrapup(root: HTMLElement, context: Context): void {
       unit.id,
       draft.title,
       editor.value,
-      Object.keys(draft.expectedRevisions).length ? draft.expectedRevisions : context.guards,
+      view.plugin.store.artifactGuard(unit.id),
     );
     updateHint();
   });

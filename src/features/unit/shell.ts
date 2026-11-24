@@ -356,10 +356,17 @@ function openMapImport(
         ),
         // Read-only: it writes nothing, so it does not go through the write
         // queue and needs no snapshot guard of its own.
-        check: (file, replace) => view.plugin.gateway.checkUnitMapImport(
+        preview: (file, replace, overrides) => view.plugin.gateway.previewUnitMapImport(
           unit.id,
           file,
           replace,
+          overrides,
+        ),
+        check: (file, replace, overrides) => view.plugin.gateway.checkUnitMapImport(
+          unit.id,
+          file,
+          replace,
+          overrides,
         ),
         submit: (review) => view.plugin.mutate(
           () => view.plugin.gateway.importUnitMap(review),

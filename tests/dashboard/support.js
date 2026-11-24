@@ -260,18 +260,7 @@ function gatewayPayloadRefusal(envelope) {
   }
   const ok = validate(envelope.payload ?? {});
   if (ok) return null;
-  // Phase 2 bounded baseline: allow only pre-Phase-3 #1 extra `route_id` on
-  // unit.source-selection.set unless a test asks for strict validation.
   const errors = validate.errors || [];
-  if (
-    !process.env.LOS_STRICT_MOCK_PARITY
-    && envelope.capability === 'unit.source-selection.set'
-    && errors.length === 1
-    && errors[0].keyword === 'additionalProperties'
-    && errors[0].params?.additionalProperty === 'route_id'
-  ) {
-    return null;
-  }
   return `invalid payload: ${errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`;
 }
 
@@ -376,6 +365,25 @@ async function build(options = {}) {
     }
     if (args[0] === 'masters-planning-dashboard') {
       return callback(null, JSON.stringify(MASTERS_PLANNING_FIXTURE), '');
+    }
+    if (args[0] === 'session-end') {
+      const committing = args.includes('--commit-message');
+      return callback(null, JSON.stringify({
+        ok: true,
+        client: 'ui',
+        committed: committing,
+        other_sessions: {},
+        owned_changes: committing ? [] : ['learner/unit-notes/fixture.md'],
+        ownership_conflicts: [],
+        pushed: committing && args.includes('--push'),
+        session_closed: committing,
+        session_id: 'ui',
+        stale_hours: 24,
+        stale_paths: [],
+        touched: [],
+        unrelated_changes: [],
+        validation: 'ok',
+      }), '');
     }
     /* Read-only ability horizon and material spans: Core-shaped synthetic
      * answers (tests/ability-fixtures.js). A test varies one field through

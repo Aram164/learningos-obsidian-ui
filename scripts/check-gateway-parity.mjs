@@ -2,21 +2,13 @@
  * Cross-repo Gateway V2 schema-mirror, static TypeScript AST, mocked-porcelain
  * AJV payload, and response-endpoint parity gate.
  *
- * What Phase 2 proves:
+ * Enforces zero tolerance for Gateway V2, CLI, and response drift across:
  *   - Core schema mirror parity (`contracts/capability-schemas.generated.json` vs
  *     sibling `../repository/system/schema/capabilities/*.schema.json` and CLI request docs).
  *   - Static TypeScript AST call-site checks (literal capability ids, CLI flags
  *     and positionals, `importUnitMap` transmitted payload keys, and revision
  *     map key-count pins) plus mocked-porcelain AJV payload validation and
  *     retired-surface / response-lock coverage.
- *   - Zero tolerance for unapproved drift outside the bounded 3-entry
- *     `PRE_PHASE_3_KNOWN_DRIFT` baseline (`SUMMARY §1 #1-#3`); `--strict`
- *     (`npm run check:parity:strict`) disables the exemption and fails on all 3.
- *
- * What Phase 2 defers:
- *   - Real Core-backed end-to-end live flow proof of the fixed #1-#3 paths is
- *     added in Phase 3 before removing `PRE_PHASE_3_KNOWN_DRIFT` and enforcing
- *     `--strict` in CI.
  */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -32,15 +24,6 @@ import { buildCapabilitySchemaMirror } from './core-contract-bundle.mjs';
 const require = createRequire(import.meta.url);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const strict = process.argv.includes('--strict');
-
-export const PRE_PHASE_3_KNOWN_DRIFT = Object.freeze({
-  'unit-source-selection-route-id':
-    'SUMMARY §1 #1: GatewayClient.sourceSelection sends undeclared `route_id` in unit.source-selection.set',
-  'ai-action-delivery-apply-direct-cli':
-    'SUMMARY §1 #2: AIActionClient.applyApprovedDelivery invokes `ai-action-apply-delivery` directly without `--delivery-sha256`/`--artifact-sha256` or V2 capability preview',
-  'unit-map-import-override-flags-and-revision-pin':
-    'SUMMARY §1 #3: GatewayClient checkUnitMapImport/importUnitMap omit replacement override flags and pin `Object.keys(revisions).length !== 2`',
-});
 
 const SNAPSHOT = `sha256:${'a'.repeat(64)}`;
 const REQUIRED_RESPONSE_ENDPOINTS = [
@@ -64,7 +47,9 @@ const REQUIRED_RESPONSE_ENDPOINTS = [
   'PlanTemplateV1',
   'AiActionPrepareV1',
   'AiActionStatusV1',
+  'AiActionDeliveryPreviewV1',
   'UnitMapImportCheckV1',
+  'UnitMapImportPreviewV1',
 ];
 
 function collectTsFiles(directory) {
@@ -264,14 +249,6 @@ function collectStaticSites() {
   return { capabilitySites, cliCallSites, revisionCountPins, unparseable };
 }
 
-function isKnownSourceSelectionDrift(envelope, validate) {
-  return envelope.capability === 'unit.source-selection.set'
-    && Array.isArray(validate.errors)
-    && validate.errors.length === 1
-    && validate.errors[0].keyword === 'additionalProperties'
-    && validate.errors[0].params?.additionalProperty === 'route_id';
-}
-
 async function exerciseLivePorcelain(mirror, capabilitySites) {
   const { createSourceModuleLoader } = require('../tests/source-module-loader');
   const load = createSourceModuleLoader(root);
@@ -295,6 +272,35 @@ async function exerciseLivePorcelain(mirror, capabilitySites) {
   const plugin = {
     store: { snapshotId: SNAPSHOT },
     runLos: (args, callback, stdin) => {
+      if (args[0] === 'unit-map-import-preview') {
+        return callback(null, JSON.stringify({
+          ok: true,
+          mode: 'preview',
+          can_apply: true,
+          unit_id: args[1],
+          study_map_id: 'study-map-demo',
+          files_checked: 1,
+          canonical_files_written: 0,
+          file_sha256: mapSha,
+          snapshot_id: SNAPSHOT,
+          expected_revisions: { [args[1]]: 0, 'study-map-demo': 0, 'extra-note': 1 },
+          problems: [],
+          required_decisions: {
+            reorder_required: false,
+            state_reset_required: false,
+            state_reset_optional: false,
+            missing_retire_stages: [],
+            retire_reason_required: false,
+          },
+          diff: {
+            replacement: false,
+            unit_status: 'ready',
+            stages_after: ['stage-demo'],
+            content_changes: [],
+            map_changes: [],
+          },
+        }), '');
+      }
       if (args[0] === 'unit-map-import') {
         return callback(null, JSON.stringify({
           ok: true,
@@ -305,7 +311,7 @@ async function exerciseLivePorcelain(mirror, capabilitySites) {
           canonical_files_written: 0,
           file_sha256: mapSha,
           snapshot_id: SNAPSHOT,
-          expected_revisions: { [args[1]]: 0, 'study-map-demo': 0 },
+          expected_revisions: { [args[1]]: 0, 'study-map-demo': 0, 'extra-note': 1 },
           diff: { replacement: false },
         }), '');
       }
@@ -313,6 +319,7 @@ async function exerciseLivePorcelain(mirror, capabilitySites) {
         return callback(null, JSON.stringify({
           ok: true,
           delivery_id: args[1] || 'delivery-demo',
+          request_id: 'ai-request-demo',
           delivery_sha256: mapSha,
           artifact_sha256: {},
           expected_snapshot: SNAPSHOT,
@@ -341,7 +348,6 @@ async function exerciseLivePorcelain(mirror, capabilitySites) {
   };
 
   const hardFailures = [];
-  const driftHits = new Set();
   let saveNoteRetired = false;
 
   async function probe(label, fn) {
@@ -371,7 +377,7 @@ async function exerciseLivePorcelain(mirror, capabilitySites) {
     }));
     await probe('stage.progress.update', () => gateway.progress('unit-demo', 'stage-demo', 'complete'));
     await probe('unit.source-selection.set', () => gateway.sourceSelection(
-      'unit-demo', 'route-demo', 'source-demo', 'Chapter 1', 'Core explanation', true,
+      'unit-demo', 'source-demo', 'Chapter 1', 'Core explanation', true,
     ));
     await probe('source.feedback.record', () => gateway.feedback(
       'unit-demo', 'stage-demo', 'source-demo', 'helpful', 'resource-demo',
@@ -389,6 +395,7 @@ async function exerciseLivePorcelain(mirror, capabilitySites) {
     await probe('review.prepare', () => gateway.prepareShelving('unit-demo'));
     await probe('review.apply', () => gateway.applyShelving('unit-demo', ['item-1']));
     await probe('unit.map.import', async () => {
+      await gateway.previewUnitMapImport('unit-demo', mapFile, false);
       const review = await gateway.checkUnitMapImport('unit-demo', mapFile, false);
       await gateway.importUnitMap(review);
     });
@@ -470,18 +477,13 @@ async function exerciseLivePorcelain(mirror, capabilitySites) {
     }
     const ok = validate(envelope.payload);
     if (!ok) {
-      if (isKnownSourceSelectionDrift(envelope, validate)) {
-        driftHits.add('unit-source-selection-route-id');
-      } else {
-        const msg = (validate.errors || []).map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ');
-        hardFailures.push(`AJV payload failure for ${envelope.capability}: ${msg}`);
-      }
+      const msg = (validate.errors || []).map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ');
+      hardFailures.push(`AJV payload failure for ${envelope.capability}: ${msg}`);
     }
   }
 
   return {
     hardFailures,
-    driftHits,
     exercisedCount: captured.length,
     capturedCapabilities,
     aiApplyThrew,
@@ -611,7 +613,6 @@ export function extractImportUnitMapPayloadKeys(
 
 export function checkCliSites(cliCallSites, mirror) {
   const hardFailures = [];
-  const driftHits = new Set();
 
   for (const site of cliCallSites) {
     const spec = mirror.cli_commands[site.command];
@@ -664,15 +665,6 @@ export function checkCliSites(cliCallSites, mirror) {
       && !literalFlags.has('--check'),
     );
 
-    if (
-      site.file === 'src/infrastructure/ai-action-client.ts'
-      && site.command === 'ai-action-apply-delivery'
-      && (missingRequiredFlags.length > 0 || isDirectCapabilityBypass)
-    ) {
-      driftHits.add('ai-action-delivery-apply-direct-cli');
-      continue;
-    }
-
     if (missingRequiredFlags.length > 0) {
       hardFailures.push(
         `${site.file}:${site.line}: '${site.command}' omits required flags: ${missingRequiredFlags.join(', ')}`,
@@ -685,7 +677,7 @@ export function checkCliSites(cliCallSites, mirror) {
     }
   }
 
-  return { hardFailures, driftHits };
+  return { hardFailures };
 }
 
 export function checkUnitMapImportAudit(
@@ -694,7 +686,6 @@ export function checkUnitMapImportAudit(
   gatewaySource = fs.readFileSync(path.join(root, 'src/gateway-client.ts'), 'utf8'),
 ) {
   const hardFailures = [];
-  const driftHits = new Set();
   const transmittedKeys = extractImportUnitMapPayloadKeys(gatewaySource);
 
   const coreOverrideFlags = [
@@ -707,20 +698,17 @@ export function checkUnitMapImportAudit(
   const missingOverrideSupport = coreOverrideFlags.filter(
     (key) => key in capProps && !transmittedKeys.has(key),
   );
-  const unitMapPin = revisionCountPins.filter(
-    (pin) => pin.file === 'src/gateway-client.ts' && /Object\.keys\(revisions\)\.length\s*!==\s*2/.test(pin.expr),
-  );
-  const otherPins = revisionCountPins.filter((pin) => !unitMapPin.includes(pin));
 
-  for (const pin of otherPins) {
+  for (const pin of revisionCountPins) {
     hardFailures.push(`${pin.file}:${pin.line}: exact revision count pin '${pin.expr}' rejects superset maps`);
   }
-
-  if (unitMapPin.length > 0 || missingOverrideSupport.length > 0) {
-    driftHits.add('unit-map-import-override-flags-and-revision-pin');
+  if (missingOverrideSupport.length > 0) {
+    hardFailures.push(
+      `GatewayClient.importUnitMap omits Core-declared unit.map.import override flag(s): ${missingOverrideSupport.join(', ')}`,
+    );
   }
 
-  return { hardFailures, driftHits, missingOverrideSupport, transmittedKeys };
+  return { hardFailures, missingOverrideSupport, transmittedKeys };
 }
 
 function checkResponseBundleCoverage() {
@@ -742,12 +730,10 @@ function checkResponseBundleCoverage() {
 export function evaluateParityResult({
   strict: isStrict,
   hardFailures,
-  driftHits,
   capturedCapabilities,
   aiApplyThrew = null,
 }) {
   const failures = [...hardFailures];
-  const detected = new Set(driftHits);
   const captured = new Set(capturedCapabilities);
 
   if (aiApplyThrew) {
@@ -755,42 +741,17 @@ export function evaluateParityResult({
       `AIActionClient.applyApprovedDelivery threw without completing a Gateway V2 flow: ${aiApplyThrew}`,
     );
   }
-  // Strict mode (and non-strict after removing #2) must never pass if ai-action.delivery.apply
-  // was disabled, deleted, or thrown early instead of migrating to Gateway V2.
-  if (!detected.has('ai-action-delivery-apply-direct-cli') && !captured.has('ai-action.delivery.apply')) {
+  if (!captured.has('ai-action.delivery.apply')) {
     failures.push(
       'ai-action.delivery.apply / AIActionClient.applyApprovedDelivery was disabled, removed, or left unexercised without sending a Gateway V2 envelope',
     );
   }
 
-  if (isStrict) {
-    const strictFailures = [
-      ...failures,
-      ...[...detected].sort().map((id) => `[STRICT ${id}] ${PRE_PHASE_3_KNOWN_DRIFT[id]}`),
-    ];
-    return {
-      ok: strictFailures.length === 0,
-      exitCode: strictFailures.length === 0 ? 0 : 1,
-      strict: true,
-      failures: strictFailures,
-      staleDrift: [],
-      detected: [...detected].sort(),
-    };
-  }
-
-  const staleDrift = Object.keys(PRE_PHASE_3_KNOWN_DRIFT).filter((id) => !detected.has(id));
-  if (staleDrift.length > 0) {
-    failures.push(
-      `Stale PRE_PHASE_3_KNOWN_DRIFT entries (remove resolved items from baseline): ${staleDrift.join(', ')}`,
-    );
-  }
   return {
     ok: failures.length === 0,
     exitCode: failures.length === 0 ? 0 : 1,
-    strict: false,
+    strict: Boolean(isStrict),
     failures,
-    staleDrift,
-    detected: [...detected].sort(),
   };
 }
 
@@ -811,40 +772,20 @@ async function main() {
       ...unitMapAudit.hardFailures,
       ...responseErrors,
     ],
-    driftHits: [
-      ...porcelain.driftHits,
-      ...cli.driftHits,
-      ...unitMapAudit.driftHits,
-    ],
     capturedCapabilities: porcelain.capturedCapabilities,
     aiApplyThrew: porcelain.aiApplyThrew,
   });
 
-  if (strict) {
-    if (!verdict.ok) {
-      console.error(`Gateway parity --strict FAILED (${verdict.failures.length} violation(s)):`);
-      for (const failure of verdict.failures) console.error(`  - ${failure}`);
-      process.exitCode = 1;
-      return;
-    }
-    console.log(
-      `Gateway parity --strict OK: 0 drifts across ${porcelain.exercisedCount} mocked-porcelain V2 probes, `
-      + `${staticSites.cliCallSites.length} CLI call sites, and ${REQUIRED_RESPONSE_ENDPOINTS.length} response endpoints.`,
-    );
-    return;
-  }
-
   if (!verdict.ok) {
-    console.error(`Gateway parity FAILED (${verdict.failures.length} unallowlisted error(s)):`);
+    console.error(`Gateway parity${strict ? ' --strict' : ''} FAILED (${verdict.failures.length} violation(s)):`);
     for (const failure of verdict.failures) console.error(`  - ${failure}`);
     process.exitCode = 1;
     return;
   }
 
   console.log(
-    `Gateway parity OK (Phase 2 schema-mirror & mocked-porcelain gate: ${porcelain.exercisedCount} mocked-porcelain V2 probes, `
-    + `${staticSites.cliCallSites.length} CLI call sites, ${REQUIRED_RESPONSE_ENDPOINTS.length} response endpoints; `
-    + `${verdict.detected.length} bounded PRE_PHASE_3_KNOWN_DRIFT: ${verdict.detected.join(', ')}).`,
+    `Gateway parity${strict ? ' --strict' : ''} OK: 0 drifts across ${porcelain.exercisedCount} mocked-porcelain V2 probes, `
+    + `${staticSites.cliCallSites.length} CLI call sites, and ${REQUIRED_RESPONSE_ENDPOINTS.length} response endpoints.`,
   );
 }
 

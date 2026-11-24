@@ -170,41 +170,60 @@ export class SessionEndModal extends Modal {
     pageHeader(root, 'Explicit Git closure', 'End learning session',
       'Only files recorded by guarded learning actions can be staged. Unrelated changes remain untouched.',
       'los-session-end-heading');
-    this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(),
-      hostClass: 'los-modal--session-end',
-      labelledBy: 'los-session-end-heading',
-    });
+    const ownedChanges = this.review.owned_changes || [];
+    const hasOwned = ownedChanges.length > 0;
     const owned = section(root, 'Session-owned changes');
-    if (!(this.review.owned_changes || []).length) empty(owned, 'No owned changes', 'There is nothing to commit from this session.');
-    for (const file of this.review.owned_changes || []) owned.createEl('code', { text: file });
+    if (!hasOwned) empty(owned, 'No owned changes', 'There is nothing to commit from this session.');
+    for (const file of ownedChanges) owned.createEl('code', { text: file });
     const unrelated = section(root, 'Unrelated changes (excluded)');
     if (!(this.review.unrelated_changes || []).length) unrelated.createEl('p', { text: 'None.' });
     for (const file of this.review.unrelated_changes || []) unrelated.createEl('code', { text: file });
     const message = root.createEl('input', {
       cls: 'los-search', attr: { type: 'text', placeholder: 'Commit message', 'aria-label': 'Learning session commit message' },
     });
+    message.disabled = !hasOwned;
     const pushRow = root.createDiv({ cls: 'los-row' });
     const push = pushRow.createEl('input', { attr: { type: 'checkbox', 'aria-label': 'Push after commit' } });
+    push.disabled = !hasOwned;
     pushRow.createSpan({ text: 'Push after the scoped commit succeeds' });
     const actions = root.createDiv({ cls: 'los-actions' });
-    button(actions, 'Commit session-owned files', async () => {
-      if (!message.value.trim()) { new Notice('Enter a commit message first.'); return; }
+    let committing = false;
+    const commitButton = button(actions, 'Commit session-owned files', async () => {
+      if (committing || !hasOwned) return;
+      const commitMessage = message.value.trim();
+      if (!commitMessage) { new Notice('Enter a commit message first.'); return; }
+      committing = true;
+      commitButton.disabled = true;
+      commitButton.setText('Committing…');
       try {
         const result = asSessionReview(await this.plugin.mutate(
           () => this.plugin.gateway.endSession(
-            message.value.trim(),
+            commitMessage,
             Boolean(push.checked),
           ),
         ));
         new Notice(result.pushed ? 'Learning session committed and pushed.' : 'Learning session committed.');
         this.close();
       } catch (error: unknown) {
+        committing = false;
+        commitButton.setText('Commit session-owned files');
+        syncCommitState();
         new Notice(errorMessage(error));
       }
     }, 'cta');
-    button(actions, 'Close without committing', () => this.close(), 'quiet');
-    message.focus();
+    const closeButton = button(actions, 'Close without committing', () => this.close(), 'quiet');
+    const syncCommitState = (): void => {
+      commitButton.disabled = committing || !hasOwned || !message.value.trim();
+      commitButton.setAttribute('aria-disabled', String(commitButton.disabled));
+    };
+    message.addEventListener('input', syncCommitState);
+    syncCommitState();
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: 'los-modal--session-end',
+      initialFocus: () => (hasOwned ? message : closeButton),
+      labelledBy: 'los-session-end-heading',
+    });
   }
   onClose(): void {
     this.restoreAccessibility?.();

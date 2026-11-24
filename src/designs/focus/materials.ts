@@ -4,7 +4,6 @@
  * - S1..SN Stage-Usage Matrix indicators (● Required, ◐ Helps, ○ Reference, · Unused),
  * - Inline If you get stuck Purpose tabs and Folded Kept for reference in Session.
  */
-import { Notice } from 'obsidian';
 import { badge, button, filterTabs, icon, overflowMenu, plural } from '../../components';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { renderMaterialCautions } from '../../features/stage-resources';
@@ -19,9 +18,9 @@ import {
 } from '../../features/unit/lecture-materials';
 import {
   inspectRouteSpan,
+  renderRouteChoiceButton,
   renderRouteSpan,
   routeSpanStatus,
-  toggleRouteChoice,
   type Availability,
   type MaterialCardDeps,
 } from '../../features/unit/material-card';
@@ -37,7 +36,7 @@ import {
 import { keepFold, openInStage, type MaterialsState } from '../../features/unit/materials-state';
 import type { StageRecordView, StudyMapView, UnitRecordView } from '../../features/unit/model';
 import { stageResourceRenderer } from '../../features/unit/stage';
-import { asLabel, errorMessage } from '../../projection/readers';
+import { asLabel } from '../../projection/readers';
 import { safeWebUrl } from '../../security/safe-url';
 import type { UnitScreenHost } from '../screens';
 
@@ -144,12 +143,10 @@ function renderRowDetails(
   }
   const route = material.route;
   if (route?.canChoose && route.sourceId && route.locator) {
-    const choice = button(actions, route.selected ? 'Remove choice' : 'Choose for this lecture', () => {
-      void toggleRouteChoice(view.plugin, unit.id, route, ctx.expected)
-        .then(() => { new Notice(route.selected ? 'Material choice removed.' : 'Material chosen for this lecture.'); })
-        .catch((error: unknown) => { new Notice(errorMessage(error)); });
-    }, 'quiet');
-    choice.setAttr('aria-pressed', String(route.selected));
+    renderRouteChoiceButton(actions, view.plugin, unit.id, route, ctx.expected, {
+      label: route.selected ? 'Remove choice' : 'Choose for this lecture',
+      variant: 'quiet',
+    });
     count += 1;
   }
   if (stage && placement?.resource.sourceId) {

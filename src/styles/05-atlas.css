@@ -436,6 +436,24 @@
   font-size: 12px;
 }
 
+.los-atlas-deprecated-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-2);
+  margin-bottom: var(--los-3);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-warning);
+  border-radius: var(--los-r-md);
+  background: var(--los-warning-wash);
+  color: var(--los-ink);
+  font-size: 13px;
+}
+
+.los-atlas-deprecated-warning strong {
+  color: var(--los-warning-strong);
+}
+
 /* ------------------------------------------------------------- legend */
 
 .los-atlas-legend {

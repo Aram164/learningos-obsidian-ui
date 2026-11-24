@@ -276,6 +276,9 @@ export function asGatewayFailureV2(value: unknown, expected: GatewayResponseIden
 
 /** Persisted requests must also belong to this interface's authorization policy. */
 export function asGatewayRequestV2(value: unknown): GatewayRequestV2 | null {
-  return validateGatewayRequestV2(value) && value.channel === 'ui'
-    && value.approval.kind === 'direct-user-gesture' ? value : null;
+  if (!validateGatewayRequestV2(value) || value.channel !== 'ui') return null;
+  if (value.approval.kind === 'direct-user-gesture') return value;
+  if (value.approval.kind === 'approved-delivery'
+    && value.capability === 'ai-action.delivery.apply') return value;
+  return null;
 }

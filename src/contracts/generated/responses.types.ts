@@ -389,6 +389,17 @@ export type UiResponses_AbilityUnmappedWire = {
   readonly state: "unmapped";
 };
 
+/** ui-responses.schema.json#/$defs/AiActionDeliveryPreviewV1 */
+export type UiResponses_AiActionDeliveryPreviewV1 = {
+  readonly artifact_sha256: { readonly [key: string]: string };
+  readonly delivery_id: string;
+  readonly delivery_sha256: string;
+  readonly expected_revisions: { readonly [key: string]: number };
+  readonly expected_snapshot: string;
+  readonly ok: true;
+  readonly request_id: string;
+};
+
 /** ui-responses.schema.json#/$defs/AiActionPrepareV1 */
 export type UiResponses_AiActionPrepareV1 = {
   readonly bundle_path: string;
@@ -809,8 +820,31 @@ export type UiResponses_UnitMapImportCheckV1 = {
   readonly unit_id: string;
 };
 
+/** ui-responses.schema.json#/$defs/UnitMapImportPreviewV1 */
+export type UiResponses_UnitMapImportPreviewV1 = {
+  readonly can_apply: boolean;
+  readonly canonical_files_written: 0;
+  readonly diff: UiResponses_UnitMapImportCheckDiffWire;
+  readonly expected_revisions: { readonly [key: string]: number };
+  readonly file_sha256: string;
+  readonly files_checked: number;
+  readonly mode: "preview";
+  readonly ok: true;
+  readonly problems: readonly string[];
+  readonly required_decisions: {
+    readonly missing_retire_stages: readonly string[];
+    readonly reorder_required: boolean;
+    readonly retire_reason_required: boolean;
+    readonly state_reset_optional: boolean;
+    readonly state_reset_required: boolean;
+  };
+  readonly snapshot_id: string;
+  readonly study_map_id: string | null;
+  readonly unit_id: string;
+};
+
 /** ui-responses.schema.json#/ */
-export type UiResponsesSchema = UiResponses_HealthReportV1 | UiResponses_LegacyArchiveLockV1 | UiResponses_LegacyArchiveStatusV1 | UiResponses_MastersPlanningDashboardV1 | UiResponses_OperationsListV1 | UiResponses_OperationDetailV1 | UiResponses_GatewaySuccessV2 | UiResponses_GatewayFailureV2 | UiResponses_GatewayRequestV2 | UiResponses_MaterialSpanWire | UiResponses_AbilityBriefWire | UiResponses_AbilityFocusWire | UiResponses_AbilityUnmappedWire | UiResponses_ProjectionSettlementWire | UiResponses_StudySequenceV1 | UiResponses_SessionEndV1 | UiResponses_StatusV1 | UiResponses_PlanTemplateV1 | UiResponses_AiActionPrepareV1 | UiResponses_AiActionStatusV1 | UiResponses_UnitMapImportCheckV1;
+export type UiResponsesSchema = UiResponses_HealthReportV1 | UiResponses_LegacyArchiveLockV1 | UiResponses_LegacyArchiveStatusV1 | UiResponses_MastersPlanningDashboardV1 | UiResponses_OperationsListV1 | UiResponses_OperationDetailV1 | UiResponses_GatewaySuccessV2 | UiResponses_GatewayFailureV2 | UiResponses_GatewayRequestV2 | UiResponses_MaterialSpanWire | UiResponses_AbilityBriefWire | UiResponses_AbilityFocusWire | UiResponses_AbilityUnmappedWire | UiResponses_ProjectionSettlementWire | UiResponses_StudySequenceV1 | UiResponses_SessionEndV1 | UiResponses_StatusV1 | UiResponses_PlanTemplateV1 | UiResponses_AiActionPrepareV1 | UiResponses_AiActionStatusV1 | UiResponses_AiActionDeliveryPreviewV1 | UiResponses_UnitMapImportCheckV1 | UiResponses_UnitMapImportPreviewV1;
 
 // The UI's public names, each pinned to one schema resource and pointer
 // (scripts/contract-type-aliases.json).
@@ -827,6 +861,7 @@ export type AbilityRouteWire = UiResponses_AbilityRouteWire;
 export type AbilityRowWire = UiResponses_AbilityRowWire;
 export type AbilityTransferWire = UiResponses_AbilityTransferWire;
 export type AbilityUnmappedWire = UiResponses_AbilityUnmappedWire;
+export type AiActionDeliveryPreviewV1 = UiResponses_AiActionDeliveryPreviewV1;
 export type AiActionPrepareV1 = UiResponses_AiActionPrepareV1;
 export type AiActionRequestStatusWire = UiResponses_AiActionRequestStatusWire;
 export type AiActionStatusV1 = UiResponses_AiActionStatusV1;
@@ -859,3 +894,4 @@ export type StatusV1 = UiResponses_StatusV1;
 export type StudySequenceV1 = UiResponses_StudySequenceV1;
 export type UnitMapImportCheckDiffWire = UiResponses_UnitMapImportCheckDiffWire;
 export type UnitMapImportCheckV1 = UiResponses_UnitMapImportCheckV1;
+export type UnitMapImportPreviewV1 = UiResponses_UnitMapImportPreviewV1;

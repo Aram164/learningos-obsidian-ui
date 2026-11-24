@@ -53,6 +53,7 @@ interface SearchDocument {
  */
 interface StoreIndexes {
   readonly archivedModuleIds: ReadonlySet<string>;
+  readonly deprecatedConceptIds: readonly string[];
   readonly rowsByGroup: ReadonlyMap<string, readonly ProjectionRecord[]>;
   readonly rowsByType: ReadonlyMap<string, readonly ProjectionRecord[]>;
   readonly sourceMapByModule: ReadonlyMap<string, ProjectionRecord>;
@@ -64,6 +65,7 @@ interface StoreIndexes {
 function emptyStoreIndexes(): StoreIndexes {
   return {
     archivedModuleIds: new Set(),
+    deprecatedConceptIds: [],
     rowsByGroup: new Map(),
     rowsByType: new Map(),
     sourceMapByModule: new Map(),
@@ -85,6 +87,17 @@ function isArchivedRecord(
     && archivedModuleIds.has(record.module_id);
 }
 
+function isDeprecatedConcept(record: ProjectionRecord): boolean {
+  return record.type === 'concept' && record.deprecated === true;
+}
+
+function isHiddenRecord(
+  record: ProjectionRecord,
+  archivedModuleIds: ReadonlySet<string>,
+): boolean {
+  return isArchivedRecord(record, archivedModuleIds) || isDeprecatedConcept(record);
+}
+
 function projectedRows(value: unknown): ProjectionRecord[] {
   return Array.isArray(value)
     ? value.filter(
@@ -103,6 +116,12 @@ function buildStoreIndexes(
         ? [module.id]
         : []),
   );
+  const deprecatedConceptIds = [
+    ...new Set(
+      records.flatMap((row) =>
+        isDeprecatedConcept(row) && typeof row.id === 'string' ? [row.id] : []),
+    ),
+  ].sort(compareStrings);
   const rowsByGroup = new Map<string, readonly ProjectionRecord[]>();
 
   for (const [group, value] of Object.entries(manifest)) {
@@ -110,13 +129,13 @@ function buildStoreIndexes(
     rowsByGroup.set(
       group,
       projectedRows(value).filter(
-        (row) => !isArchivedRecord(row, archivedModuleIds),
+        (row) => !isHiddenRecord(row, archivedModuleIds),
       ),
     );
   }
 
   const visibleRecords = records.filter(
-    (row) => !isArchivedRecord(row, archivedModuleIds),
+    (row) => !isHiddenRecord(row, archivedModuleIds),
   );
   const rowsByType = new Map<string, ProjectionRecord[]>();
 
@@ -188,6 +207,7 @@ function buildStoreIndexes(
 
   return {
     archivedModuleIds,
+    deprecatedConceptIds,
     rowsByGroup,
     rowsByType,
     sourceMapByModule,
@@ -343,9 +363,12 @@ export class ManifestStore {
 
   get(id: string): ProjectionRecord | null {
     const record = this.byId.get(id) || null;
-    return record && !this.isArchivedCurriculumRecord(record)
+    return record && !this.isHiddenRecord(record)
       ? record
       : null;
+  }
+  deprecatedConceptIds(): readonly string[] {
+    return [...this.indexes.deprecatedConceptIds];
   }
   of(type: string): ProjectionRecord[] {
     return [...(this.indexes.rowsByType.get(type) ?? [])];
@@ -360,10 +383,10 @@ export class ManifestStore {
     return [...(this.indexes.rowsByGroup.get(group) ?? [])];
   }
 
-  private isArchivedCurriculumRecord(
+  private isHiddenRecord(
     record: ProjectionRecord,
   ): boolean {
-    return isArchivedRecord(
+    return isHiddenRecord(
       record,
       this.indexes.archivedModuleIds,
     );

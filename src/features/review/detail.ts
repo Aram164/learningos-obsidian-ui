@@ -58,12 +58,18 @@ function problemList(parent: HTMLElement, problems: readonly string[]): void {
   for (const problem of problems) list.createEl('li', { text: problem });
 }
 
-async function send(host: ReviewHost, action: () => Promise<unknown>, done: string): Promise<boolean> {
-  if (host.sending) return false;
+async function send(
+  host: ReviewHost,
+  draftId: string,
+  action: () => Promise<unknown>,
+  done: string,
+): Promise<boolean> {
+  if (host.sending || host.plugin.isAbilityDraftConfirming(draftId)) return false;
   host.sending = true;
   host.render();
   try {
-    await host.plugin.mutate(action);
+    const confirmed = await host.plugin.confirmAbilityDraft(draftId, action);
+    if (!confirmed) return false;
     new Notice(done);
     return true;
   } catch (error: unknown) {
@@ -109,6 +115,7 @@ function editConnection(host: ReviewHost, draft: AbilityConnectionDraft): void {
 }
 
 function drop(host: ReviewHost, id: string): void {
+  if (host.sending || host.plugin.isAbilityDraftConfirming(id)) return;
   host.plugin.discardAbilityDraft(id);
   host.select(null);
   new Notice('Draft dropped. Nothing was recorded.');
@@ -203,8 +210,10 @@ function renderClaimDraft(parent: HTMLElement, host: ReviewHost, draft: AbilityC
   problemList(parent, problems);
   rule(parent);
 
+  const confirming = host.sending || host.plugin.isAbilityDraftConfirming(draft.id);
   const actions = parent.createDiv({ cls: 'los-actions los-review-actions' });
-  const confirm = button(actions, host.sending ? 'Recording…' : 'Confirm & record', () => {
+  const confirm = button(actions, confirming ? 'Recording…' : 'Confirm & record', () => {
+    if (host.sending || host.plugin.isAbilityDraftConfirming(draft.id)) return;
     const current = host.plugin.listAbilityDrafts().find((row2) => row2.id === draft.id);
     if (!current || current.kind !== 'claim' || current.updatedAt !== draft.updatedAt) {
       new Notice('The draft changed; review it again before confirming.');
@@ -216,6 +225,7 @@ function renderClaimDraft(parent: HTMLElement, host: ReviewHost, draft: AbilityC
     const guard = host.plugin.store.artifactGuard(current.workspace);
     void send(
       host,
+      current.id,
       () => host.plugin.gateway.recordAbilityObservation(
         payload,
         identity,
@@ -230,9 +240,9 @@ function renderClaimDraft(parent: HTMLElement, host: ReviewHost, draft: AbilityC
       void host.plugin.abilityHorizon.refresh();
     });
   }, 'cta');
-  confirm.disabled = host.sending || loading || !horizonReady || problems.length > 0;
-  button(actions, 'Edit', () => editClaim(host, draft), 'quiet').disabled = host.sending;
-  button(actions, 'Not this', () => drop(host, draft.id), 'tertiary').disabled = host.sending;
+  confirm.disabled = confirming || loading || !horizonReady || problems.length > 0;
+  button(actions, 'Edit', () => editClaim(host, draft), 'quiet').disabled = confirming;
+  button(actions, 'Not this', () => drop(host, draft.id), 'tertiary').disabled = confirming;
 }
 
 function renderConnectionDraft(parent: HTMLElement, host: ReviewHost, draft: AbilityConnectionDraft): void {
@@ -266,8 +276,10 @@ function renderConnectionDraft(parent: HTMLElement, host: ReviewHost, draft: Abi
   }
   problemList(parent, problems);
   rule(parent);
+  const confirming = host.sending || host.plugin.isAbilityDraftConfirming(draft.id);
   const actions = parent.createDiv({ cls: 'los-actions los-review-actions' });
-  const confirm = button(actions, host.sending ? 'Recording…' : 'Confirm & record', () => {
+  const confirm = button(actions, confirming ? 'Recording…' : 'Confirm & record', () => {
+    if (host.sending || host.plugin.isAbilityDraftConfirming(draft.id)) return;
     const current = host.plugin.listAbilityDrafts().find((row) => row.id === draft.id);
     if (!current || current.kind !== 'connection' || current.updatedAt !== draft.updatedAt) {
       new Notice('The draft changed; review it again before confirming.');
@@ -279,6 +291,7 @@ function renderConnectionDraft(parent: HTMLElement, host: ReviewHost, draft: Abi
     const guard = host.plugin.store.artifactGuard('ability-candidates');
     void send(
       host,
+      current.id,
       () => host.plugin.gateway.recordAbilityCandidate(
         payload,
         identity,
@@ -293,9 +306,9 @@ function renderConnectionDraft(parent: HTMLElement, host: ReviewHost, draft: Abi
       void host.plugin.abilityHorizon.refresh();
     });
   }, 'cta');
-  confirm.disabled = host.sending || !brief || problems.length > 0;
-  button(actions, 'Edit', () => editConnection(host, draft), 'quiet').disabled = host.sending;
-  button(actions, 'Not this', () => drop(host, draft.id), 'tertiary').disabled = host.sending;
+  confirm.disabled = confirming || !brief || problems.length > 0;
+  button(actions, 'Edit', () => editConnection(host, draft), 'quiet').disabled = confirming;
+  button(actions, 'Not this', () => drop(host, draft.id), 'tertiary').disabled = confirming;
 }
 
 function renderConflict(parent: HTMLElement, host: ReviewHost, row: AbilityRowV1): void {

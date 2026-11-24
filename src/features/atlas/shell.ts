@@ -356,6 +356,20 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   results.setAttrs({ 'aria-live': 'polite' });
   updateSearch();
 
+  if (graph.deprecatedConceptIds.length) {
+    const warning = root.createDiv({
+      cls: 'los-callout los-atlas-deprecated-warning',
+      attr: { role: 'note' },
+    });
+    warning.createEl('strong', {
+      text: `${plural(graph.deprecatedConceptIds.length, 'deprecated concept')} excluded from Atlas: `,
+    });
+    warning.createSpan({ text: graph.deprecatedConceptIds.join(', ') });
+    if (host.state.lens !== 'diagnostics') {
+      button(warning, 'Inspect in Diagnostics', () => host.go({ lens: 'diagnostics', concept: null }), 'tertiary');
+    }
+  }
+
   if (!graph.concepts.length) {
     empty(root, 'No concepts are published yet', 'Register a concept to make it available here.');
     return;

@@ -44,6 +44,7 @@ import {
   explicitAiContext,
 } from './gateway-client';
 import { AIActionClient } from './infrastructure/ai-action-client';
+import { readBuildInfo, type BuildInfo } from './infrastructure/build-info';
 import {
   storeEnvelope,
   type DiagnosticEvent,
@@ -146,6 +147,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
   /** A queued refresh some caller needs even if the file looks unchanged. */
   private refreshForced = false;
   private refreshTask: Promise<void> | null = null;
+  private readonly confirmingAbilityDrafts = new Set<string>();
 
   isLifecycleActive(): boolean {
     return this.lifecycleLive
@@ -309,6 +311,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
   }
 
   onunload(): void {
+    this.confirmingAbilityDrafts.clear();
     this.drafts?.dispose();
     this.shelvingChoices?.clear();
     if (this.isLifecycleActive() && this.settings) {
@@ -421,6 +424,21 @@ export class LearningOSUI extends Plugin implements AppSurface {
     this.drafts.discardAbilityDraft(id, updatedAt);
     this.redrawAbilitySurfaces();
   }
+  isAbilityDraftConfirming(id: string): boolean {
+    return this.confirmingAbilityDrafts.has(id);
+  }
+  async confirmAbilityDraft(id: string, action: () => Promise<unknown>): Promise<boolean> {
+    if (this.confirmingAbilityDrafts.has(id)) return false;
+    this.confirmingAbilityDrafts.add(id);
+    this.redrawAbilitySurfaces();
+    try {
+      await this.mutate(action);
+      return true;
+    } finally {
+      this.confirmingAbilityDrafts.delete(id);
+      this.redrawAbilitySurfaces();
+    }
+  }
   /** The surfaces that read the ability horizon or the ability drafts. */
   private redrawAbilitySurfaces(): void {
     if (!this.isLifecycleActive()) return;
@@ -474,6 +492,25 @@ export class LearningOSUI extends Plugin implements AppSurface {
   uiVersion(): string {
     const info = this.manifest;
     return info?.version || 'unknown';
+  }
+
+  readBuildInfo(): BuildInfo {
+    const pluginInfo = this.manifest as unknown as {
+      readonly dir?: string;
+      readonly id?: string;
+    } | undefined;
+    let basePath = '';
+    try {
+      basePath = this.app.vault.adapter.getBasePath();
+    } catch (_) {
+      basePath = '';
+    }
+    return readBuildInfo({
+      basePath,
+      pluginDir: pluginInfo?.dir,
+      pluginId: pluginInfo?.id,
+      uiVersion: this.uiVersion(),
+    });
   }
 
   /** The identity compiled into *this* running bundle — see build-identity.ts. */

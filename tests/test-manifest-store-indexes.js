@@ -321,6 +321,27 @@ function fixtureManifest() {
     );
   }
 
+  // Deprecated concepts are excluded from get/of/search while their IDs stay
+  // observable to Atlas diagnostics.
+  const conceptRows = [
+    { id: 'concept-live', type: 'concept', title: 'Live Concept', deprecated: false },
+    { id: 'concept-retired', type: 'concept', title: 'Retired Concept', deprecated: true },
+  ];
+  const conceptManifest = {
+    ...fixtureManifest(),
+    records: conceptRows,
+  };
+  const conceptStore = new ManifestStore({ vault: { adapter: {
+    exists: async () => true,
+    read: async () => JSON.stringify(conceptManifest),
+  } } });
+  assert.equal(await conceptStore.load(), true);
+  assert.equal(conceptStore.get('concept-live')?.id, 'concept-live');
+  assert.equal(conceptStore.get('concept-retired'), null);
+  assert.deepEqual(conceptStore.of('concept').map((row) => row.id), ['concept-live']);
+  assert.deepEqual(conceptStore.search('Concept', ['concept']).map((row) => row.id), ['concept-live']);
+  assert.deepEqual(conceptStore.deprecatedConceptIds(), ['concept-retired']);
+
   console.log('ManifestStore indexes OK: cached reads preserve filtering, search, and atomic failure semantics.');
 })().catch((error) => {
   console.error(error.stack || error);

@@ -1076,6 +1076,24 @@
   font-size: 12px;
 }
 
+.los-atlas-deprecated-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-2);
+  margin-bottom: var(--los-3);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-warning);
+  border-radius: var(--los-r-md);
+  background: var(--los-warning-wash);
+  color: var(--los-ink);
+  font-size: 13px;
+}
+
+.los-atlas-deprecated-warning strong {
+  color: var(--los-warning-strong);
+}
+
 /* ------------------------------------------------------------- legend */
 
 .los-atlas-legend {
@@ -3692,14 +3710,32 @@
   overflow-y: auto;
 }
 .los-map-import-field { display: grid; gap: 6px; margin-top: var(--los-3); }
+.los-map-import-overrides.is-hidden,
 .los-map-import-field.is-hidden { display: none; }
 .los-map-import-field label { color: var(--los-ink); font-size: 12px; font-weight: 700; }
-.los-map-import-field input,
+.los-map-import-field input:not([type="checkbox"]),
 .los-map-import-field select {
   width: 100%;
   min-height: 38px;
   padding: var(--los-2);
   font: inherit;
+}
+.los-map-import-retire-list { display: grid; gap: var(--los-1); margin-top: var(--los-1); }
+.los-checkbox-row,
+.los-map-import-field label.los-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--los-2);
+  color: var(--los-ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.los-checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  flex: 0 0 auto;
 }
 .los-map-import-actions { margin-top: var(--los-4); }
 

@@ -2,7 +2,8 @@ import { Modal, type App } from 'obsidian';
 import { makeModalAccessible } from '../../accessibility/modal';
 import { button } from '../../components';
 import type { PlanTemplate } from '../../contracts/plan-template';
-import type { UnitMapImportReview } from '../../gateway-client';
+import type { UnitMapImportPreviewV1 } from '../../contracts/generated/responses.types';
+import type { UnitMapImportOverrides, UnitMapImportReview } from '../../gateway-client';
 import { asString, errorMessage, isRecord } from '../../projection/readers';
 import type { MaterialOptionView, StudyMapView } from './model';
 
@@ -149,7 +150,16 @@ export class UnitMapImportModal extends Modal {
       /** True when the unit already has a current map, so this is a replace. */
       replacing: boolean;
       template?: () => Promise<PlanTemplate>;
-      check: (file: string, replace: boolean) => Promise<UnitMapImportReview>;
+      preview?: (
+        file: string,
+        replace: boolean,
+        overrides?: UnitMapImportOverrides,
+      ) => Promise<UnitMapImportPreviewV1>;
+      check: (
+        file: string,
+        replace: boolean,
+        overrides?: UnitMapImportOverrides,
+      ) => Promise<UnitMapImportReview>;
       submit: (review: UnitMapImportReview) => Promise<unknown>;
     },
   ) { super(app); }
@@ -173,11 +183,6 @@ export class UnitMapImportModal extends Modal {
         ? `${unitTitle} already has a current map. Review the changes and the recorded work carried forward before replacing it.`
         : `Apply a reviewed study map to ${unitTitle}. The coverage audit stays where the SOP puts it; this applies its result.`,
     });
-    this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(),
-      hostClass: 'los-modal--map-import',
-      labelledBy: heading.id,
-    });
 
     const standard = root.createDiv({
       cls: 'los-muted los-plan-standard',
@@ -190,24 +195,54 @@ export class UnitMapImportModal extends Modal {
     const file = field.createEl('input', { attr: { type: 'text' } });
     file.placeholder = 'path to the audited study-map YAML';
 
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: 'los-modal--map-import',
+      initialFocus: () => file,
+      labelledBy: heading.id,
+    });
+
+    const overridesPanel = root.createDiv({ cls: 'los-map-import-overrides is-hidden' });
+    const reorderField = overridesPanel.createDiv({ cls: 'los-map-import-field is-hidden' });
+    reorderField.createEl('label', { text: 'Reason for reordering surviving stages (required)' });
+    const reorderReason = reorderField.createEl('input', { attr: { type: 'text' } });
+    reorderReason.placeholder = 'Why surviving stages are reordered in this revision';
+
+    const resetField = overridesPanel.createDiv({ cls: 'los-map-import-field is-hidden' });
+    const resetLabel = resetField.createEl('label', { text: 'Reason to reset preserved stage and map state' });
+    const resetReason = resetField.createEl('input', { attr: { type: 'text' } });
+    resetReason.placeholder = 'Required only when discarding preserved stage state or detours';
+
+    const retireField = overridesPanel.createDiv({ cls: 'los-map-import-field is-hidden' });
+    retireField.createEl('label', { text: 'Stages to retire (check each explicitly)' });
+    const retireStagesList = retireField.createDiv({ cls: 'los-map-import-retire-list' });
+    const retireReasonLabel = retireField.createEl('label', { text: 'Reason for retiring removed stages (required)' });
+    const retireReason = retireField.createEl('input', { attr: { type: 'text' } });
+    retireReason.placeholder = 'What happened to the work on retired stages';
+    const retireCheckboxes = new Map<string, HTMLInputElement>();
+
     const status = root.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
     const preview = root.createDiv({
       cls: 'los-map-import-preview', attr: { 'aria-live': 'polite' },
     });
     const actions = root.createDiv({ cls: 'los-actions los-map-import-actions' });
 
+    let submitting = false;
     const submit = button(actions, replacing ? 'Replace map' : 'Import map', async () => {
+      if (submitting) return;
       const path = file.value.trim();
       if (!path || !this.checked || path !== this.checked.file) {
         status.setText('Check the file first; the import applies the diff you were shown.');
         return;
       }
+      submitting = true;
       submit.disabled = true;
       status.setText('Importing…');
       try {
         await this.options.submit(this.checked);
         this.close();
       } catch (error: unknown) {
+        submitting = false;
         this.checked = null;
         submit.disabled = true;
         // Core's refusal names which rule failed. Showing it verbatim is the
@@ -218,6 +253,93 @@ export class UnitMapImportModal extends Modal {
     }, 'cta');
     submit.disabled = true;
 
+    const invalidateReview = (message: string) => {
+      this.reviewGeneration += 1;
+      this.checked = null;
+      submit.disabled = true;
+      preview.empty();
+      status.setText(message);
+    };
+
+    const readOverrides = (): UnitMapImportOverrides => {
+      const retireStages = [...retireCheckboxes.entries()]
+        .filter(([, input]) => input.checked)
+        .map(([stageId]) => stageId);
+      const reorder = reorderReason.value.trim();
+      const reset = resetReason.value.trim();
+      const reason = retireReason.value.trim();
+      return {
+        ...(reorder ? { intentionalReorder: reorder } : {}),
+        ...(reset ? { intentionalStateReset: reset } : {}),
+        ...(retireStages.length > 0 ? { retireStages } : {}),
+        ...(reason ? { retireReason: reason } : {}),
+      };
+    };
+
+    const syncOverrideControls = (
+      answer: UnitMapImportPreviewV1,
+      currentOverrides: UnitMapImportOverrides,
+    ) => {
+      const decisions = answer.required_decisions;
+      const showReorder = decisions.reorder_required || Boolean(currentOverrides.intentionalReorder);
+      reorderField.toggleClass('is-hidden', !showReorder);
+
+      const showReset = decisions.state_reset_required
+        || decisions.state_reset_optional
+        || Boolean(currentOverrides.intentionalStateReset);
+      resetLabel.setText(
+        decisions.state_reset_required
+          ? 'Reason to reset preserved stage and map state (required)'
+          : 'Reason to reset preserved stage and map state (optional — leave blank to preserve progress)',
+      );
+      resetField.toggleClass('is-hidden', !showReset);
+
+      const retiredIds = [...new Set([
+        ...(answer.diff.stages_retired ?? []),
+        ...decisions.missing_retire_stages,
+        ...(currentOverrides.retireStages ?? []),
+      ])];
+      const selectedSet = new Set(currentOverrides.retireStages ?? []);
+      retireCheckboxes.clear();
+      retireStagesList.empty();
+      for (const stageId of retiredIds) {
+        const option = retireStagesList.createEl('label', { cls: 'los-checkbox-row' });
+        const box = option.createEl('input', { attr: { type: 'checkbox', value: stageId } });
+        box.checked = selectedSet.has(stageId);
+        box.addEventListener('change', () => invalidateReview('Replacement decisions changed — check again before importing.'));
+        option.createSpan({ text: ` ${stageId}` });
+        retireCheckboxes.set(stageId, box);
+      }
+      const showRetire = retiredIds.length > 0
+        || decisions.retire_reason_required
+        || Boolean(currentOverrides.retireReason);
+      retireReasonLabel.setText(
+        decisions.retire_reason_required || retiredIds.length > 0
+          ? 'Reason for retiring removed stages (required)'
+          : 'Reason for retiring removed stages',
+      );
+      retireField.toggleClass('is-hidden', !showRetire);
+      overridesPanel.toggleClass('is-hidden', !showReorder && !showReset && !showRetire);
+    };
+
+    const resetOverrideControls = () => {
+      reorderReason.value = '';
+      resetReason.value = '';
+      retireReason.value = '';
+      retireCheckboxes.clear();
+      retireStagesList.empty();
+      reorderField.addClass('is-hidden');
+      resetField.addClass('is-hidden');
+      retireField.addClass('is-hidden');
+      overridesPanel.addClass('is-hidden');
+    };
+
+    for (const input of [reorderReason, resetReason, retireReason]) {
+      input.addEventListener('input', () => {
+        invalidateReview('Replacement decisions changed — check again before importing.');
+      });
+    }
+
     const check = button(actions, 'Check', async () => {
       const path = file.value.trim();
       if (!path) { status.setText('Name the reviewed file first.'); return; }
@@ -226,14 +348,30 @@ export class UnitMapImportModal extends Modal {
       submit.disabled = true;
       check.disabled = true;
       status.setText('Checking — nothing is written…');
+      const overrides = readOverrides();
       try {
-        const answer = await this.options.check(path, replacing);
+        if (this.options.preview) {
+          const previewAnswer = await this.options.preview(path, replacing, overrides);
+          if (generation !== this.reviewGeneration || path !== file.value.trim()) return;
+          syncOverrideControls(previewAnswer, overrides);
+          if (!renderImportDiff(preview, previewAnswer)) {
+            throw new Error('This preview could not be read completely. Check again before importing.');
+          }
+          if (!previewAnswer.can_apply) {
+            status.setText(
+              previewAnswer.problems.join(' ')
+              || 'Supply the required replacement reasons above and click Check again.',
+            );
+            return;
+          }
+        }
+        const answer = await this.options.check(path, replacing, overrides);
         if (generation !== this.reviewGeneration || path !== file.value.trim()) return;
         if (answer.file !== path || answer.unitId !== this.options.unitId
           || answer.replace !== replacing || !renderImportDiff(preview, answer.result)) {
           throw new Error('This review could not be read completely. Check again before importing.');
         }
-        this.checked = answer;
+        this.checked = { ...answer, overrides: answer.overrides ?? overrides };
         submit.disabled = false;
         status.setText('Checked. Review the change below, then import.');
       } catch (error: unknown) {
@@ -250,17 +388,13 @@ export class UnitMapImportModal extends Modal {
     // The approval is to the bytes that were shown, so changing the path
     // withdraws it rather than silently carrying it to a different file.
     file.addEventListener('input', () => {
-      this.reviewGeneration += 1;
-      this.checked = null;
-      submit.disabled = true;
-      preview.empty();
-      status.setText('File changed — check it again before importing.');
+      resetOverrideControls();
+      invalidateReview('File changed — check it again before importing.');
     });
 
     button(actions, 'Cancel', () => this.close(), 'quiet');
 
     void this.describeStandard(standard);
-    file.focus();
   }
 
   private async describeStandard(standard: HTMLElement): Promise<void> {
@@ -311,9 +445,6 @@ export class StructuralEditModal extends Modal {
     root.addClass('los-root', 'los-map-import-modal');
     const heading = root.createEl('h2', { text: 'Adjust study plan' });
     heading.id = 'los-structural-heading';
-    this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(), hostClass: 'los-modal--map-import', labelledBy: heading.id,
-    });
     root.createEl('p', { text: 'Choose one change, check its exact result, then apply. Recorded work stays with its stage.' });
     const select = (label: string, rows: readonly (readonly [string, string])[]) => {
       const field = root.createEl('label', { cls: 'los-map-import-field', text: label });
@@ -328,6 +459,12 @@ export class StructuralEditModal extends Modal {
       ['resource_insert', 'Insert material in stage'],
       ['resource_append', 'Append material to stage'],
     ]);
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: 'los-modal--map-import',
+      initialFocus: () => action,
+      labelledBy: heading.id,
+    });
     const stage = select('Stage', this.options.studyMap.stages.map(s => [s.id, s.title]));
     const resource = select('Resource to move', []);
     const side = select('Position', [['before_id', 'Before'], ['after_id', 'After']]);

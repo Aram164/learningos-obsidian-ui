@@ -742,4 +742,97 @@ module.exports = async function run() {
       && restarted.plugin.settings.gatewayRecovery === null);
     restarted.plugin.onunload();
   }
+
+  heading('cross-leaf Review confirmation deduplication across open Review leaves (#8)');
+  {
+    let finishConfirm = null;
+    let shouldFail = false;
+    const { app, plugin, calls } = await boot({
+      runLosOverride: (args, callback, stdin) => {
+        const envelope = stdin ? JSON.parse(stdin) : null;
+        if (envelope?.capability === 'learner.ability-observation.append') {
+          if (shouldFail) {
+            return callback(null, JSON.stringify(gatewayRefusal(
+              envelope, 'INVALID_REQUEST', 'Temporary failure',
+            )), '');
+          }
+          finishConfirm = () => callback(null, JSON.stringify({
+            schema_version: 2,
+            request_id: envelope.request_id,
+            idempotency_key: envelope.idempotency_key,
+            capability: envelope.capability,
+            ok: true,
+            replayed: false,
+            transaction_id: 'tx-ability-cross-leaf-1',
+            receipt_path: 'operations/transactions/tx-ability-cross-leaf-1.yaml',
+            snapshot_after: FIXTURE_SNAPSHOT,
+            result: { ok: true, observation_id: 'ability-observation-cross-leaf-1' },
+            error: null,
+          }), '');
+          return;
+        }
+        const { answerAbilityRead } = require('../ability-fixtures');
+        const read = answerAbilityRead(args);
+        return callback(null, JSON.stringify(read ?? { ok: true }), '');
+      },
+    });
+    const draft = {
+      kind: 'claim',
+      id: 'ability-claim-cross-leaf',
+      abilityId: 'ability-fixture-conditional',
+      abilityTitle: 'Conditional probability and Bayes updates',
+      workspace: 'workspace-fixture-m2',
+      activity: 'Worked problem 2',
+      result: 'correct',
+      assistance: 'none',
+      conditionsMet: ['specified prior and likelihood'],
+      conditionsNotMet: [],
+      evidenceTags: ['explicit Bayes update'],
+      workRef: 'conversation://synthetic-loop/cross-leaf',
+      claim: 'Cross-leaf confirm claim',
+      supersedes: null,
+      createdAt: '2026-11-21T10:00:00.000Z',
+      updatedAt: '2026-11-21T10:00:00.000Z',
+    };
+    plugin.saveAbilityDraft(draft);
+    await plugin.nav.openReview(draft.id);
+    const secondLeaf = app.workspace.getLeaf(true);
+    await secondLeaf.setViewState({ type: VIEW.review, active: true, state: { id: draft.id } });
+    const leaves = () => app.workspace.getLeavesOfType(VIEW.review);
+    const leaf1Root = () => leaves()[0].view.contentEl;
+    const leaf2Root = () => leaves()[1].view.contentEl;
+    await waitFor(() => Boolean(leaf1Root().findText('los-btn', 'Confirm & record'))
+      && !leaf1Root().findText('los-btn', 'Confirm & record').disabled
+      && Boolean(leaf2Root().findText('los-btn', 'Confirm & record'))
+      && !leaf2Root().findText('los-btn', 'Confirm & record').disabled);
+
+    shouldFail = true;
+    leaf1Root().findText('los-btn', 'Confirm & record').fire('click');
+    await waitFor(() => !plugin.gateway.isBusy && !plugin.isAbilityDraftConfirming(draft.id));
+    check('refused Review confirmation releases cross-leaf lock so either leaf can retry',
+      leaf1Root().findText('los-btn', 'Confirm & record')?.disabled === false
+      && leaf2Root().findText('los-btn', 'Confirm & record')?.disabled === false);
+
+    shouldFail = false;
+    const beforeWrites = calls.envelopes.filter((e) => e.capability === 'learner.ability-observation.append').length;
+    leaf1Root().findText('los-btn', 'Confirm & record').fire('click');
+    const leaf1BusyBtn = leaf1Root().findText('los-btn', 'Recording…');
+    const leaf2BusyBtn = leaf2Root().findText('los-btn', 'Recording…');
+    check('confirming in leaf 1 synchronously locks and disables leaf 2 Confirm & record button',
+      plugin.isAbilityDraftConfirming(draft.id) === true
+      && leaf1BusyBtn?.disabled === true
+      && leaf2BusyBtn?.disabled === true
+      && leaf2Root().findText('los-btn', 'Edit')?.disabled === true
+      && leaf2Root().findText('los-btn', 'Not this')?.disabled === true);
+    leaf2BusyBtn?.fire('click');
+    await waitFor(() => calls.envelopes.filter((e) => e.capability === 'learner.ability-observation.append').length === beforeWrites + 1);
+    await frame();
+    check('clicking confirm in leaf 2 while leaf 1 is in flight sends no duplicate write',
+      calls.envelopes.filter((e) => e.capability === 'learner.ability-observation.append').length === beforeWrites + 1);
+    finishConfirm();
+    await waitFor(() => !plugin.gateway.isBusy && !plugin.isAbilityDraftConfirming(draft.id));
+    check('draft clears cleanly after confirmed single write across both leaves',
+      !plugin.listAbilityDrafts().some((d) => d.id === draft.id));
+    plugin.onunload();
+  }
 };

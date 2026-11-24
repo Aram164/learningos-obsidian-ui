@@ -493,4 +493,56 @@ module.exports = async function run() {
       view.contentEl.getAttribute('data-focus-screen') === 'plan', where(view));
     plugin.onunload();
   }
+
+  heading('Focus scratchpad and wrap-up recompute fresh unit artifactGuard (#24)');
+  {
+    const { app, plugin } = await boot({
+      settings: {
+        uiDesign: 'focus',
+        uiDrafts: {
+          inbox: { title: '', text: '' },
+          garden: { title: '', text: '' },
+          stages: {},
+          unitNotes: {
+            'unit-fixture-sad-l04': {
+              title: '',
+              text: 'Stale revision note',
+              expectedRevisions: {
+                'unit-fixture-sad-l04': 0,
+                'study-map-fixture-sad-l04': 99,
+              },
+            },
+          },
+          doneWhen: {},
+          abilityDrafts: {},
+        },
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    if (view.contentEl.getAttribute('data-focus-screen') !== 'session') {
+      view.contentEl.findText('los-btn', 'Resume stage')?.fire('click');
+    }
+    const expectedGuard = plugin.store.artifactGuard('unit-fixture-sad-l04');
+    check('fixture unit artifactGuard omits study_map revision',
+      Object.keys(expectedGuard).length === 1
+      && 'unit-fixture-sad-l04' in expectedGuard
+      && !('study-map-fixture-sad-l04' in expectedGuard));
+
+    const scratch = view.contentEl.find('focus-note-scratch')[0];
+    scratch.value = 'Updated scratchpad under fresh revision';
+    scratch.fire('input');
+    check('Focus scratchpad input replaces stale draft.expectedRevisions with fresh artifactGuard(unitId)',
+      JSON.stringify(plugin.getUnitNoteDraft('unit-fixture-sad-l04').expectedRevisions)
+        === JSON.stringify(expectedGuard));
+
+    view.contentEl.findText('los-btn', 'End session').fire('click');
+    const wrapEditor = view.contentEl.find('focus-note-editor')[0];
+    wrapEditor.value = 'Updated wrap-up note under fresh revision';
+    wrapEditor.fire('input');
+    check('Focus wrap-up editor input replaces stale draft.expectedRevisions with fresh artifactGuard(unitId)',
+      JSON.stringify(plugin.getUnitNoteDraft('unit-fixture-sad-l04').expectedRevisions)
+        === JSON.stringify(expectedGuard));
+    plugin.onunload();
+  }
 };

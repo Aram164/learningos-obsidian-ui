@@ -225,6 +225,27 @@ module.exports = async function run() {
       && root.find('los-diagnostic-technical')[0]?.allText().includes('fixture diagnostic detail'));
     plugin.onunload();
   }
+  {
+    const { app, plugin } = await boot();
+    plugin.manifest = { id: 'learningos-ui', version: '2.0.0-test', dir: 'missing-plugin-dir' };
+    await plugin.nav.openDiagnostics();
+    await tick(); await tick();
+    const view = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view;
+    const root = view.contentEl;
+    const info = view.buildInfo();
+    check('buildInfo gracefully returns unavailable fields when build-info.json is unreadable',
+      info.ui_version === '2.0.0-test'
+      && info.source_revision === 'unavailable'
+      && info.source_dirty === null
+      && info.source_committed_at === 'unavailable'
+      && info.source_fingerprint === 'unavailable'
+      && info.bundle_sha256 === 'unavailable'
+      && info.node_version === 'unavailable'
+      && root.getAttribute('data-los-ui-revision') === 'unavailable'
+      && root.getAttribute('data-los-ui-dirty') === 'unknown'
+      && root.getAttribute('data-los-runtime-fingerprint-matches') === 'no');
+    plugin.onunload();
+  }
 
   heading('material consumer contract (red gate)');
   {

@@ -11,9 +11,11 @@ import type { AppSurface } from '../../app/surface';
 export type ReviewPlugin = Pick<
   AppSurface,
   | 'abilityHorizon'
+  | 'confirmAbilityDraft'
   | 'discardAbilityDraft'
   | 'gateway'
   | 'generate'
+  | 'isAbilityDraftConfirming'
   | 'listAbilityDrafts'
   | 'mutate'
   | 'openAuthoredPath'

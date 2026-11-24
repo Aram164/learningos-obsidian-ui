@@ -1134,4 +1134,74 @@ module.exports = async function run() {
       && fs.existsSync(CAPTURE_FIXTURE_PATH));
     plugin.onunload();
   }
+
+  heading('capture buttons disable synchronously while a capture write is in flight (#21)');
+  {
+    const { gatewayConfirmation, gatewayRefusal } = require('./support');
+    let finishCapture = null;
+    let refuseNext = true;
+    const { app, plugin, calls } = await boot({
+      runLosOverride: (_args, callback, stdin) => {
+        const envelope = stdin ? JSON.parse(stdin) : null;
+        if (envelope?.capability === 'capture.create') {
+          if (refuseNext) {
+            finishCapture = () => callback(null, JSON.stringify(
+              gatewayRefusal(envelope, 'VALIDATION_FAILED', 'Disk full'),
+            ), '');
+            return;
+          }
+          finishCapture = () => callback(null, JSON.stringify(gatewayConfirmation(envelope)), '');
+          return;
+        }
+        return callback(null, JSON.stringify({ ok: true }), '');
+      },
+    });
+    await plugin.nav.openProgram('inbox');
+    const view = app.workspace.getLeavesOfType(VIEW.program)[0].view;
+    const el = view.contentEl;
+    const titleInput = el.find('los-capture-title')[0];
+    const editor = el.find('los-capture-editor')[0];
+    const fileInput = el.find('los-capture-file')[0];
+    editor.value = 'Double-click capture test';
+    editor.fire('input');
+    fileInput.files = [{ name: 'handwriting.png', __path: CAPTURE_FIXTURE_PATH }];
+    fileInput.fire('change');
+
+    const textBtn = () => view.contentEl.findText('los-btn', 'Capture text');
+    const fileBtn = () => view.contentEl.findText('los-btn', 'Capture selected file');
+    check('both capture buttons start enabled once text and file are provided',
+      textBtn().disabled === false && fileBtn().disabled === false);
+
+    textBtn().fire('click');
+    check('clicking Capture text disables both capture actions immediately',
+      textBtn().disabled === true
+      && textBtn().getAttribute('aria-disabled') === 'true'
+      && fileBtn().disabled === true
+      && fileBtn().getAttribute('aria-disabled') === 'true');
+    textBtn().fire('click');
+    await waitFor(() => calls.envelopes.filter((e) => e.capability === 'capture.create').length === 1);
+    await frame();
+    check('rapid second click sends no duplicate capture envelope',
+      calls.envelopes.filter((e) => e.capability === 'capture.create').length === 1);
+
+    finishCapture();
+    await waitFor(() => !plugin.gateway.isBusy && textBtn().disabled === false);
+    check('refused capture re-enables both buttons and keeps draft and selected file',
+      textBtn().disabled === false
+      && fileBtn().disabled === false
+      && editor.value === 'Double-click capture test'
+      && fileInput.files.length === 1);
+
+    refuseNext = false;
+    fileBtn().fire('click');
+    check('clicking Capture selected file disables both capture buttons while in flight',
+      textBtn().disabled === true && fileBtn().disabled === true);
+    await waitFor(() => calls.envelopes.filter((e) => e.capability === 'capture.create').length === 2);
+    finishCapture();
+    await waitFor(() => !plugin.gateway.isBusy);
+    check('text button stays enabled if text remains after confirmed file capture',
+      titleInput.value === '' && editor.value === 'Double-click capture test'
+      && textBtn().disabled === false);
+    plugin.onunload();
+  }
 };

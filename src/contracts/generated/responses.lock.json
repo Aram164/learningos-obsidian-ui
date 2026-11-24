@@ -1,6 +1,6 @@
 {
   "root": "system/schema/ui-responses.schema.json",
-  "closure_sha256": "sha256:9d29ba93e97eb4413c591b6095b3832425c9b5fd0ba8a7c7d08dcf2982f89069",
+  "closure_sha256": "sha256:271613f2b6eaf4f258b4dec199ca493a232b6b957dc58288f7104ed8130f8eae",
   "endpoints": [
     "HealthReportV1",
     "LegacyArchiveLockV1",
@@ -22,6 +22,8 @@
     "PlanTemplateV1",
     "AiActionPrepareV1",
     "AiActionStatusV1",
-    "UnitMapImportCheckV1"
+    "AiActionDeliveryPreviewV1",
+    "UnitMapImportCheckV1",
+    "UnitMapImportPreviewV1"
   ]
 }

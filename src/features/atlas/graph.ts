@@ -133,6 +133,8 @@ export interface AtlasModule {
 export interface AtlasGraph {
   readonly concepts: readonly AtlasConcept[];
   readonly conceptById: ReadonlyMap<string, AtlasConcept>;
+  /** Concept IDs excluded because their registry record sets `deprecated: true`. */
+  readonly deprecatedConceptIds: readonly string[];
   readonly edges: readonly AtlasEdge[];
   /** Every edge by its canonical `from--type--to` identity. */
   readonly relationByIdentity: ReadonlyMap<string, AtlasEdge>;
@@ -159,7 +161,9 @@ export interface AtlasGraph {
 export type AtlasGraphStore = Pick<
   ManifestStore,
   'get' | 'of' | 'modules' | 'moduleConceptEdges' | 'relations'
->;
+> & {
+  readonly deprecatedConceptIds?: () => readonly string[];
+};
 
 export function moduleConceptKey(moduleId: string, conceptId: string): string {
   return `${moduleId}\u0000${conceptId}`;
@@ -230,12 +234,16 @@ function toEdge(wire: RelationRecord): AtlasEdge {
 
 export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
   const conceptById = new Map<string, AtlasConcept>();
+  const deprecatedIds = new Set<string>(store.deprecatedConceptIds?.() ?? []);
 
   const remember = (id: string): AtlasConcept => {
     const known = conceptById.get(id);
     if (known) return known;
 
-    const record = store.get(id);
+    const raw = store.get(id);
+    const isDeprecated = raw?.type === 'concept' && raw.deprecated === true;
+    if (isDeprecated) deprecatedIds.add(id);
+    const record = raw && !isDeprecated ? raw : null;
     // A relation may name a concept the projection does not carry. The concept
     // is kept under its identifier rather than dropped, so the edge stays
     // visible and the gap stays nameable.
@@ -252,7 +260,12 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
 
   for (const record of store.of('concept')) {
     const id = projectedString(record.id);
-    if (id) remember(id);
+    if (!id) continue;
+    if (record.deprecated === true || deprecatedIds.has(id)) {
+      deprecatedIds.add(id);
+      continue;
+    }
+    remember(id);
   }
 
   const edges: AtlasEdge[] = [];
@@ -372,6 +385,7 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
   return {
     concepts,
     conceptById,
+    deprecatedConceptIds: [...deprecatedIds].sort(compareStrings),
     edges: edges.slice().sort((left, right) => compareStrings(left.id, right.id)),
     relationByIdentity,
     prerequisiteEdges,
@@ -1036,6 +1050,16 @@ export function diagnostics(graph: AtlasGraph): readonly AtlasDiagnostic[] {
       'Concepts that require one another in a loop. No learning order exists over them, so path derivation is blocked until the registry is corrected.',
       'concepts',
       { conceptIds: cycle },
+    ));
+  }
+
+  if (graph.deprecatedConceptIds.length) {
+    entries.push(diagnostic(
+      'deprecated-concepts',
+      'Deprecated concepts excluded from Atlas',
+      'Marked deprecated: true in the concept registry and excluded from live concept browsing and prerequisite paths.',
+      'concepts',
+      { conceptIds: graph.deprecatedConceptIds },
     ));
   }
 

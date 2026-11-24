@@ -1,9 +1,8 @@
 import { groupMaterialsByType } from './source-browser';
-import { projectedAvailability, toggleRouteChoice } from './material-card';
+import { projectedAvailability, renderRouteChoiceButton } from './material-card';
 import { renderMaterialCautions, whyThisOne } from '../stage-resources';
 import { asText } from '../../projection/readers';
 import type { UnitMaterialsHost } from './ports';
-import { Notice } from 'obsidian';
 import {
   badge,
   button,
@@ -228,39 +227,13 @@ export function renderMaterialMenu(
           && option.sourceId
           && option.locator
         ) {
-          const choice = button(
+          renderRouteChoiceButton(
             actions,
-            option.selected
-              ? 'Remove choice'
-              : 'Choose',
-            () => {
-              void toggleRouteChoice(
-                view.plugin,
-                unit.id,
-                option,
-                expectedRevisions,
-              ).then(
-                () => new Notice(
-                  option.selected
-                    ? 'Material choice removed.'
-                    : 'Material chosen for this lecture.',
-                ),
-              ).catch(
-                (error: unknown) =>
-                  new Notice(
-                    error instanceof Error
-                      ? error.message
-                      : String(error),
-                  ),
-              );
-            },
-            'choice',
-          );
-          choice.setAttr(
-            'aria-pressed',
-            option.selected
-              ? 'true'
-              : 'false',
+            view.plugin,
+            unit.id,
+            option,
+            expectedRevisions,
+            { label: option.selected ? 'Remove choice' : 'Choose', variant: 'choice' },
           );
         }
 

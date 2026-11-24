@@ -188,6 +188,18 @@ const SEVEN_ENDPOINTS = {
     },
     invalid: { ok: true, request: { id: 'ai-request-1', status: 'bogus-status' } },
   },
+  AiActionDeliveryPreviewV1: {
+    valid: {
+      ok: true,
+      delivery_id: 'ai-delivery-1',
+      request_id: 'ai-request-1',
+      delivery_sha256: DIGEST,
+      artifact_sha256: { 'artifacts/transcription.md': DIGEST },
+      expected_snapshot: SNAPSHOT,
+      expected_revisions: { 'garden-note-seed': 0 },
+    },
+    invalid: { ok: true, delivery_id: 'ai-delivery-1', expected_snapshot: 'not-a-sha' },
+  },
   UnitMapImportCheckV1: {
     valid: {
       ok: true,
@@ -209,6 +221,36 @@ const SEVEN_ENDPOINTS = {
     },
     invalid: { ok: true, mode: 'apply', canonical_files_written: 1 },
   },
+  UnitMapImportPreviewV1: {
+    valid: {
+      ok: true,
+      mode: 'preview',
+      can_apply: false,
+      unit_id: 'unit-demo-l01',
+      study_map_id: 'study-map-demo-l01',
+      files_checked: 2,
+      canonical_files_written: 0,
+      file_sha256: DIGEST,
+      snapshot_id: SNAPSHOT,
+      expected_revisions: { 'unit-demo-l01': 1, 'study-map-demo-l01': 0 },
+      problems: ['stage retired'],
+      required_decisions: {
+        reorder_required: true,
+        state_reset_required: false,
+        state_reset_optional: true,
+        missing_retire_stages: ['stage-old'],
+        retire_reason_required: true,
+      },
+      diff: {
+        replacement: true,
+        unit_status: 'active',
+        stages_after: ['stage-demo'],
+        content_changes: [],
+        map_changes: [],
+      },
+    },
+    invalid: { ok: true, mode: 'preview', can_apply: 'yes' },
+  },
 };
 for (const [name, sample] of Object.entries(SEVEN_ENDPOINTS)) {
   const fn = validators['validate' + name];
@@ -216,4 +258,4 @@ for (const [name, sample] of Object.entries(SEVEN_ENDPOINTS)) {
   assert.equal(Boolean(fn(sample.valid)), true, `Expected valid ${name}: ${JSON.stringify(fn.errors)}`);
   assert.equal(Boolean(fn(sample.invalid)), false, `Expected invalid ${name} to fail`);
 }
-console.log(`Response differential OK: ${golden.cases.length} cases, 13 endpoints (+7 generated Phase 2 validators verified); ${golden.stricter_malformed_rejections} malformed values rejected by producer shape`);
+console.log(`Response differential OK: ${golden.cases.length} cases, 13 endpoints (+9 generated response validators verified); ${golden.stricter_malformed_rejections} malformed values rejected by producer shape`);

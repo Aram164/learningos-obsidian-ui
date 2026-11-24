@@ -91,6 +91,8 @@ export class ProgramView extends ItemView {
   readonly plugin: ProgramPlugin;
   programId: string | null = null;
   private captureFeedback = '';
+  private capturing = false;
+  private syncCaptureControls: (() => void) | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -539,6 +541,7 @@ export class ProgramView extends ItemView {
       textPanel,
       'Capture text',
       () => {
+        if (this.capturing) return;
         const text = editor.value.trim();
 
         if (!text) {
@@ -554,7 +557,7 @@ export class ProgramView extends ItemView {
           text,
         };
 
-        this.capture(
+        void this.capture(
           () =>
             this.plugin.gateway.captureText(
               captured.text,
@@ -575,6 +578,15 @@ export class ProgramView extends ItemView {
       'cta',
     );
 
+    const updateCaptureButtonState = (): void => {
+      captureButton.disabled =
+        this.capturing || !editor.value.trim();
+      captureButton.setAttribute(
+        'aria-disabled',
+        String(captureButton.disabled),
+      );
+    };
+
     const syncDraft = (): void => {
       const hasDraft = Boolean(
         title.value || editor.value,
@@ -585,8 +597,7 @@ export class ProgramView extends ItemView {
         editor.value,
       );
 
-      captureButton.disabled =
-        !editor.value.trim();
+      updateCaptureButtonState();
 
       status.setText(
         hasDraft
@@ -610,8 +621,7 @@ export class ProgramView extends ItemView {
       syncDraft,
     );
 
-    captureButton.disabled =
-      !editor.value.trim();
+    updateCaptureButtonState();
 
     status.setText(
       title.value || editor.value
@@ -651,6 +661,7 @@ export class ProgramView extends ItemView {
       filePanel,
       'Capture selected file',
       () => {
+        if (this.capturing) return;
         const localPath =
           localFilePath(picker.files?.[0]);
 
@@ -661,7 +672,7 @@ export class ProgramView extends ItemView {
           return;
         }
 
-        this.capture(
+        void this.capture(
           () =>
             this.plugin.gateway.captureFile(
               localPath,
@@ -677,11 +688,16 @@ export class ProgramView extends ItemView {
 
     const syncFileCapture = (): void => {
       fileCaptureButton.disabled =
-        !picker.files?.length;
+        this.capturing || !picker.files?.length;
       fileCaptureButton.setAttribute(
         'aria-disabled',
         String(fileCaptureButton.disabled),
       );
+    };
+
+    this.syncCaptureControls = () => {
+      updateCaptureButtonState();
+      syncFileCapture();
     };
 
     picker.addEventListener(
@@ -696,12 +712,15 @@ export class ProgramView extends ItemView {
     clear: (() => void) | null = null,
     feedback = 'Captured to Inbox. It is awaiting routing.',
   ): Promise<void> {
+    if (this.capturing) return;
     if (this.plugin.gateway.isBusy) {
       new Notice(
         'Queued behind the running LearningOS write.',
       );
     }
 
+    this.capturing = true;
+    this.syncCaptureControls?.();
     try {
       await this.plugin.mutate(
         async () => {
@@ -725,9 +744,13 @@ export class ProgramView extends ItemView {
         'Captured to the LearningOS inbox.',
       );
 
+      this.capturing = false;
       this.render();
     } catch (error: unknown) {
       new Notice(errorMessage(error));
+    } finally {
+      this.capturing = false;
+      this.syncCaptureControls?.();
     }
   }
 }

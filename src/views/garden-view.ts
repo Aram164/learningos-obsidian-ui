@@ -464,10 +464,14 @@ export class GardenView extends ItemView {
         && latest.status !== 'applied'
       ) {
         const deliveryId = latest.delivery_id;
-        button(
+        let applying = false;
+        const applyBtn = button(
           statusActions,
           'Apply approved delivery',
           async () => {
+            if (applying) return;
+            applying = true;
+            applyBtn.disabled = true;
             try {
               await this.plugin.aiActions
                 .applyApprovedDelivery(
@@ -480,6 +484,8 @@ export class GardenView extends ItemView {
 
               this.render();
             } catch (error: unknown) {
+              applying = false;
+              applyBtn.disabled = false;
               new Notice(
                 errorMessage(error),
               );
