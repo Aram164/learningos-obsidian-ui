@@ -50,6 +50,14 @@ export interface BoardVaultPort {
   process(path: string, fn: (latest: string) => string | null): Promise<boolean>;
   openLeaf(path: string): Promise<void>;
   managedCanvasOpen(): Promise<boolean>;
+  isManagedCanvasOpenSync(): boolean;
+}
+
+export class ManagedCanvasOpenError extends Error {
+  constructor() {
+    super('Close all managed Atlas boards before modifying them.');
+    this.name = 'ManagedCanvasOpenError';
+  }
 }
 
 export type BoardResult =
@@ -150,6 +158,10 @@ export class BoardController {
     if (!template || templateText === null) {
       return { ok: false, reason: 'Board template is unavailable or changed. Rebuild views and try again.' };
     }
+    const currentTemplate = await this.port.read(entry.template_path);
+    if (currentTemplate === null || currentTemplate !== templateText) {
+      return { ok: false, reason: 'Board template is unavailable or changed. Rebuild views and try again.' };
+    }
     // The ownership record is written before the board. An interrupted create
     // then leaves only a record for a board that does not exist, and the next
     // open replaces it. A record left behind by a deleted board is replaced
@@ -182,6 +194,10 @@ export class BoardController {
     if (!template || templateText === null) {
       return { ok: false, reason: 'Board template is unavailable or changed. Rebuild views and try again.' };
     }
+    const currentTemplate = await this.port.read(entry.template_path);
+    if (currentTemplate === null || currentTemplate !== templateText) {
+      return { ok: false, reason: 'Board template changed since the preview. Review it again.' };
+    }
     const sidecarText = await this.port.read(sidecarPath(entry));
     if (ownershipText !== undefined && sidecarText !== ownershipText) {
       return { ok: false, reason: 'Board ownership changed since the preview. Review it again.' };
@@ -195,18 +211,32 @@ export class BoardController {
     }
     let failure: string | null = null;
     let managed: string[] = [];
-    const wrote = await this.port.process(entry.working_path, (latest) => {
-      if (latest !== previewText) {
-        failure = 'Board changed. Reopen it and review before refreshing.';
-        return null;
+    let wrote: boolean;
+    try {
+      wrote = await this.port.process(entry.working_path, (latest) => {
+        // Refuses if a managed Canvas is open when the transform callback runs;
+        // Obsidian writes asynchronously around the callback rather than transactionally.
+        if (this.port.isManagedCanvasOpenSync()) throw new ManagedCanvasOpenError();
+        if (latest !== previewText) {
+          failure = 'Board changed. Reopen it and review before refreshing.';
+          return null;
+        }
+        const working = parseBoard(latest);
+        if (!working) { failure = 'Board is malformed; nothing was written.'; return null; }
+        const merged = mergeBoards(sidecar.managed_ids, working, template);
+        if (!merged.ok) { failure = merged.reason; return null; }
+        managed = merged.managedIds;
+        return serializeBoard(merged.canvas);
+      });
+    } catch (error) {
+      if (error instanceof ManagedCanvasOpenError) {
+        return {
+          ok: false,
+          reason: 'Close all managed Atlas boards before refreshing, and leave the Atlas pane open.',
+        };
       }
-      const working = parseBoard(latest);
-      if (!working) { failure = 'Board is malformed; nothing was written.'; return null; }
-      const merged = mergeBoards(sidecar.managed_ids, working, template);
-      if (!merged.ok) { failure = merged.reason; return null; }
-      managed = merged.managedIds;
-      return serializeBoard(merged.canvas);
-    });
+      throw error;
+    }
     if (!wrote) return { ok: false, reason: failure ?? 'Board refresh was refused.' };
     const settled = await this.port.process(sidecarPath(entry), (latest) =>
       latest === sidecarText ? JSON.stringify(sidecarFor(entry.sha256, managed)) + '\n' : null);
@@ -239,24 +269,38 @@ export class BoardController {
       }
       const childNodeId = `los-scope-${child.kind}--${child.id}`;
       let failure: string | null = null;
-      const wrote = await this.port.process(parent.working_path, (latest) => {
-        const board = parseBoard(latest);
-        if (!board) { failure = 'Board is malformed; nothing was written.'; return null; }
-        const nodes = (board.nodes ?? []).map((node) => {
-          if (node.id !== childNodeId) return node;
-          if (node.file !== child.template_path && node.file !== child.working_path) {
-            failure = 'The child link no longer points at an accepted target.';
-            return node;
+      let wrote: boolean;
+      try {
+        wrote = await this.port.process(parent.working_path, (latest) => {
+          // Refuses if a managed Canvas is open when the transform callback runs;
+          // Obsidian writes asynchronously around the callback rather than transactionally.
+          if (this.port.isManagedCanvasOpenSync()) throw new ManagedCanvasOpenError();
+          const board = parseBoard(latest);
+          if (!board) { failure = 'Board is malformed; nothing was written.'; return null; }
+          const nodes = (board.nodes ?? []).map((node) => {
+            if (node.id !== childNodeId) return node;
+            if (node.file !== child.template_path && node.file !== child.working_path) {
+              failure = 'The child link no longer points at an accepted target.';
+              return node;
+            }
+            return { ...node, file: child.working_path };
+          });
+          if (failure) return null;
+          if (!nodes.some((node) => node.id === childNodeId)) {
+            failure = 'This board has no link to that child scope.';
+            return null;
           }
-          return { ...node, file: child.working_path };
+          return serializeBoard({ ...board, nodes });
         });
-        if (failure) return null;
-        if (!nodes.some((node) => node.id === childNodeId)) {
-          failure = 'This board has no link to that child scope.';
-          return null;
+      } catch (error) {
+        if (error instanceof ManagedCanvasOpenError) {
+          return {
+            ok: false,
+            reason: 'Close all managed Atlas boards before changing a portal target.',
+          };
         }
-        return serializeBoard({ ...board, nodes });
-      });
+        throw error;
+      }
       if (!wrote) return { ok: false, reason: failure ?? 'Portal target change was refused.' };
       return { ok: true, action: 'portal-target' };
     });

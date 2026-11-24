@@ -831,12 +831,7 @@
 }
 .los-atlas-connection.is-selected { outline: 2px solid var(--los-accent); outline-offset: 2px; }
 .los-atlas-search-results:empty { display: none; }
-.los-atlas-search-results { margin-bottom: var(--los-4); }{
-}
-
-.los-root 
-
-
+.los-atlas-search-results { margin-bottom: var(--los-4); }
 
 .los-atlas-node-title {
   font-size: 12px;
@@ -1228,8 +1223,9 @@
   .los-atlas-body {
     grid-template-columns: minmax(0, 1fr);
   }
-}{
+}
 
+@container los-view (max-width: 720px) {
   .los-atlas-connection {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1452,7 +1448,8 @@
 @container los-view (max-width: 980px) {
   .los-atlas-body { grid-template-columns: minmax(0, 1fr); }
   .los-atlas-inspector { max-width: none; }
-}{
+}
+@container los-view (max-width: 600px) {
   .los-atlas-heading, .los-atlas-focus-heading { flex-wrap: wrap; }
   .los-atlas-search { flex-basis: 100%; }
   .los-root .los-atlas-concept-seed, .los-root .los-atlas-linked-note { min-height: 0; }
@@ -6573,6 +6570,8 @@ body.los-ui-focus.los-palette-nightfall :is(.titlebar, .workspace-ribbon, .works
 .los-domain-note-row { padding: var(--los-2) var(--los-3); border-color: var(--los-line); border-radius: var(--los-r-sm); }
 .los-root .los-domain-select-note { min-height: 40px; line-height: 1.4; font-size: 14px; }
 .los-domain-inspector { position: sticky; top: 0; padding: var(--los-4); max-height: min(66vh, 740px); overflow: auto; border: 1px solid var(--los-line); }
+.los-domain-inspector-host { min-width: 0; }
+.los-domain-inspector-host[hidden] { display: none; }
 .los-domain-shelves { display: grid; grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr); align-items: start; gap: var(--los-4); }
 .los-domain-shelves:not(:has(.los-domain-shelf-choices)) { grid-template-columns: minmax(0, 1fr); }
 .los-domain-shelf-choices { flex-direction: column; position: sticky; top: 0; max-height: min(66vh, 740px); overflow: auto; }

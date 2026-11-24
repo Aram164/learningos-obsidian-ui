@@ -212,6 +212,79 @@ class InstallerApplyTests(unittest.TestCase):
             with self.assertRaises(module.Refusal):
                 module.validate_destination(vault, ctx.pins["advanced-canvas"])
 
+    def test_symlink_obsidian_and_ancestor_git_refuse(self) -> None:
+        with PinRewrite(self) as ctx:
+            module = ctx.module
+            base = Path(ctx.tmp.name)
+
+            outside = base / "outside-obsidian"
+            outside.mkdir()
+            sym_vault = base / "sym-obsidian-vault"
+            sym_vault.mkdir()
+            (sym_vault / ".los-atlas-fixture").write_text("fixture\n")
+            (sym_vault / ".obsidian").symlink_to(outside, target_is_directory=True)
+            pin = ctx.pins["advanced-canvas"]
+            assets = module.validate_assets(ctx.assets_advanced_canvas, pin)
+            with self.assertRaises(module.Refusal):
+                module.apply_install(sym_vault, pin, assets)
+            self.assertFalse((outside / "plugins").exists())
+
+            repo_root = base / "repo-ancestor"
+            (repo_root / ".git").mkdir(parents=True)
+            nested_vault = repo_root / "nested" / "fixture"
+            nested_vault.mkdir(parents=True)
+            (nested_vault / ".los-atlas-fixture").write_text("fixture\n")
+            with self.assertRaises(module.Refusal):
+                module.validate_destination(nested_vault, pin)
+
+    def test_rename_race_handles_exact_noop_and_divergent_refusal(self) -> None:
+        import shutil
+        from unittest.mock import patch
+
+        with PinRewrite(self) as ctx:
+            module = ctx.module
+            base = Path(ctx.tmp.name)
+            vault = base / "raced-vault"
+            vault.mkdir()
+            (vault / ".los-atlas-fixture").write_text("fixture\n")
+            pin = ctx.pins["advanced-canvas"]
+            assets = module.validate_assets(ctx.assets_advanced_canvas, pin)
+            target = vault / ".obsidian" / "plugins" / pin["id"]
+
+            real_rename = Path.rename
+
+            def race_exact(self_path: Path, dst: Path):
+                if dst == target:
+                    dst.mkdir(parents=True, exist_ok=True)
+                    for name, src in assets.items():
+                        shutil.copyfile(src, dst / name)
+                    raise FileExistsError("raced exact")
+                return real_rename(self_path, dst)
+
+            with patch.object(Path, "rename", race_exact):
+                self.assertEqual(module.apply_install(vault, pin, assets), "no-op")
+            self.assertEqual(
+                [p.name for p in target.parent.iterdir() if p.name.startswith(".los-stage-")],
+                [],
+            )
+
+            shutil.rmtree(target)
+
+            def race_divergent(self_path: Path, dst: Path):
+                if dst == target:
+                    dst.mkdir(parents=True, exist_ok=True)
+                    (dst / "main.js").write_text("// raced divergent\n")
+                    raise OSError("directory not empty")
+                return real_rename(self_path, dst)
+
+            with patch.object(Path, "rename", race_divergent):
+                with self.assertRaises(module.Refusal):
+                    module.apply_install(vault, pin, assets)
+            self.assertEqual(
+                [p.name for p in target.parent.iterdir() if p.name.startswith(".los-stage-")],
+                [],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,5 @@
 'use strict';
-const { boot, VIEW, tick, check, heading, waitFor } = require('./support');
+const { boot, VIEW, tick, check, heading, waitFor, Notice } = require('./support');
 const { browserDom } = require('./browser-dom');
 
 /**
@@ -150,9 +150,133 @@ async function runDesign(design) {
   plugin.onunload();
 }
 
+async function runSafetyAndFocusRegressions() {
+  // 1. Focus restore on Escape / Cancel across connect editor, relation action form, and inspector.
+  const storedRow = {
+    from: 'concept-bayes', type: 'requires', to: 'concept-bedingte-wahrscheinlichkeit', pinned: true,
+  };
+  let atlasContextMode = 'ok';
+  const { app, plugin, calls } = await boot({
+    patchManifest: patchEvidence,
+    runLosOverride(args, callback, stdin) {
+      if (args[0] === 'atlas-context') {
+        if (atlasContextMode === 'fail') return callback(new Error('CLI down'), '', 'atlas-context failed');
+        if (atlasContextMode === 'missing-relations') return callback(null, JSON.stringify({ ok: true }), '');
+        if (atlasContextMode === 'non-array-relations') return callback(null, JSON.stringify({ ok: true, relations: {} }), '');
+        return callback(null, JSON.stringify({ ok: true, relations: [storedRow] }), '');
+      }
+      if (stdin) {
+        const env = JSON.parse(stdin);
+        return callback(null, JSON.stringify({
+          schema_version: 2, request_id: env.request_id, idempotency_key: env.idempotency_key,
+          capability: env.capability, ok: true, replayed: false, transaction_id: 'tx-fixture',
+          receipt_path: 'operations/transactions/tx-fixture/receipt.json',
+          snapshot_after: plugin.store.snapshotId, result: { ok: true, operation_count: 1 }, error: null,
+        }), '');
+      }
+      return callback(null, JSON.stringify({ ok: true }), '');
+    },
+  });
+  try {
+    const view = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const root = () => browserDom(view().contentEl);
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
+    await waitFor(() => root().find('los-atlas-inspector').length === 1);
+
+    // Connect editor Escape and Cancel both return focus to Connect button.
+    root().findText('los-btn', 'Connect this concept').fire('click');
+    await tick();
+    root().find('los-atlas-editor')[0].fire('keydown', { key: 'Escape' });
+    await tick();
+    check('Connect editor Escape returns focus to Connect button',
+      global.document.activeElement?.getAttribute('data-row-key') === 'connect-action');
+
+    root().findText('los-btn', 'Connect this concept').fire('click');
+    await tick();
+    root().findText('los-btn', 'Cancel').fire('click');
+    await tick();
+    check('Connect editor Cancel returns focus to Connect button',
+      global.document.activeElement?.getAttribute('data-row-key') === 'connect-action');
+
+    // Action form Escape returns to Veto trigger, and closing inspector still returns to row.
+    const rowId = 'concept-bayes--requires--concept-bedingte-wahrscheinlichkeit';
+    root().find('los-atlas-outline-row')
+      .find((row) => row.getAttribute('data-relation-id') === rowId).fire('click');
+    await tick();
+    root().findText('los-btn', 'Veto').fire('click');
+    await tick();
+    root().find('los-atlas-action-form')[0].fire('keydown', { key: 'Escape' });
+    await tick();
+    check('Relation action Escape returns focus to action button',
+      global.document.activeElement?.getAttribute('data-row-key') === 'relation-action:veto');
+    root().findText('los-btn', 'Close connection').fire('click');
+    await tick();
+    check('Closing relation inspector restores focus to original relation row even after sub-form',
+      global.document.activeElement?.getAttribute('data-row-key') === `relation:${rowId}`);
+
+    // Concept switch clears stale relationAction so it does not resurrect when returning.
+    root().find('los-atlas-outline-row')
+      .find((row) => row.getAttribute('data-relation-id') === rowId).fire('click');
+    await tick();
+    root().findText('los-btn', 'Veto').fire('click');
+    await tick();
+    await plugin.nav.openAtlas({ concept: 'concept-logistic-regression', lens: 'prerequisites' });
+    await waitFor(() => view().state.concept === 'concept-logistic-regression');
+    check('Concept navigation clears relationAction immediately', view().relationAction === null);
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
+    await waitFor(() => view().state.concept === 'concept-bayes');
+    check('Returning to prior concept does not resurrect stale action form',
+      root().find('los-atlas-action-form').length === 0);
+
+    // togglePin negates stored old.pinned (true -> false) even when projected edge.pinned is false.
+    root().find('los-atlas-outline-row')
+      .find((row) => row.getAttribute('data-relation-id') === rowId).fire('click');
+    await tick();
+    root().findText('los-btn', 'Pin').fire('click');
+    await waitFor(() => calls.envelopes.some((e) => e.capability === 'concept.relations.change'));
+    const pinEnv = calls.envelope('concept.relations.change');
+    check('togglePin negates exact stored old.pinned instead of stale projected edge.pinned',
+      pinEnv?.payload?.change?.operations?.[0]?.new?.pinned === false);
+
+    // exactRow CLI failure surfaces Notice and aborts write without opening editor or sending envelope.
+    const beforeEnvelopes = calls.envelopes.length;
+    const beforeNotices = Notice.log.length;
+    atlasContextMode = 'fail';
+    root().findText('los-btn', 'Pin').fire('click');
+    await waitFor(() => Notice.log.length > beforeNotices);
+    check('exactRow CLI failure shows Notice and aborts togglePin write',
+      Notice.log.length > beforeNotices && calls.envelopes.length === beforeEnvelopes);
+    const noticesBeforeEdit = Notice.log.length;
+    root().findText('los-btn', 'Edit').fire('click');
+    await waitFor(() => Notice.log.length > noticesBeforeEdit);
+    check('exactRow CLI failure shows Notice and aborts opening Edit draft',
+      view().editor === null && calls.envelopes.length === beforeEnvelopes);
+
+    // Malformed atlas-context (omitting relations or non-array relations) aborts cleanly with Notice.
+    const noticesBeforeMissing = Notice.log.length;
+    atlasContextMode = 'missing-relations';
+    root().findText('los-btn', 'Pin').fire('click');
+    await waitFor(() => Notice.log.length > noticesBeforeMissing);
+    check('exactRow missing relations shows Notice and aborts togglePin write',
+      Notice.log.slice(noticesBeforeMissing).some((msg) => msg.includes('Malformed atlas context response'))
+      && calls.envelopes.length === beforeEnvelopes);
+
+    const noticesBeforeNonArray = Notice.log.length;
+    atlasContextMode = 'non-array-relations';
+    root().findText('los-btn', 'Edit').fire('click');
+    await waitFor(() => Notice.log.length > noticesBeforeNonArray);
+    check('exactRow non-array relations shows Notice and aborts opening Edit draft',
+      Notice.log.slice(noticesBeforeNonArray).some((msg) => msg.includes('Malformed atlas context response'))
+      && view().editor === null && calls.envelopes.length === beforeEnvelopes);
+  } finally {
+    plugin.onunload();
+  }
+}
+
 module.exports = async function run() {
   heading('Atlas parity: one task list under every design');
   for (const design of ['__base_views__', 'focus', 'study-desk']) {
     await runDesign(design);
   }
+  await runSafetyAndFocusRegressions();
 };

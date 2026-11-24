@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -117,16 +118,35 @@ def installed_state(target: Path, pin: dict) -> str:
     return "exact"
 
 
+def _fsync_dir(directory: Path) -> None:
+    fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _copy_and_sync(src: Path, dst: Path) -> None:
+    with src.open("rb") as source, dst.open("wb") as dest:
+        shutil.copyfileobj(source, dest)
+        dest.flush()
+        os.fsync(dest.fileno())
+
+
 def validate_destination(vault: Path, pin: dict) -> Path:
     if vault.is_symlink() or not vault.is_dir():
         raise Refusal(f"vault is missing or linked: {vault}")
     refuse_symlink_components(vault, "vault path")
-    if (vault / ".git").exists():
+    resolved = vault.resolve()
+    if any((ancestor / ".git").exists() for ancestor in (resolved, *resolved.parents)):
         raise Refusal("refusing a Git checkout as a fixture vault")
     validate_marker(vault, pin)
-    plugins_dir = vault / ".obsidian" / "plugins"
-    if plugins_dir.is_symlink():
-        raise Refusal(f"plugins directory is a symlink: {plugins_dir}")
+    obsidian_dir = vault / ".obsidian"
+    if obsidian_dir.is_symlink() or (obsidian_dir.exists() and not obsidian_dir.is_dir()):
+        raise Refusal(f".obsidian path is linked or not a directory: {obsidian_dir}")
+    plugins_dir = obsidian_dir / "plugins"
+    if plugins_dir.is_symlink() or (plugins_dir.exists() and not plugins_dir.is_dir()):
+        raise Refusal(f"plugins directory is a symlink or non-directory: {plugins_dir}")
     return plugins_dir / pin["id"]
 
 
@@ -137,20 +157,36 @@ def apply_install(vault: Path, pin: dict, assets: dict[str, Path]) -> str:
         return "no-op"
     if state == "divergent":
         raise Refusal(f"installed bytes diverge from the pin: {target}")
-    target.parent.mkdir(parents=True, exist_ok=True)
+    refuse_symlink_components(target.parent, "plugins directory")
+    for directory in (vault / ".obsidian", target.parent):
+        if directory.is_symlink():
+            raise Refusal(f"plugins directory crosses a symlink: {directory}")
+        directory.mkdir(exist_ok=True)
+        if directory.is_symlink() or not directory.is_dir():
+            raise Refusal(f"plugins directory is not a regular directory: {directory}")
     refuse_symlink_components(target.parent, "plugins directory")
     staging = Path(tempfile.mkdtemp(prefix=f".los-stage-{pin['id']}-", dir=target.parent))
     try:
         for name in ASSET_NAMES:
-            shutil.copyfile(assets[name], staging / name)
+            _copy_and_sync(assets[name], staging / name)
             if digest(staging / name) != pin["assets"][name]:
                 raise Refusal(f"staged asset failed verification: {name}")
+        _fsync_dir(staging)
         # Publish only if still absent; a racer with exact bytes is a no-op.
         if target.exists():
             if installed_state(target, pin) == "exact":
                 return "no-op"
             raise Refusal(f"installed bytes diverge from the pin: {target}")
-        staging.rename(target)
+        try:
+            staging.rename(target)
+        except (FileExistsError, OSError) as exc:
+            raced = installed_state(target, pin)
+            if raced == "exact":
+                return "no-op"
+            if raced == "divergent":
+                raise Refusal(f"installed bytes diverge from the pin: {target}") from exc
+            raise Refusal(f"could not publish plugin into {target}: {exc}") from exc
+        _fsync_dir(target.parent)
     finally:
         if staging.exists():
             shutil.rmtree(staging)

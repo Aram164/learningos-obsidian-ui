@@ -32772,7 +32772,7 @@ function renderPracticeReview(parent, plugin, note2) {
   const noteId = asString(note2.id);
   if (!noteId || note2.role !== "exercise-bank" && note2.role !== "mock-exam") return;
   const result = parent.createDiv({ cls: "los-atlas-practice-results", attr: { "aria-live": "polite" } });
-  const load = async (recorded = false) => {
+  const load = async (recorded = false, focusItemId) => {
     loadButton.disabled = true;
     result.empty();
     result.createEl("p", { cls: "los-micro", text: recorded ? "Verification recorded. Refreshing items\u2026" : "Loading practice items\u2026" });
@@ -32787,24 +32787,39 @@ function renderPracticeReview(parent, plugin, note2) {
       if (!context.items.length && !context.diagnostics.length) {
         result.createEl("p", { cls: "los-micro", text: "No supported practice items in this note." });
       }
+      let restoreTarget = null;
       for (const item of context.items) {
         const row3 = result.createDiv({ cls: "los-atlas-practice-item" });
         row3.createEl("strong", { text: `${item.item_id} \xB7 ${item.kind} \xB7 ${item.status}` });
         for (const reason of item.ineligibility) row3.createEl("p", { cls: "los-micro", text: reason });
         let rendered = false;
+        let form;
         const toggle = button(row3, "Record verification", () => {
           form.hidden = !form.hidden;
           toggle.setAttribute("aria-expanded", String(!form.hidden));
           if (!form.hidden && !rendered) {
             rendered = true;
-            renderVerification(form, plugin, note2, context, item, () => load(true));
-            form.querySelectorAll?.("select")[0]?.focus();
+            renderVerification(form, plugin, note2, context, item, () => load(true, item.item_id));
+            form.querySelectorAll?.("select")[0]?.focus?.();
+          } else if (!form.hidden) {
+            form.querySelectorAll?.("select")[0]?.focus?.();
           }
         }, "quiet");
+        toggle.addClass("los-atlas-practice-toggle");
         toggle.setAttribute("aria-expanded", "false");
-        const form = row3.createDiv({ cls: "los-atlas-practice-form" });
+        toggle.setAttribute("data-practice-toggle", item.item_id);
+        form = row3.createDiv({ cls: "los-atlas-practice-form" });
         form.hidden = true;
+        form.addEventListener("keydown", (event) => {
+          if (event.key !== "Escape") return;
+          event.stopPropagation?.();
+          form.hidden = true;
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.focus?.({ preventScroll: true });
+        });
+        if (focusItemId && item.item_id === focusItemId) restoreTarget = toggle;
       }
+      if (recorded) (restoreTarget ?? loadButton).focus?.({ preventScroll: true });
     } catch (error) {
       result.empty();
       result.createEl("p", { text: `${recorded ? "Verification recorded. " : ""}${errorMessage(error)}` });
@@ -32964,16 +32979,26 @@ function showMore(parent, state, key, total, redraw, noun) {
   return limit;
 }
 function renderNoteInspector(parent, host, index, note2, outsideFilter, redraw) {
+  const noteId = asText(note2.id) ?? "";
   const panel = parent.createEl("aside", { cls: "los-domain-inspector", attr: { "aria-label": "Selected note" } });
+  panel.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    host.domains.selectedNote = null;
+    redraw(noteId);
+  });
   panel.createDiv({ cls: "los-domain-inspector-kicker", text: "Selected note" });
   panel.createEl("h3", { text: title(note2) });
   panel.createDiv({ cls: "los-domain-note-meta", text: [roleLabel(roleOf(note2)), authorLabel(authorOf(note2)), asText(note2.state)].filter(Boolean).join(" \xB7 ") });
-  if (outsideFilter) panel.createDiv({ cls: "los-domain-empty", text: "This selected note is outside the current filters." });
+  const outsideNotice = panel.createDiv({
+    cls: "los-domain-empty los-domain-outside-filter",
+    text: "This selected note is outside the current filters."
+  });
+  outsideNotice.hidden = !outsideFilter;
   const actions = panel.createDiv({ cls: "los-actions" });
   button(actions, "Open note", () => host.plugin.nav.openRecord(note2), "quiet").addClass("los-domain-open-note");
   button(actions, "Clear selection", () => {
     host.domains.selectedNote = null;
-    redraw(asText(note2.id) ?? "");
+    redraw(noteId);
   }, "tertiary");
   renderPracticeReview(panel, host.plugin, note2);
   const ids = asStrings(note2.concepts);
@@ -33022,18 +33047,15 @@ function renderNoteInspector(parent, host, index, note2, outsideFilter, redraw) 
     body.createEl("h4", { text: `Recorded evidence \xB7 ${evidence2.length}` });
     for (const item of evidence2) body.createDiv({ cls: "los-domain-recorded-evidence", text: isRecord(item) && asText(item.type) && asText(item.ref) ? `${asText(item.type)} \xB7 ${asText(item.ref)}` : asText(item) ?? JSON.stringify(item) });
   }
+  return { outsideNotice };
 }
-function renderNotes(parent, host, index, domain, notes, redraw) {
+function renderNoteRows(list3, host, domain, notes, selected, redraw) {
   const state = host.domains;
-  const selected = domain.notes.find((note2) => note2.id === state.selectedNote);
-  const workspace = parent.createDiv({ cls: "los-domain-note-workspace" });
-  workspace.toggleClass("has-selection", Boolean(selected));
-  const list3 = workspace.createDiv({ cls: "los-domain-notes", attr: {
+  list3.setAttrs({
     role: "group",
     "aria-label": `Notes in ${domain.title}`,
     "data-los-scroll": `notes:${domain.id}:${state.role ?? ""}:${state.authorship ?? ""}:${state.query}`
-  } });
-  enableButtonGroupKeyboardNavigation(list3, "vertical");
+  });
   if (!notes.length) empty(
     list3,
     domain.notes.length ? "No notes match these filters" : "No notes published in this domain",
@@ -33050,13 +33072,17 @@ function renderNotes(parent, host, index, domain, notes, redraw) {
       redraw();
     }, "quiet");
     choice.addClass("los-domain-select-note");
-    choice.setAttrs({ "aria-pressed": String(note2 === selected), "data-los-tab": id, "aria-label": `Preview note: ${title(note2)}` });
+    choice.setAttrs({
+      "aria-pressed": String(note2 === selected),
+      "data-los-tab": id,
+      "data-row-key": `note:${id}`,
+      "aria-label": `Preview note: ${title(note2)}`
+    });
     choice.createSpan({ cls: "los-domain-note-meta", text: `${roleLabel(roleOf(note2))} \xB7 ${authorLabel(authorOf(note2))}` });
     button(row3, "Open", () => host.plugin.nav.openRecord(note2), "tertiary").addClass("los-domain-row-open");
   }
   const footer = list3.createDiv({ cls: "los-domain-list-footer", text: `${Math.min(limit, notes.length)} of ${count(notes.length, "note")} shown` });
   showMore(footer, state, key, notes.length, redraw, "notes");
-  if (selected) renderNoteInspector(workspace, host, index, selected, !notes.includes(selected), redraw);
 }
 function renderShelves(parent, host, index, domain, shelves, redraw) {
   const state = host.domains;
@@ -33120,65 +33146,130 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
 }
 function renderResults(results, host, index) {
   const state = host.domains;
+  const statusEl = results.createDiv({ cls: "los-domain-search-status", attr: { role: "status" } });
+  const layout = results.createDiv({ cls: "los-domain-layout" });
+  const rail = layout.createDiv({ cls: "los-domain-rail", attr: { role: "group", "aria-label": "Knowledge domains" } });
+  enableButtonGroupKeyboardNavigation(rail, "vertical");
+  const detail = layout.createDiv({ cls: "los-domain-detail" });
+  const heading2 = detail.createDiv({ cls: "los-domain-detail-heading" });
+  const controlsBar = detail.createDiv({ cls: "los-domain-detail-controls" });
+  const bodyEl = detail.createDiv({ cls: "los-domain-detail-body" });
+  let workspace = null;
+  let notesList = null;
+  let inspectorHost = null;
+  let renderedDomainId = null;
+  let renderedCollection = null;
+  let renderedNoteId = null;
+  let inspectorRef = null;
+  const domainMatches = (domain) => matches(state.query, [domain.id, domain.title]);
+  const visibleNotes = (domain) => domain.notes.filter((note2) => noteMatches(note2, state, domainMatches(domain)));
+  const visibleShelves = (domain) => domain.shelves.filter((shelf) => domainMatches(domain) || shelfMatches(shelf, state.query, index));
   const redraw = (focusNote) => {
-    withRenderFocus(results, () => {
-      results.empty();
-      renderResults(results, host, index);
-    });
+    const filtering = Boolean(state.query.trim() || state.collection === "notes" && (state.role || state.authorship));
+    const searching = Boolean(state.query.trim());
+    const visible = index.domains.filter((domain2) => !filtering || (searching ? domainMatches(domain2) || visibleNotes(domain2).length || visibleShelves(domain2).length : state.collection === "notes" ? visibleNotes(domain2).length : visibleShelves(domain2).length));
+    const searchScope = searching ? ` \xB7 ${count(index.domains.reduce((n, domain2) => n + visibleNotes(domain2).length, 0), "matching note")} \xB7 ${count(index.domains.reduce((n, domain2) => n + visibleShelves(domain2).length, 0), "matching source shelf")}` : "";
+    statusEl.setText(filtering ? `${count(visible.length, "domain")} match${searchScope}. Your selected domain stays open.` : `${count(index.notes.length, "note")} \xB7 ${count(index.domains.reduce((n, domain2) => n + domain2.shelves.length, 0), "source shelf")}`);
+    rail.empty();
+    rail.createDiv({ cls: "los-domain-rail-label", text: "Domains" });
+    for (const domain2 of index.domains.filter((row3) => visible.includes(row3) || row3.id === state.selected)) {
+      const choice = button(rail, domain2.title, () => {
+        if (state.selected !== domain2.id) {
+          state.selectedNote = null;
+          state.selectedShelf = null;
+        }
+        state.selected = domain2.id;
+        host.render();
+      }, "quiet");
+      choice.addClass("los-domain-choice");
+      choice.toggleClass("is-active", domain2.id === state.selected);
+      choice.setAttrs({ "aria-pressed": String(domain2.id === state.selected), "data-los-tab": domain2.id });
+      choice.createSpan({ cls: "los-domain-choice-counts", text: `${count(domain2.notes.length, "note")} \xB7 ${count(domain2.shelves.length, "source shelf")}` });
+      if (filtering && !visible.includes(domain2)) choice.createSpan({ cls: "los-domain-choice-empty", text: "No filter matches" });
+    }
+    const domain = index.domains.find((row3) => row3.id === state.selected);
+    if (!domain) {
+      heading2.empty();
+      controlsBar.empty();
+      bodyEl.empty();
+      workspace = null;
+      notesList = null;
+      inspectorHost = null;
+      renderedDomainId = null;
+      renderedCollection = null;
+      renderedNoteId = null;
+      inspectorRef = null;
+      return;
+    }
+    heading2.empty();
+    heading2.createEl("h2", { text: domain.title });
+    const notes = visibleNotes(domain), shelves = visibleShelves(domain);
+    const full = state.collection === "notes" ? domain.notes.length : domain.shelves.length;
+    const shown = state.collection === "notes" ? notes.length : shelves.length;
+    heading2.createDiv({ cls: "los-domain-counts", text: `${filtering ? `${shown} of ` : ""}${count(full, state.collection === "notes" ? "note" : "source shelf")}` });
+    controlsBar.empty();
+    filterTabs(controlsBar, "Domain content", [["notes", "Notes"], ["shelves", "Source shelves"]], state.collection, (value) => {
+      state.collection = value;
+      host.render();
+    }, searching ? (value) => value === "notes" ? notes.length : shelves.length : null).addClass("los-domain-content-switch");
+    if (searching && !shown) {
+      const other = state.collection === "notes" ? shelves.length : notes.length;
+      if (other) button(controlsBar, `Show ${count(other, state.collection === "notes" ? "matching source shelf" : "matching note")}`, () => {
+        state.collection = state.collection === "notes" ? "shelves" : "notes";
+        host.render();
+      }, "quiet").addClass("los-domain-other-matches");
+    }
+    if (state.collection === "notes") {
+      const selected = domain.notes.find((note2) => note2.id === state.selectedNote);
+      const nextNoteId = selected ? asText(selected.id) ?? "" : null;
+      if (renderedCollection !== "notes" || !workspace || !notesList || !inspectorHost) {
+        bodyEl.empty();
+        workspace = bodyEl.createDiv({ cls: "los-domain-note-workspace" });
+        notesList = workspace.createDiv({ cls: "los-domain-notes" });
+        enableButtonGroupKeyboardNavigation(notesList, "vertical");
+        inspectorHost = workspace.createDiv({ cls: "los-domain-inspector-host" });
+        renderedNoteId = null;
+        inspectorRef = null;
+      }
+      const listEl = notesList;
+      withRenderFocus(workspace, () => {
+        listEl.empty();
+        renderNoteRows(listEl, host, domain, notes, selected, redraw);
+      });
+      workspace.toggleClass("has-selection", Boolean(selected));
+      inspectorHost.hidden = !selected;
+      const outsideFilter = Boolean(selected && !notes.includes(selected));
+      if (!selected) {
+        inspectorHost.empty();
+        renderedNoteId = null;
+        inspectorRef = null;
+      } else if (renderedDomainId !== domain.id || renderedNoteId !== nextNoteId || !inspectorRef) {
+        inspectorHost.empty();
+        inspectorRef = renderNoteInspector(inspectorHost, host, index, selected, outsideFilter, redraw);
+        renderedNoteId = nextNoteId;
+      } else {
+        inspectorRef.outsideNotice.hidden = !outsideFilter;
+      }
+      renderedDomainId = domain.id;
+      renderedCollection = "notes";
+    } else {
+      bodyEl.empty();
+      workspace = null;
+      notesList = null;
+      inspectorHost = null;
+      renderedNoteId = null;
+      inspectorRef = null;
+      renderShelves(bodyEl, host, index, domain, shelves, () => redraw());
+      renderedDomainId = domain.id;
+      renderedCollection = "shelves";
+    }
     if (focusNote) {
       const choice = Array.from(results.querySelectorAll("button")).find((control2) => control2.getAttribute("data-los-tab") === focusNote);
       (choice ?? Array.from(results.querySelectorAll("button")).find((control2) => control2.getAttribute("data-los-tab") === state.selected))?.focus({ preventScroll: true });
     }
   };
-  const domainMatches = (domain2) => matches(state.query, [domain2.id, domain2.title]);
-  const visibleNotes = (domain2) => domain2.notes.filter((note2) => noteMatches(note2, state, domainMatches(domain2)));
-  const visibleShelves = (domain2) => domain2.shelves.filter((shelf) => domainMatches(domain2) || shelfMatches(shelf, state.query, index));
-  const filtering = Boolean(state.query.trim() || state.collection === "notes" && (state.role || state.authorship));
-  const searching = Boolean(state.query.trim());
-  const visible = index.domains.filter((domain2) => !filtering || (searching ? domainMatches(domain2) || visibleNotes(domain2).length || visibleShelves(domain2).length : state.collection === "notes" ? visibleNotes(domain2).length : visibleShelves(domain2).length));
-  const searchScope = searching ? ` \xB7 ${count(index.domains.reduce((n, domain2) => n + visibleNotes(domain2).length, 0), "matching note")} \xB7 ${count(index.domains.reduce((n, domain2) => n + visibleShelves(domain2).length, 0), "matching source shelf")}` : "";
-  results.createDiv({ cls: "los-domain-search-status", attr: { role: "status" }, text: filtering ? `${count(visible.length, "domain")} match${searchScope}. Your selected domain stays open.` : `${count(index.notes.length, "note")} \xB7 ${count(index.domains.reduce((n, domain2) => n + domain2.shelves.length, 0), "source shelf")}` });
-  const layout = results.createDiv({ cls: "los-domain-layout" });
-  const rail = layout.createDiv({ cls: "los-domain-rail", attr: { role: "group", "aria-label": "Knowledge domains" } });
-  rail.createDiv({ cls: "los-domain-rail-label", text: "Domains" });
-  enableButtonGroupKeyboardNavigation(rail, "vertical");
-  for (const domain2 of index.domains.filter((row3) => visible.includes(row3) || row3.id === state.selected)) {
-    const choice = button(rail, domain2.title, () => {
-      if (state.selected !== domain2.id) {
-        state.selectedNote = null;
-        state.selectedShelf = null;
-      }
-      state.selected = domain2.id;
-      host.render();
-    }, "quiet");
-    choice.addClass("los-domain-choice");
-    choice.toggleClass("is-active", domain2.id === state.selected);
-    choice.setAttrs({ "aria-pressed": String(domain2.id === state.selected), "data-los-tab": domain2.id });
-    choice.createSpan({ cls: "los-domain-choice-counts", text: `${count(domain2.notes.length, "note")} \xB7 ${count(domain2.shelves.length, "source shelf")}` });
-    if (filtering && !visible.includes(domain2)) choice.createSpan({ cls: "los-domain-choice-empty", text: "No filter matches" });
-  }
-  const domain = index.domains.find((row3) => row3.id === state.selected);
-  if (!domain) return;
-  const detail = layout.createDiv({ cls: "los-domain-detail" });
-  const heading2 = detail.createDiv({ cls: "los-domain-detail-heading" });
-  heading2.createEl("h2", { text: domain.title });
-  const notes = visibleNotes(domain), shelves = visibleShelves(domain);
-  const full = state.collection === "notes" ? domain.notes.length : domain.shelves.length;
-  const shown = state.collection === "notes" ? notes.length : shelves.length;
-  heading2.createDiv({ cls: "los-domain-counts", text: `${filtering ? `${shown} of ` : ""}${count(full, state.collection === "notes" ? "note" : "source shelf")}` });
-  filterTabs(detail, "Domain content", [["notes", "Notes"], ["shelves", "Source shelves"]], state.collection, (value) => {
-    state.collection = value;
-    host.render();
-  }, searching ? (value) => value === "notes" ? notes.length : shelves.length : null).addClass("los-domain-content-switch");
-  if (searching && !shown) {
-    const other = state.collection === "notes" ? shelves.length : notes.length;
-    if (other) button(detail, `Show ${count(other, state.collection === "notes" ? "matching source shelf" : "matching note")}`, () => {
-      state.collection = state.collection === "notes" ? "shelves" : "notes";
-      host.render();
-    }, "quiet").addClass("los-domain-other-matches");
-  }
-  if (state.collection === "notes") renderNotes(detail, host, index, domain, notes, redraw);
-  else renderShelves(detail, host, index, domain, shelves, redraw);
+  redraw();
+  return redraw;
 }
 function renderSourceDomains(root, host, index) {
   const body = disclosure2(root, host.domains, "atlas:tools", "Atlas tools", "los-domain-tools");
@@ -33238,10 +33329,7 @@ function renderDomains(root, host) {
   const search = controls.createEl("input", { cls: "los-domain-search", attr: { type: "search", placeholder: "Find a note or source shelf", "aria-label": "Search Notes & shelves" } });
   search.value = state.query;
   const results = root.createDiv({ cls: "los-domain-results" });
-  const update = () => {
-    results.empty();
-    renderResults(results, host, index);
-  };
+  const update = renderResults(results, host, index);
   search.addEventListener("input", () => {
     state.query = search.value;
     update();
@@ -33283,7 +33371,6 @@ function renderDomains(root, host) {
     },
     state.collection === "shelves"
   );
-  renderResults(results, host, index);
   renderSourceDomains(root, host, index);
 }
 
@@ -36220,6 +36307,7 @@ function renderRelationEditor(parent, host, graph, draft) {
     if (event.key !== "Escape") return;
     event.stopPropagation?.();
     host.editor = null;
+    host.restoreFocus = true;
     host.render();
   });
   panel.createDiv({
@@ -36316,6 +36404,7 @@ function renderRelationEditor(parent, host, graph, draft) {
   if (refusal) save.setAttrs({ disabled: "true", "aria-disabled": "true" });
   button(actions, "Cancel", () => {
     host.editor = null;
+    host.restoreFocus = true;
     host.render();
   }, "quiet").addClass("los-atlas-editor-cancel");
 }
@@ -36650,7 +36739,9 @@ function renderRelationActionForm(parent, host, edge) {
   form.setAttrs({ role: "group", "aria-label": `${action.kind} this connection` });
   form.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      event.stopPropagation?.();
       host.relationAction = null;
+      host.restoreFocus = true;
       host.render();
     }
   });
@@ -36708,12 +36799,14 @@ function renderRelationActionForm(parent, host, edge) {
   );
   button(actions, "Cancel", () => {
     host.relationAction = null;
+    host.restoreFocus = true;
     host.render();
   }, "tertiary");
 }
 function renderRelationInspector(panel, host, graph, edge) {
   panel.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !host.relationAction) {
+      host.inspectorOrigin = `relation:${edge.id}`;
       host.edgeId = null;
       host.restoreFocus = true;
       host.render();
@@ -36774,7 +36867,12 @@ function renderRelationInspector(panel, host, graph, edge) {
   const eligibility = relationEligibility(edge);
   const actions = panel.createDiv({ cls: "los-actions los-atlas-relation-actions" });
   if (eligibility.edit) {
-    button(actions, "Edit", () => host.editRelation(edge), "quiet").addClass("los-atlas-edit-connection");
+    const editBtn = button(actions, "Edit", () => {
+      host.inspectorOrigin = "edit-connection";
+      host.editRelation(edge);
+    }, "quiet");
+    editBtn.addClass("los-atlas-edit-connection");
+    editBtn.setAttrs({ "data-row-key": "edit-connection" });
   }
   if (eligibility.pin) {
     button(actions, "Pin", () => {
@@ -36787,13 +36885,22 @@ function renderRelationInspector(panel, host, graph, edge) {
     }, "quiet");
   }
   if (eligibility.veto) {
-    button(actions, "Veto", () => host.startRelationAction(edge, "veto"), "quiet");
+    button(actions, "Veto", () => {
+      host.inspectorOrigin = "relation-action:veto";
+      host.startRelationAction(edge, "veto");
+    }, "quiet").setAttrs({ "data-row-key": "relation-action:veto" });
   }
   if (eligibility.retract) {
-    button(actions, "Retract", () => host.startRelationAction(edge, "retract"), "quiet");
+    button(actions, "Retract", () => {
+      host.inspectorOrigin = "relation-action:retract";
+      host.startRelationAction(edge, "retract");
+    }, "quiet").setAttrs({ "data-row-key": "relation-action:retract" });
   }
   if (eligibility.restore) {
-    button(actions, "Restore", () => host.startRelationAction(edge, "restore"), "quiet");
+    button(actions, "Restore", () => {
+      host.inspectorOrigin = "relation-action:restore";
+      host.startRelationAction(edge, "restore");
+    }, "quiet").setAttrs({ "data-row-key": "relation-action:restore" });
   }
   if (eligibility.remove) {
     button(actions, "Remove", () => {
@@ -36806,6 +36913,7 @@ function renderRelationInspector(panel, host, graph, edge) {
     text: `Removing or retiring takes away the claim that ${canonicalSentence(graph, edge)}. Both concepts, their notes, materials and any question recorded about them stay exactly as they are.`
   });
   button(panel, "Close connection", () => {
+    host.inspectorOrigin = `relation:${edge.id}`;
     host.edgeId = null;
     host.relationAction = null;
     host.restoreFocus = true;
@@ -37065,6 +37173,12 @@ function defaultBoardEntry(catalog, moduleId, currentSemester) {
   }
   return null;
 }
+var ManagedCanvasOpenError = class extends Error {
+  constructor() {
+    super("Close all managed Atlas boards before modifying them.");
+    this.name = "ManagedCanvasOpenError";
+  }
+};
 function sidecarPath(entry) {
   return `boards/atlas/.state/${entry.kind}/${entry.id}.json`;
 }
@@ -37141,6 +37255,10 @@ var BoardController = class {
     if (!template || templateText === null) {
       return { ok: false, reason: "Board template is unavailable or changed. Rebuild views and try again." };
     }
+    const currentTemplate = await this.port.read(entry.template_path);
+    if (currentTemplate === null || currentTemplate !== templateText) {
+      return { ok: false, reason: "Board template is unavailable or changed. Rebuild views and try again." };
+    }
     const managed = [...template.nodes ?? [], ...template.edges ?? []].map((node) => String(node.id));
     const ownership = JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n";
     const state = sidecarPath(entry);
@@ -37165,6 +37283,10 @@ var BoardController = class {
     if (!template || templateText === null) {
       return { ok: false, reason: "Board template is unavailable or changed. Rebuild views and try again." };
     }
+    const currentTemplate = await this.port.read(entry.template_path);
+    if (currentTemplate === null || currentTemplate !== templateText) {
+      return { ok: false, reason: "Board template changed since the preview. Review it again." };
+    }
     const sidecarText = await this.port.read(sidecarPath(entry));
     if (ownershipText !== void 0 && sidecarText !== ownershipText) {
       return { ok: false, reason: "Board ownership changed since the preview. Review it again." };
@@ -37178,24 +37300,36 @@ var BoardController = class {
     }
     let failure = null;
     let managed = [];
-    const wrote = await this.port.process(entry.working_path, (latest) => {
-      if (latest !== previewText) {
-        failure = "Board changed. Reopen it and review before refreshing.";
-        return null;
+    let wrote;
+    try {
+      wrote = await this.port.process(entry.working_path, (latest) => {
+        if (this.port.isManagedCanvasOpenSync()) throw new ManagedCanvasOpenError();
+        if (latest !== previewText) {
+          failure = "Board changed. Reopen it and review before refreshing.";
+          return null;
+        }
+        const working = parseBoard(latest);
+        if (!working) {
+          failure = "Board is malformed; nothing was written.";
+          return null;
+        }
+        const merged = mergeBoards(sidecar.managed_ids, working, template);
+        if (!merged.ok) {
+          failure = merged.reason;
+          return null;
+        }
+        managed = merged.managedIds;
+        return serializeBoard(merged.canvas);
+      });
+    } catch (error) {
+      if (error instanceof ManagedCanvasOpenError) {
+        return {
+          ok: false,
+          reason: "Close all managed Atlas boards before refreshing, and leave the Atlas pane open."
+        };
       }
-      const working = parseBoard(latest);
-      if (!working) {
-        failure = "Board is malformed; nothing was written.";
-        return null;
-      }
-      const merged = mergeBoards(sidecar.managed_ids, working, template);
-      if (!merged.ok) {
-        failure = merged.reason;
-        return null;
-      }
-      managed = merged.managedIds;
-      return serializeBoard(merged.canvas);
-    });
+      throw error;
+    }
     if (!wrote) return { ok: false, reason: failure ?? "Board refresh was refused." };
     const settled = await this.port.process(sidecarPath(entry), (latest) => latest === sidecarText ? JSON.stringify(sidecarFor(entry.sha256, managed)) + "\n" : null);
     if (!settled) return { ok: false, reason: "Board merged but ownership changed. Review both files before refreshing again." };
@@ -37222,27 +37356,39 @@ var BoardController = class {
       }
       const childNodeId = `los-scope-${child.kind}--${child.id}`;
       let failure = null;
-      const wrote = await this.port.process(parent.working_path, (latest) => {
-        const board = parseBoard(latest);
-        if (!board) {
-          failure = "Board is malformed; nothing was written.";
-          return null;
-        }
-        const nodes = (board.nodes ?? []).map((node) => {
-          if (node.id !== childNodeId) return node;
-          if (node.file !== child.template_path && node.file !== child.working_path) {
-            failure = "The child link no longer points at an accepted target.";
-            return node;
+      let wrote;
+      try {
+        wrote = await this.port.process(parent.working_path, (latest) => {
+          if (this.port.isManagedCanvasOpenSync()) throw new ManagedCanvasOpenError();
+          const board = parseBoard(latest);
+          if (!board) {
+            failure = "Board is malformed; nothing was written.";
+            return null;
           }
-          return { ...node, file: child.working_path };
+          const nodes = (board.nodes ?? []).map((node) => {
+            if (node.id !== childNodeId) return node;
+            if (node.file !== child.template_path && node.file !== child.working_path) {
+              failure = "The child link no longer points at an accepted target.";
+              return node;
+            }
+            return { ...node, file: child.working_path };
+          });
+          if (failure) return null;
+          if (!nodes.some((node) => node.id === childNodeId)) {
+            failure = "This board has no link to that child scope.";
+            return null;
+          }
+          return serializeBoard({ ...board, nodes });
         });
-        if (failure) return null;
-        if (!nodes.some((node) => node.id === childNodeId)) {
-          failure = "This board has no link to that child scope.";
-          return null;
+      } catch (error) {
+        if (error instanceof ManagedCanvasOpenError) {
+          return {
+            ok: false,
+            reason: "Close all managed Atlas boards before changing a portal target."
+          };
         }
-        return serializeBoard({ ...board, nodes });
-      });
+        throw error;
+      }
       if (!wrote) return { ok: false, reason: failure ?? "Portal target change was refused." };
       return { ok: true, action: "portal-target" };
     });
@@ -37757,12 +37903,14 @@ function renderConnectAction(parent, host, focusId) {
     actions,
     focusId ? "Connect this concept" : "Connect concepts",
     () => {
+      host.inspectorOrigin = "connect-action";
       host.editor = newDraft(focusId ?? "");
       host.render();
     },
     "quiet"
   );
   control2.addClass("los-atlas-connect-action");
+  control2.setAttrs({ "data-row-key": "connect-action" });
 }
 function renderBoardControls(root, host) {
   const catalog = host.boardCatalog();
@@ -38203,13 +38351,16 @@ var AtlasBoardVault = class {
     });
     return match;
   }
-  async managedCanvasOpen() {
+  isManagedCanvasOpenSync() {
     let open = false;
     this.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
       if (view?.file?.path.startsWith("boards/atlas/") && view.file.path.endsWith(".canvas")) open = true;
     });
     return open;
+  }
+  async managedCanvasOpen() {
+    return this.isManagedCanvasOpenSync();
   }
 };
 
@@ -46085,19 +46236,23 @@ var AtlasView = class extends import_obsidian14.ItemView {
     return this.plugin.store.atlasBoards();
   }
   async openAtlasBoard(entry, advanced = false) {
-    if (advanced) {
-      const installed = await this.app.vault.adapter.exists(
-        ".obsidian/plugins/advanced-canvas/manifest.json"
-      );
-      if (!advancedBoardAvailable(this.plugin.settings.atlasAdvancedCanvas, installed)) {
-        new import_obsidian14.Notice("Advanced board needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin.");
-        return;
+    try {
+      if (advanced) {
+        const installed = await this.app.vault.adapter.exists(
+          ".obsidian/plugins/advanced-canvas/manifest.json"
+        );
+        if (!advancedBoardAvailable(this.plugin.settings.atlasAdvancedCanvas, installed)) {
+          new import_obsidian14.Notice("Advanced board needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin.");
+          return;
+        }
       }
+      const vault = new AtlasBoardVault(this.app);
+      const template = await vault.read(entry.template_path);
+      const result = await atlasBoardController(this.app).openBoard(entry, template);
+      if (!result.ok) new import_obsidian14.Notice(result.reason);
+    } catch (error) {
+      new import_obsidian14.Notice(errorMessage(error));
     }
-    const vault = new AtlasBoardVault(this.app);
-    const template = await vault.read(entry.template_path);
-    const result = await atlasBoardController(this.app).openBoard(entry, template);
-    if (!result.ok) new import_obsidian14.Notice(result.reason);
   }
   async usePortalChild(child) {
     const parent = this.boardCatalog().find(
@@ -46107,9 +46262,13 @@ var AtlasView = class extends import_obsidian14.ItemView {
       new import_obsidian14.Notice("This scope has no parent board to point at it.");
       return;
     }
-    const result = await atlasBoardController(this.app).useEditableChild(parent, child);
-    new import_obsidian14.Notice(result.ok ? "Portals on the parent board now open the editable child." : result.reason);
-    this.render();
+    try {
+      const result = await atlasBoardController(this.app).useEditableChild(parent, child);
+      new import_obsidian14.Notice(result.ok ? "Portals on the parent board now open the editable child." : result.reason);
+      this.render();
+    } catch (error) {
+      new import_obsidian14.Notice(errorMessage(error));
+    }
   }
   async refreshAtlasBoard(entry) {
     const controller = atlasBoardController(this.app);
@@ -46149,19 +46308,26 @@ var AtlasView = class extends import_obsidian14.ItemView {
       const value = await this.plugin.gateway.atlasContext(edge.from, {
         expectedSnapshot: this.plugin.store.snapshotId
       });
-      const rows2 = Array.isArray(value?.relations) ? value.relations : [];
-      const match = rows2.find((row3) => {
+      if (!value || typeof value !== "object" || !Array.isArray(value.relations)) {
+        return { ok: false, error: "Malformed atlas context response." };
+      }
+      const match = value.relations.find((row3) => {
         const candidate2 = row3;
         return Boolean(candidate2) && candidate2?.from === edge.from && candidate2?.type === edge.type && candidate2?.to === edge.to;
       });
-      return match ?? null;
-    } catch {
-      return null;
+      return { ok: true, row: match ?? null };
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
     }
   }
   editRelation(edge) {
     void (async () => {
-      const exact = await this.exactRow(edge);
+      const lookup = await this.exactRow(edge);
+      if (!lookup.ok) {
+        new import_obsidian14.Notice(`The exact stored connection could not be read (${lookup.error}), so it was not opened for editing.`);
+        return;
+      }
+      const exact = lookup.row;
       if (!exact && isDecorated(edge)) {
         new import_obsidian14.Notice("The exact stored connection could not be read, so it was not opened for editing.");
         return;
@@ -46171,7 +46337,12 @@ var AtlasView = class extends import_obsidian14.ItemView {
     })();
   }
   async togglePin(edge) {
-    const exact = await this.exactRow(edge);
+    const lookup = await this.exactRow(edge);
+    if (!lookup.ok) {
+      new import_obsidian14.Notice(`The exact stored connection could not be read (${lookup.error}), so nothing was pinned or unpinned.`);
+      return;
+    }
+    const exact = lookup.row;
     if (!exact && isDecorated(edge)) {
       new import_obsidian14.Notice("The exact stored connection could not be read, so nothing was pinned or unpinned.");
       return;
@@ -46180,7 +46351,7 @@ var AtlasView = class extends import_obsidian14.ItemView {
     await this.changeRelations([{
       action: "replace",
       old,
-      new: { ...old, pinned: !edge.pinned }
+      new: { ...old, pinned: !old.pinned }
     }]);
   }
   startRelationAction(edge, kind) {
@@ -46224,7 +46395,13 @@ var AtlasView = class extends import_obsidian14.ItemView {
       this.render();
       return;
     }
-    const exact = await this.exactRow(projected);
+    const lookup = await this.exactRow(projected);
+    if (!lookup.ok) {
+      this.relationAction = { ...action, error: lookup.error };
+      this.render();
+      return;
+    }
+    const exact = lookup.row;
     if (!exact && isDecorated(projected)) {
       this.relationAction = { ...action, error: "The exact stored connection could not be read." };
       this.render();
@@ -46413,6 +46590,7 @@ var AtlasView = class extends import_obsidian14.ItemView {
       this.semanticOpen = restored?.semanticOpen ?? false;
       this.remainderOpen = restored?.remainderOpen ?? false;
       this.editor = null;
+      this.relationAction = null;
       if (this.concept) this.plugin.settings.atlasRecentConcepts = rememberConcept(
         this.plugin.settings.atlasRecentConcepts,
         this.concept
@@ -52834,7 +53012,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:43e42632c36bfa126163ba8fe099658093767cfa18818cc079b519113c87103a" : "unavailable";
+  return true ? "sha256:d8bcac7ac25c287e477e524b0b27c3de8a0f69d68689137072e6a6c5a247bace" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;

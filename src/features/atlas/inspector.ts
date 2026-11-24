@@ -490,7 +490,9 @@ function renderRelationActionForm(
   form.setAttrs({ role: 'group', 'aria-label': `${action.kind} this connection` });
   form.addEventListener('keydown', (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
+      event.stopPropagation?.();
       host.relationAction = null;
+      host.restoreFocus = true;
       host.render();
     }
   });
@@ -534,6 +536,7 @@ function renderRelationActionForm(
     () => { void host.submitRelationAction(); }, 'quiet');
   button(actions, 'Cancel', () => {
     host.relationAction = null;
+    host.restoreFocus = true;
     host.render();
   }, 'tertiary');
 }
@@ -546,6 +549,7 @@ function renderRelationInspector(
 ): void {
   panel.addEventListener('keydown', (event: KeyboardEvent) => {
     if (event.key === 'Escape' && !host.relationAction) {
+      host.inspectorOrigin = `relation:${edge.id}`;
       host.edgeId = null;
       host.restoreFocus = true;
       host.render();
@@ -618,8 +622,12 @@ function renderRelationInspector(
   const eligibility = relationEligibility(edge);
   const actions = panel.createDiv({ cls: 'los-actions los-atlas-relation-actions' });
   if (eligibility.edit) {
-    button(actions, 'Edit', () => host.editRelation(edge), 'quiet')
-      .addClass('los-atlas-edit-connection');
+    const editBtn = button(actions, 'Edit', () => {
+      host.inspectorOrigin = 'edit-connection';
+      host.editRelation(edge);
+    }, 'quiet');
+    editBtn.addClass('los-atlas-edit-connection');
+    editBtn.setAttrs({ 'data-row-key': 'edit-connection' });
   }
   if (eligibility.pin) {
     button(actions, 'Pin', () => { void host.togglePin(edge); }, 'quiet');
@@ -628,13 +636,22 @@ function renderRelationInspector(
     button(actions, 'Unpin', () => { void host.togglePin(edge); }, 'quiet');
   }
   if (eligibility.veto) {
-    button(actions, 'Veto', () => host.startRelationAction(edge, 'veto'), 'quiet');
+    button(actions, 'Veto', () => {
+      host.inspectorOrigin = 'relation-action:veto';
+      host.startRelationAction(edge, 'veto');
+    }, 'quiet').setAttrs({ 'data-row-key': 'relation-action:veto' });
   }
   if (eligibility.retract) {
-    button(actions, 'Retract', () => host.startRelationAction(edge, 'retract'), 'quiet');
+    button(actions, 'Retract', () => {
+      host.inspectorOrigin = 'relation-action:retract';
+      host.startRelationAction(edge, 'retract');
+    }, 'quiet').setAttrs({ 'data-row-key': 'relation-action:retract' });
   }
   if (eligibility.restore) {
-    button(actions, 'Restore', () => host.startRelationAction(edge, 'restore'), 'quiet');
+    button(actions, 'Restore', () => {
+      host.inspectorOrigin = 'relation-action:restore';
+      host.startRelationAction(edge, 'restore');
+    }, 'quiet').setAttrs({ 'data-row-key': 'relation-action:restore' });
   }
   if (eligibility.remove) {
     button(actions, 'Remove', () => {
@@ -647,6 +664,7 @@ function renderRelationInspector(
     text: `Removing or retiring takes away the claim that ${canonicalSentence(graph, edge)}. Both concepts, their notes, materials and any question recorded about them stay exactly as they are.`,
   });
   button(panel, 'Close connection', () => {
+    host.inspectorOrigin = `relation:${edge.id}`;
     host.edgeId = null;
     host.relationAction = null;
     host.restoreFocus = true;

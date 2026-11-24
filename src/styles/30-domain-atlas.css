@@ -127,6 +127,8 @@
 .los-domain-note-row { padding: var(--los-2) var(--los-3); border-color: var(--los-line); border-radius: var(--los-r-sm); }
 .los-root .los-domain-select-note { min-height: 40px; line-height: 1.4; font-size: 14px; }
 .los-domain-inspector { position: sticky; top: 0; padding: var(--los-4); max-height: min(66vh, 740px); overflow: auto; border: 1px solid var(--los-line); }
+.los-domain-inspector-host { min-width: 0; }
+.los-domain-inspector-host[hidden] { display: none; }
 .los-domain-shelves { display: grid; grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr); align-items: start; gap: var(--los-4); }
 .los-domain-shelves:not(:has(.los-domain-shelf-choices)) { grid-template-columns: minmax(0, 1fr); }
 .los-domain-shelf-choices { flex-direction: column; position: sticky; top: 0; max-height: min(66vh, 740px); overflow: auto; }

@@ -285,12 +285,14 @@ function renderConnectAction(
     actions,
     focusId ? 'Connect this concept' : 'Connect concepts',
     () => {
+      host.inspectorOrigin = 'connect-action';
       host.editor = newDraft(focusId ?? '');
       host.render();
     },
     'quiet',
   );
   control.addClass('los-atlas-connect-action');
+  control.setAttrs({ 'data-row-key': 'connect-action' });
 }
 
 /** Editable-board controls (ADR-024, P3; scope default P4 step 23). */

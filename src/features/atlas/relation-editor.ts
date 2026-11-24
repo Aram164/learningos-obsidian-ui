@@ -323,6 +323,7 @@ export function renderRelationEditor(
     if (event.key !== 'Escape') return;
     event.stopPropagation?.();
     host.editor = null;
+    host.restoreFocus = true;
     host.render();
   });
 
@@ -442,6 +443,7 @@ export function renderRelationEditor(
 
   button(actions, 'Cancel', () => {
     host.editor = null;
+    host.restoreFocus = true;
     host.render();
   }, 'quiet').addClass('los-atlas-editor-cancel');
 }
@@ -455,10 +457,13 @@ export function renderRemoveConnection(
 ): void {
   const wrap = parent.createDiv({ cls: 'los-actions' });
 
-  button(wrap, 'Change', () => {
+  const changeBtn = button(wrap, 'Change', () => {
+    host.inspectorOrigin = 'edit-connection';
     host.editor = editDraft(edge);
     host.render();
-  }, 'quiet').addClass('los-atlas-edit-connection');
+  }, 'quiet');
+  changeBtn.addClass('los-atlas-edit-connection');
+  changeBtn.setAttrs({ 'data-row-key': 'edit-connection' });
 
   button(wrap, 'Remove', () => {
     void host.changeRelations([{ action: 'remove', old: rowOf(edge) }]);

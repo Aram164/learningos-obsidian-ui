@@ -108,12 +108,16 @@ export class AtlasBoardVault implements BoardVaultPort {
     return match;
   }
 
-  async managedCanvasOpen(): Promise<boolean> {
+  isManagedCanvasOpenSync(): boolean {
     let open = false;
     this.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view as { file?: TFile } | undefined;
       if (view?.file?.path.startsWith('boards/atlas/') && view.file.path.endsWith('.canvas')) open = true;
     });
     return open;
+  }
+
+  async managedCanvasOpen(): Promise<boolean> {
+    return this.isManagedCanvasOpenSync();
   }
 }

@@ -146,7 +146,7 @@ export function renderPracticeReview(parent: HTMLElement, plugin: PracticePlugin
   if (!noteId || (note.role !== 'exercise-bank' && note.role !== 'mock-exam')) return;
 
   const result = parent.createDiv({ cls: 'los-atlas-practice-results', attr: { 'aria-live': 'polite' } });
-  const load = async (recorded = false): Promise<void> => {
+  const load = async (recorded = false, focusItemId?: string): Promise<void> => {
     loadButton.disabled = true;
     result.empty();
     result.createEl('p', { cls: 'los-micro', text: recorded ? 'Verification recorded. Refreshing items…' : 'Loading practice items…' });
@@ -161,6 +161,7 @@ export function renderPracticeReview(parent: HTMLElement, plugin: PracticePlugin
       if (!context.items.length && !context.diagnostics.length) {
         result.createEl('p', { cls: 'los-micro', text: 'No supported practice items in this note.' });
       }
+      let restoreTarget: HTMLButtonElement | null = null;
       for (const item of context.items) {
         const row = result.createDiv({ cls: 'los-atlas-practice-item' });
         row.createEl('strong', { text: `${item.item_id} · ${item.kind} · ${item.status}` });
@@ -168,19 +169,33 @@ export function renderPracticeReview(parent: HTMLElement, plugin: PracticePlugin
         // Listed items are clean by construction: a diagnostic names an item
         // Core did not extract, so it never blocks the items shown here.
         let rendered = false;
+        let form!: HTMLElement;
         const toggle = button(row, 'Record verification', () => {
           form.hidden = !form.hidden;
           toggle.setAttribute('aria-expanded', String(!form.hidden));
           if (!form.hidden && !rendered) {
             rendered = true;
-            renderVerification(form, plugin, note, context, item, () => load(true));
-            form.querySelectorAll?.<HTMLElement>('select')[0]?.focus();
+            renderVerification(form, plugin, note, context, item, () => load(true, item.item_id));
+            form.querySelectorAll?.<HTMLElement>('select')[0]?.focus?.();
+          } else if (!form.hidden) {
+            form.querySelectorAll?.<HTMLElement>('select')[0]?.focus?.();
           }
         }, 'quiet');
+        toggle.addClass('los-atlas-practice-toggle');
         toggle.setAttribute('aria-expanded', 'false');
-        const form = row.createDiv({ cls: 'los-atlas-practice-form' });
+        toggle.setAttribute('data-practice-toggle', item.item_id);
+        form = row.createDiv({ cls: 'los-atlas-practice-form' });
         form.hidden = true;
+        form.addEventListener('keydown', (event: KeyboardEvent) => {
+          if (event.key !== 'Escape') return;
+          event.stopPropagation?.();
+          form.hidden = true;
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.focus?.({ preventScroll: true });
+        });
+        if (focusItemId && item.item_id === focusItemId) restoreTarget = toggle;
       }
+      if (recorded) (restoreTarget ?? loadButton).focus?.({ preventScroll: true });
     } catch (error: unknown) {
       result.empty();
       result.createEl('p', { text: `${recorded ? 'Verification recorded. ' : ''}${errorMessage(error)}` });

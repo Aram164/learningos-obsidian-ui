@@ -86,6 +86,7 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
     },
     openLeaf: async () => {},
     managedCanvasOpen: async () => open,
+    isManagedCanvasOpenSync: () => open,
   };
   const text = serializeBoard(template);
   const entry = { kind: 'module', id: 'module-demo', template_path: 'generated/atlas/templates/module/module-demo.canvas',
@@ -95,11 +96,16 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
     const mismatch = await controller.openBoard(entry, text + ' ');
     assert.equal(mismatch.ok, false);
     assert.equal(files.size, 0);
+    // CW1 on openBoard: caller template must still match the live template bytes.
+    files.set(entry.template_path, text + ' ');
+    const staleOpen = await controller.openBoard(entry, text);
+    assert.equal(staleOpen.ok, false);
+    assert.equal(files.has(entry.working_path), false);
+    files.set(entry.template_path, text);
     const [created, repeated] = await Promise.all([
       controller.openBoard(entry, text), controller.openBoard(entry, text),
     ]);
     assert.equal(repeated.action, 'opened');
-    files.set(entry.template_path, text);
     assert.equal((await controller.openBoard(entry, null)).action, 'opened');
     assert.equal(created.action, 'created');
     assert.ok(files.has(sidecarPath(entry)));
@@ -113,13 +119,37 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
     open = false;
     const stale = await controller.refreshBoard(entry, serializeBoard(template), 'stale-bytes');
     assert.equal(stale.ok, false);
+    // CW1 on refreshBoard: raw-byte difference (whitespace-only, same AST) refuses.
+    const preview = await controller.previewRefresh(entry);
+    assert.equal(preview.ok, true);
+    assert.deepEqual(preview.changes, []);
+    files.set(entry.template_path, preview.templateText + ' ');
+    const staleTemplateRefresh = await controller.refreshBoard(
+      entry, preview.templateText, preview.workingText, preview.ownershipText);
+    assert.equal(staleTemplateRefresh.ok, false);
+    assert.match(staleTemplateRefresh.reason, /template changed since the preview/);
+    files.set(entry.template_path, preview.templateText);
+    // CW2 on refreshBoard: canvas opened right inside process() aborts without writing.
+    const beforeMidOpen = files.get(entry.working_path);
+    const realProcess = port.process;
+    port.process = async (p, fn) => {
+      if (p === entry.working_path) open = true;
+      try {
+        return await realProcess(p, fn);
+      } finally {
+        port.process = realProcess;
+      }
+    };
+    const midOpenRefresh = await controller.refreshBoard(
+      entry, preview.templateText, preview.workingText, preview.ownershipText);
+    assert.equal(midOpenRefresh.ok, false);
+    assert.match(midOpenRefresh.reason, /Close all managed Atlas boards/);
+    assert.equal(files.get(entry.working_path), beforeMidOpen);
+    open = false;
     const refreshed = await controller.refreshBoard(
       entry, serializeBoard(template), files.get(entry.working_path));
     assert.equal(refreshed.ok, true);
     assert.equal(parseBoard(files.get(entry.working_path)).nodes[0].x, 42);
-    const preview = await controller.previewRefresh(entry);
-    assert.equal(preview.ok, true);
-    assert.deepEqual(preview.changes, []);
     const state = sidecarPath(entry);
     const originalOwnership = files.get(state);
     files.set(state, originalOwnership + ' ');
@@ -144,6 +174,21 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
     assert.equal(missing.ok, false);
     files.set(child.working_path, serializeBoard(template));
     files.set(entry.working_path, serializeBoard(parentTemplate));
+    // CW2 on useEditableChild: mid-flight canvas open inside process() aborts cleanly.
+    const beforePortalMidOpen = files.get(entry.working_path);
+    port.process = async (p, fn) => {
+      if (p === entry.working_path) open = true;
+      try {
+        return await realProcess(p, fn);
+      } finally {
+        port.process = realProcess;
+      }
+    };
+    const midOpenPortal = await controller.useEditableChild(entry, child);
+    assert.equal(midOpenPortal.ok, false);
+    assert.match(midOpenPortal.reason, /Close all managed Atlas boards/);
+    assert.equal(files.get(entry.working_path), beforePortalMidOpen);
+    open = false;
     const switched = await controller.useEditableChild(entry, child);
     assert.equal(switched.ok, true);
     let board = parseBoard(files.get(entry.working_path));
@@ -227,11 +272,12 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
     assert.equal(hiddenVaultPath(hostSidecar(first)), true);
     assert.equal(hiddenVaultPath(first.working_path), false);
     const controller = new HostController(new AtlasBoardVault(app));
+    files.set(first.template_path, text);
+    files.set(second.template_path, text);
     assert.equal((await controller.openBoard(first, text)).action, 'created');
     assert.equal((await controller.openBoard(second, text)).action, 'created');
     assert.ok(files.has(hostSidecar(first)) && files.has(hostSidecar(second)));
 
-    files.set(first.template_path, text);
     const moved = parseBoard(files.get(first.working_path));
     moved.nodes[0].x = 77;
     files.set(first.working_path, serializeBoard(moved));
@@ -247,6 +293,7 @@ const managed = [...template.nodes, ...template.edges].map((n) => n.id);
     files.delete(second.working_path);
     files.set(hostSidecar(second), JSON.stringify({ schema_version: 1, template_sha256: 'c'.repeat(64),
       managed_ids: ['los-concept-gone'] }) + '\n');
+    files.set(second.template_path, text);
     assert.equal((await controller.openBoard(second, text)).action, 'created');
     assert.deepEqual(JSON.parse(files.get(hostSidecar(second))).managed_ids, managed);
     // One line, which the Core procedure transcript (refresh-an-atlas-board.md) matches.

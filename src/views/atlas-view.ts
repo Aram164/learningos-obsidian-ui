@@ -101,18 +101,22 @@ export class AtlasView extends ItemView implements AtlasHost {
   }
 
   async openAtlasBoard(entry: BoardCatalogEntry, advanced = false): Promise<void> {
-    if (advanced) {
-      const installed = await this.app.vault.adapter.exists(
-        '.obsidian/plugins/advanced-canvas/manifest.json');
-      if (!advancedBoardAvailable(this.plugin.settings.atlasAdvancedCanvas, installed)) {
-        new Notice('Advanced board needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin.');
-        return;
+    try {
+      if (advanced) {
+        const installed = await this.app.vault.adapter.exists(
+          '.obsidian/plugins/advanced-canvas/manifest.json');
+        if (!advancedBoardAvailable(this.plugin.settings.atlasAdvancedCanvas, installed)) {
+          new Notice('Advanced board needs the atlasAdvancedCanvas setting and the pinned Advanced Canvas plugin.');
+          return;
+        }
       }
+      const vault = new AtlasBoardVault(this.app);
+      const template = await vault.read(entry.template_path);
+      const result = await atlasBoardController(this.app).openBoard(entry, template);
+      if (!result.ok) new Notice(result.reason);
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
     }
-    const vault = new AtlasBoardVault(this.app);
-    const template = await vault.read(entry.template_path);
-    const result = await atlasBoardController(this.app).openBoard(entry, template);
-    if (!result.ok) new Notice(result.reason);
   }
 
   async usePortalChild(child: BoardCatalogEntry): Promise<void> {
@@ -122,11 +126,15 @@ export class AtlasView extends ItemView implements AtlasHost {
       new Notice('This scope has no parent board to point at it.');
       return;
     }
-    const result = await atlasBoardController(this.app).useEditableChild(parent, child);
-    new Notice(result.ok
-      ? 'Portals on the parent board now open the editable child.'
-      : result.reason);
-    this.render();
+    try {
+      const result = await atlasBoardController(this.app).useEditableChild(parent, child);
+      new Notice(result.ok
+        ? 'Portals on the parent board now open the editable child.'
+        : result.reason);
+      this.render();
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
   }
 
   async refreshAtlasBoard(entry: BoardCatalogEntry): Promise<void> {
@@ -167,28 +175,38 @@ export class AtlasView extends ItemView implements AtlasHost {
   }
 
   /** The exact stored row for one projected edge, via `atlas.context`. */
-  private async exactRow(edge: AtlasEdge): Promise<RelationRow | null> {
+  private async exactRow(edge: AtlasEdge): Promise<
+    | { readonly ok: true; readonly row: RelationRow | null }
+    | { readonly ok: false; readonly error: string }
+  > {
     try {
       const value = await this.plugin.gateway.atlasContext(edge.from, {
         expectedSnapshot: this.plugin.store.snapshotId,
-      }) as { relations?: unknown };
-      const rows = Array.isArray(value?.relations) ? value.relations : [];
-      const match = rows.find((row): row is RelationRow => {
+      }) as { relations?: unknown } | null;
+      if (!value || typeof value !== 'object' || !Array.isArray(value.relations)) {
+        return { ok: false, error: 'Malformed atlas context response.' };
+      }
+      const match = value.relations.find((row): row is RelationRow => {
         const candidate = row as RelationRow | null;
         return Boolean(candidate)
           && candidate?.from === edge.from
           && candidate?.type === edge.type
           && candidate?.to === edge.to;
       });
-      return match ?? null;
-    } catch {
-      return null;
+      return { ok: true, row: match ?? null };
+    } catch (error: unknown) {
+      return { ok: false, error: errorMessage(error) };
     }
   }
 
   editRelation(edge: AtlasEdge): void {
     void (async () => {
-      const exact = await this.exactRow(edge);
+      const lookup = await this.exactRow(edge);
+      if (!lookup.ok) {
+        new Notice(`The exact stored connection could not be read (${lookup.error}), so it was not opened for editing.`);
+        return;
+      }
+      const exact = lookup.row;
       if (!exact && isDecorated(edge)) {
         new Notice('The exact stored connection could not be read, so it was not opened for editing.');
         return;
@@ -199,14 +217,19 @@ export class AtlasView extends ItemView implements AtlasHost {
   }
 
   async togglePin(edge: AtlasEdge): Promise<void> {
-    const exact = await this.exactRow(edge);
+    const lookup = await this.exactRow(edge);
+    if (!lookup.ok) {
+      new Notice(`The exact stored connection could not be read (${lookup.error}), so nothing was pinned or unpinned.`);
+      return;
+    }
+    const exact = lookup.row;
     if (!exact && isDecorated(edge)) {
       new Notice('The exact stored connection could not be read, so nothing was pinned or unpinned.');
       return;
     }
     const old = exact ?? rowOf(edge);
     await this.changeRelations([{
-      action: 'replace', old, new: { ...old, pinned: !edge.pinned },
+      action: 'replace', old, new: { ...old, pinned: !old.pinned },
     }]);
   }
 
@@ -249,7 +272,13 @@ export class AtlasView extends ItemView implements AtlasHost {
       this.render();
       return;
     }
-    const exact = await this.exactRow(projected);
+    const lookup = await this.exactRow(projected);
+    if (!lookup.ok) {
+      this.relationAction = { ...action, error: lookup.error };
+      this.render();
+      return;
+    }
+    const exact = lookup.row;
     if (!exact && isDecorated(projected)) {
       this.relationAction = { ...action, error: 'The exact stored connection could not be read.' };
       this.render();
@@ -449,6 +478,7 @@ export class AtlasView extends ItemView implements AtlasHost {
       this.semanticOpen = restored?.semanticOpen ?? false;
       this.remainderOpen = restored?.remainderOpen ?? false;
       this.editor = null;
+      this.relationAction = null;
       if (this.concept) this.plugin.settings.atlasRecentConcepts = rememberConcept(
         this.plugin.settings.atlasRecentConcepts, this.concept,
       );

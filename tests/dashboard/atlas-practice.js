@@ -8,7 +8,17 @@ module.exports = async function run() {
   const note = 'note-fixture-probability';
   const item = note + '#A1';
   const digest = 'a'.repeat(64);
-  const stored = { status: 'source-matched', verifications: [{ method: 'official-source' }] };
+  const storedBinding = {
+    source_id: 'source-fixture-book',
+    material_relpath: 'source-fixture-book/official answers.pdf',
+    file_sha256: 'b'.repeat(64),
+    page: 29,
+  };
+  const stored = {
+    status: 'source-matched',
+    source_bindings: [storedBinding],
+    verifications: [{ method: 'official-source', source_binding: storedBinding }],
+  };
   let invalid = true;
   const { app, plugin, calls } = await boot({
     patchManifest(manifest) {
@@ -95,6 +105,10 @@ module.exports = async function run() {
       && envelope.expected_revisions[note] === 7
       && envelope.expected_revisions['registry-practice-index'] === 3
       && JSON.stringify(envelope.payload.record.expected_old) === JSON.stringify(stored)
+      && !Object.prototype.hasOwnProperty.call(envelope.payload.record.expected_old.source_bindings[0], 'quote')
+      && !Object.prototype.hasOwnProperty.call(
+        envelope.payload.record.expected_old.verifications[0].source_binding, 'quote',
+      )
       && envelope.payload.record.artifact_sha256 === digest);
     check('the reviewed alias, page and excerpt reach Core without a user supplied digest',
       JSON.stringify(envelope.payload.record.source_binding) === JSON.stringify({
@@ -103,6 +117,43 @@ module.exports = async function run() {
         page: 29,
         quote: 'Quoted answer',
       }));
+
+    // Domains lens: live search filtering must keep an open practice form and its focus alive.
+    await plugin.nav.openAtlas({ lens: 'domains' });
+    const domainRoot = () => browserDom(view.contentEl);
+    const selectDomainNote = () => domainRoot().find('los-domain-select-note')
+      .find((btn) => btn.getAttribute('data-los-tab') === note);
+    await waitFor(() => Boolean(selectDomainNote()));
+    selectDomainNote().fire('click');
+    await waitFor(() => Boolean(domainRoot().find('los-domain-inspector')[0]
+      ?.findText('los-btn', 'Load practice items')));
+    domainRoot().find('los-domain-inspector')[0]
+      .findText('los-btn', 'Load practice items').fire('click');
+    await waitFor(() => Boolean(domainRoot().find('los-domain-inspector')[0]
+      ?.findText('los-btn', 'Record verification')));
+    const toggle = domainRoot().find('los-domain-inspector')[0]
+      .findText('los-btn', 'Record verification');
+    toggle.fire('click');
+    const inspectorDom = domainRoot().find('los-domain-inspector')[0];
+    const formEl = inspectorDom.find('los-atlas-practice-form')[0];
+    const excerptInput = inspectorDom.find('los-atlas-practice-field')
+      .find((row) => row.children[0].text === 'Evidence excerpt').children[1];
+    excerptInput.value = 'Draft excerpt';
+    excerptInput.focus();
+    const searchInput = domainRoot().find('los-domain-search')[0];
+    searchInput.value = 'no-such-note-match';
+    searchInput.fire('input');
+    const afterSearchInspector = domainRoot().find('los-domain-inspector')[0];
+    const afterSearchForm = afterSearchInspector.find('los-atlas-practice-form')[0];
+    const afterSearchExcerpt = afterSearchInspector.find('los-atlas-practice-field')
+      .find((row) => row.children[0].text === 'Evidence excerpt').children[1];
+    check('Domains search input preserves open practice form, draft value and focus',
+      afterSearchForm === formEl && afterSearchForm.hidden === false
+      && afterSearchExcerpt.value === 'Draft excerpt'
+      && global.document.activeElement === afterSearchExcerpt);
+    afterSearchForm.fire('keydown', { key: 'Escape' });
+    check('Escape inside Domains practice form closes the form and returns focus to its toggle',
+      afterSearchForm.hidden === true && global.document.activeElement === toggle);
   } finally {
     plugin.onunload();
   }
