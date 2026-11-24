@@ -57837,7 +57837,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:4483ae8648befcc7a6032c7dc5709a7613b94cd3cfce5a574493f3711c1add62" : "unavailable";
+  return true ? "sha256:82e9972531aac4b9e145144c32a5421c20fa4d3d21a6ee6f184d6b0135b3c8bf" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;
@@ -58052,7 +58052,7 @@ var GatewayClient = class {
   assertMutationAllowed() {
     this.assertLifecycleActive();
     this.assertFreshSnapshot();
-    if (!this.recovery.unresolved) return;
+    if (!this.recovery.unresolved && !this.plugin.recoveryBlocked) return;
     throw new GatewayError(
       "LearningOS has an unresolved Gateway write and will not start another until it is settled. Open Diagnostics \u2192 Gateway recovery.",
       null,
@@ -63756,6 +63756,7 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
       new import_obsidian26.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed(owner);
+    this.recoveryBlocked = this.recovery.unresolved;
     if (owner.envelope.capability === "learner.ability-observation.append" || owner.envelope.capability === "ability.candidate.append") {
       this.redrawAbilitySurfaces();
     }
@@ -63805,6 +63806,14 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
    * `--expected-snapshot` the other had already invalidated.
    */
   async mutate(action, { reload = true, healStaleProjection = true } = {}) {
+    if (this.recoveryBlocked) {
+      this.notify(GATEWAY_RECOVERY_BLOCKED);
+      throw new GatewayError(
+        "LearningOS has an unresolved Gateway write and will not start another until it is settled. Open Diagnostics \u2192 Gateway recovery.",
+        null,
+        { code: "RECOVERY_REQUIRED", retryable: false }
+      );
+    }
     return this.gateway.enqueue(async () => {
       try {
         this.gateway.assertMutationAllowed();

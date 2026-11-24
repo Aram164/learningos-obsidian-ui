@@ -2,14 +2,17 @@
 # data lives in each note's frontmatter — this file is pure presentation).
 filters:
   and:
+    - 'file.path.startsWith("knowledge/notes/")'
     - 'note.type == "note"'
 properties:
+  note.title:
+    displayName: Title
   note.state:
     displayName: State
   note.role:
     displayName: Role
-  note.reviewed:
-    displayName: Reviewed
+  note.semantic_review:
+    displayName: Semantic review
   file.folder:
     displayName: Domain folder
   file.mtime:
@@ -19,10 +22,10 @@ views:
     name: All notes
     order:
       - file.name
-      - title
-      - state
-      - role
-      - reviewed
+      - note.title
+      - note.state
+      - note.role
+      - note.semantic_review
       - file.folder
       - file.mtime
     sort:
@@ -33,21 +36,22 @@ views:
     limit: 20
     order:
       - file.name
-      - state
-      - role
+      - note.state
+      - note.role
       - file.mtime
     sort:
       - property: file.mtime
         direction: DESC
   - type: table
-    name: Needs review (no reviewed date)
+    name: Needs semantic review
     filters:
       and:
-        - '!reviewed'
+        - 'note.semantic_review != "user-reviewed"'
     order:
       - file.name
-      - state
-      - role
+      - note.state
+      - note.role
+      - note.semantic_review
       - file.mtime
     sort:
       - property: file.mtime
@@ -56,31 +60,32 @@ views:
     name: Rough or evolving
     filters:
       and:
-        - 'state == "rough" || state == "evolving"'
+        - 'note.state == "rough" || note.state == "evolving"'
     order:
       - file.name
-      - state
-      - role
+      - note.state
+      - note.role
       - file.mtime
   - type: table
     name: Exam artifacts
     filters:
       and:
-        - 'role == "exercise-bank" || role == "mock-exam"'
+        - 'note.role == "exercise-bank" || note.role == "mock-exam"'
     order:
       - file.name
-      - role
-      - state
+      - note.role
+      - note.state
       - file.folder
   - type: table
-    name: With evidence
+    name: User-reviewed
     filters:
       and:
-        - 'evidence'
+        - 'note.semantic_review == "user-reviewed"'
     order:
       - file.name
-      - state
-      - reviewed
+      - note.state
+      - note.semantic_review
+      - file.folder
   - type: table
     name: By domain
     groupBy:
@@ -88,5 +93,5 @@ views:
       direction: ASC
     order:
       - file.name
-      - state
-      - role
+      - note.state
+      - note.role

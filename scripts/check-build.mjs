@@ -11,11 +11,7 @@ const stylesPath = path.join(root, 'plugin', 'styles.css');
 const infoPath = path.join(root, 'plugin', 'build-info.json');
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
-function buildOnce(env = {}) {
-  const result = spawnSync(process.execPath, ['build.mjs'], {
-    cwd: root, encoding: 'utf8', timeout: 120_000, env: { ...process.env, ...env },
-  });
-  if (result.status !== 0) throw new Error(result.stderr || result.stdout || 'build failed');
+function readExistingBuild() {
   return {
     bundle: fs.readFileSync(bundlePath),
     styles: fs.readFileSync(stylesPath, 'utf8'),
@@ -23,7 +19,16 @@ function buildOnce(env = {}) {
   };
 }
 
-const first = buildOnce();
+function buildOnce(env = {}) {
+  const result = spawnSync(process.execPath, ['build.mjs'], {
+    cwd: root, encoding: 'utf8', timeout: 120_000, env: { ...process.env, ...env },
+  });
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout || 'build failed');
+  return readExistingBuild();
+}
+
+const verifyExisting = process.argv.includes('--verify-existing');
+const first = verifyExisting ? readExistingBuild() : buildOnce();
 const second = buildOnce();
 if (!first.bundle.equals(second.bundle) || first.styles !== second.styles || first.info !== second.info) {
   throw new Error('Build is not deterministic: two consecutive builds differ.');
@@ -38,14 +43,15 @@ if (!first.bundle.equals(second.bundle) || first.styles !== second.styles || fir
  * after every commit would then change the bundle again, and a clean,
  * reproducible commit would be impossible (risk 10.6 in the hardening plan).
  */
-const thirdInfo = JSON.parse(
-  buildOnce({ LEARNINGOS_UI_SOURCE_REVISION: 'f'.repeat(40) }).info,
-);
+const third = buildOnce({ LEARNINGOS_UI_SOURCE_REVISION: 'f'.repeat(40) });
+const thirdInfo = JSON.parse(third.info);
 const secondInfoForCompare = JSON.parse(second.info);
 if (thirdInfo.source_revision !== 'f'.repeat(40)) {
   throw new Error('LEARNINGOS_UI_SOURCE_REVISION did not take effect.');
 }
-if (thirdInfo.source_fingerprint !== secondInfoForCompare.source_fingerprint
+if (!third.bundle.equals(second.bundle)
+    || third.styles !== second.styles
+    || thirdInfo.source_fingerprint !== secondInfoForCompare.source_fingerprint
     || thirdInfo.bundle_sha256 !== secondInfoForCompare.bundle_sha256
     || thirdInfo.stylesheet_sha256 !== secondInfoForCompare.stylesheet_sha256) {
   throw new Error(
@@ -53,9 +59,9 @@ if (thirdInfo.source_fingerprint !== secondInfoForCompare.source_fingerprint
     + 'a commit SHA has leaked into build content.',
   );
 }
-// Rebuild once more with the real environment so the committed working tree
-// is left in its normal, non-fake-revision state.
-buildOnce();
+// Restore the real-environment build-info.json written by the identical second pass
+// instead of spawning a duplicate rebuild just to overwrite metadata.
+fs.writeFileSync(infoPath, second.info, 'utf8');
 
 const info = JSON.parse(second.info);
 if (!['esbuild', 'typescript-fallback'].includes(info.bundler) || info.entry_point !== 'src/main.ts') {

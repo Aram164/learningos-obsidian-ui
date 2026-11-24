@@ -112,36 +112,6 @@
   color: var(--los-accent);
 }
 
-/* -------------------------------------------------------------- lens bar */
-
-.los-atlas-lensbar {
-  display: flex;
-  gap: var(--los-5);
-  align-items: flex-start;
-  margin-bottom: var(--los-3);
-  padding-bottom: var(--los-3);
-  border-bottom: 1px solid var(--los-line);
-  flex-wrap: wrap;
-}
-
-.los-atlas-lensgroup {
-  display: grid;
-  min-width: 0;
-  gap: var(--los-1);
-}
-
-.los-atlas-corpus-lenses {
-  display: flex;
-  gap: var(--los-2);
-  flex-wrap: wrap;
-}
-
-.los-root .los-atlas-corpus-lens.is-active {
-  border-color: var(--los-accent);
-  background: var(--los-accent-wash);
-  color: var(--los-accent);
-}
-
 /* ------------------------------------------------ question and summary */
 
 .los-atlas-question {

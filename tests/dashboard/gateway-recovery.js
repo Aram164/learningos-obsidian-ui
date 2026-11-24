@@ -337,7 +337,7 @@ module.exports = async function run() {
      * it to null would erase the only trace of a possibly-committed write. */
     const malformed = { schema_version: 1, phase: 'finished' };
     const sent = [];
-    const { plugin } = await build({
+    const { plugin, calls } = await build({
       settings: { gatewayRecovery: malformed },
       spy: (_args, stdin) => { if (stdin) sent.push(stdin); },
     });
@@ -348,6 +348,16 @@ module.exports = async function run() {
     check('the application knows it is blocked',
       plugin.recoveryBlocked === true
       && plugin.gatewayRecoveryState().kind === 'malformed');
+
+    // #38: recoveryBlocked === true visibly blocks live UI writes with a clear Notice.
+    Notice.log.length = 0;
+    let mutateError = null;
+    await plugin.mutate(() => plugin.gateway.captureText('blocked capture'))
+      .catch((error) => { mutateError = error; });
+    check('recoveryBlocked blocks live mutate writes with a clear Notice and no Core spawn',
+      mutateError?.gatewayCode === 'RECOVERY_REQUIRED'
+      && calls.length === 0
+      && Notice.log.some((message) => message.includes('Gateway recovery')));
     plugin.onunload();
   }
 

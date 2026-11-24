@@ -88,8 +88,9 @@ Compatibility is explicit, not dead code:
   startup.
 - `ApplicationRouter.fromLegacy()` and `legacy-library-list` preserve persisted
   navigation and old Library deep links.
-- `GatewayClient.saveNote()` and `GatewayClient.attach()` retain the Core
-  `stage.note.write` and `stage.attachment.add` compatibility capabilities.
+- `GatewayClient.saveNote()` is retired (refuses client-side with a retired-surface
+  error for `stage.note.write`); `GatewayClient.attach()` retains the Core
+  `stage.attachment.add` compatibility capability.
 
 These surfaces are classified here so a zero-current-caller result is not, by
 itself, permission to delete them.

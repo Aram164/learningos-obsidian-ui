@@ -692,6 +692,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
       new Notice('Recovered the prior write; newer canonical changes are also present.');
     }
     await this.recovery.settleConfirmed(owner);
+    this.recoveryBlocked = this.recovery.unresolved;
     if (
       owner.envelope.capability === 'learner.ability-observation.append'
       || owner.envelope.capability === 'ability.candidate.append'
@@ -756,6 +757,14 @@ export class LearningOSUI extends Plugin implements AppSurface {
     { reload = true, healStaleProjection = true }:
       { reload?: boolean; healStaleProjection?: boolean } = {},
   ): Promise<T> {
+    if (this.recoveryBlocked) {
+      this.notify(GATEWAY_RECOVERY_BLOCKED);
+      throw new GatewayError(
+        'LearningOS has an unresolved Gateway write and will not start another until it is settled. Open Diagnostics → Gateway recovery.',
+        null,
+        { code: 'RECOVERY_REQUIRED', retryable: false },
+      );
+    }
     return this.gateway.enqueue(async () => {
       try {
         this.gateway.assertMutationAllowed();

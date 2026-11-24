@@ -83,6 +83,8 @@ interface GatewayHost {
   recovery?: GatewayRecoveryPort;
   /** Recovery is never silent — the learner is told before a replay is sent. */
   notify?(message: string): void;
+  /** True when startup or settlement left recovery blocked until Diagnostics acts. */
+  readonly recoveryBlocked?: boolean;
   /** False once this plugin instance has yielded ownership during unload. */
   isLifecycleActive?(): boolean;
 }
@@ -258,7 +260,7 @@ export class GatewayClient {
   assertMutationAllowed(): void {
     this.assertLifecycleActive();
     this.assertFreshSnapshot();
-    if (!this.recovery.unresolved) return;
+    if (!this.recovery.unresolved && !this.plugin.recoveryBlocked) return;
     throw new GatewayError(
       'LearningOS has an unresolved Gateway write and will not start another until it is settled. Open Diagnostics → Gateway recovery.',
       null,

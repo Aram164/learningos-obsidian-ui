@@ -81,6 +81,7 @@ export interface AppSurface {
   readonly manifest?: { version?: string };
 
   // ------------------------------------------------------------- the write path
+  readonly recoveryBlocked: boolean;
   mutate<T>(
     action: () => T | PromiseLike<T>,
     options?: { reload?: boolean; healStaleProjection?: boolean },
