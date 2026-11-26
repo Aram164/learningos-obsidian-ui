@@ -73,8 +73,12 @@ function stringLiteralText(node) {
   return ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) ? node.text : null;
 }
 
-function loadMirror() {
-  const mirrorPath = path.join(root, 'contracts/capability-schemas.generated.json');
+export function loadMirror({
+  mirrorPath = path.join(root, 'contracts/capability-schemas.generated.json'),
+  coreRoot = path.resolve(root, '../repository'),
+  isStrict = strict,
+  env = process.env,
+} = {}) {
   if (!fs.existsSync(mirrorPath)) {
     throw new Error('Missing contracts/capability-schemas.generated.json. Run npm run contract:generate.');
   }
@@ -82,14 +86,18 @@ function loadMirror() {
   if (mirror.format !== 'learningos-capability-mirror/1') {
     throw new Error(`Unsupported capability mirror format: ${mirror.format}`);
   }
-  const coreRoot = path.resolve(root, '../repository');
   const coreCapsDir = path.join(coreRoot, 'system/schema/capabilities');
   if (!fs.existsSync(coreCapsDir)) {
-    const mustVerify = process.env.LEARNINGOS_ALLOW_MISSING_CORE !== '1'
-      && Boolean(process.env.CI || process.env.LEARNINGOS_REQUIRE_CORE_MIRROR);
+    const mustVerify = isStrict || (
+      env.LEARNINGOS_ALLOW_MISSING_CORE !== '1'
+      && Boolean(env.CI || env.LEARNINGOS_REQUIRE_CORE_MIRROR)
+    );
     if (mustVerify) {
       throw new Error(
-        `Core capability schemas not found at ${coreCapsDir}; set LEARNINGOS_ALLOW_MISSING_CORE=1 only for offline local runs.`,
+        `Core capability schemas not found at ${coreCapsDir}; `
+        + (isStrict
+          ? '--strict requires the sibling Core checkout.'
+          : 'set LEARNINGOS_ALLOW_MISSING_CORE=1 only for offline local runs.'),
       );
     }
     console.log(`parity: Core checkout absent at ${coreRoot}; using mirrored contracts/capability-schemas.generated.json`);

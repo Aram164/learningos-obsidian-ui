@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   checkUnitMapImportAudit,
   evaluateParityResult,
   extractImportUnitMapPayloadKeys,
+  loadMirror,
 } from '../scripts/check-gateway-parity.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -134,5 +136,26 @@ const phase3CleanStrict = evaluateParityResult({
 });
 assert.equal(phase3CleanStrict.ok, true);
 assert.equal(phase3CleanStrict.exitCode, 0);
+
+// 4. --strict refuses missing Core capability schemas regardless of CI or LEARNINGOS_ALLOW_MISSING_CORE.
+const missingCoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'los-missing-core-'));
+try {
+  assert.throws(
+    () => loadMirror({ coreRoot: missingCoreDir, isStrict: true, env: {} }),
+    /--strict requires the sibling Core checkout/,
+  );
+  assert.throws(
+    () => loadMirror({
+      coreRoot: missingCoreDir,
+      isStrict: true,
+      env: { LEARNINGOS_ALLOW_MISSING_CORE: '1' },
+    }),
+    /--strict requires the sibling Core checkout/,
+  );
+  const offlineMirror = loadMirror({ coreRoot: missingCoreDir, isStrict: false, env: {} });
+  assert.equal(offlineMirror.format, 'learningos-capability-mirror/1');
+} finally {
+  fs.rmSync(missingCoreDir, { recursive: true, force: true });
+}
 
 console.log('Gateway parity regression tests: AST payload extraction and strict delivery guards verified');

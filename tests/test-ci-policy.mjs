@@ -1,8 +1,10 @@
 import { test } from 'node:test';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert';
+import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
+import { checkSourceGraph } from '../scripts/check-source-graph.mjs';
 
 function runScripts(yml) {
     const lines = yml.split('\n');
@@ -70,6 +72,63 @@ test('UI CI policy', () => {
     // Core's test_flows_pin resolves the UI commit FLOWS.md pins, which a
     // depth-1 UI checkout cannot reach: UI main's 2026-11-06 run failed on it.
     assert.match(yml, /path: obsidian-ui\n\s*# Full history[^\n]*\n\s*fetch-depth: 0/);
+    // Phase 1 provenance and override hardening: explicit empty overrides and
+    // separate producer-identity artifact (never placed inside plugin/).
+    assert.match(yml, /LEARNINGOS_ALLOW_FALLBACK:\s*""/);
+    assert.match(yml, /LEARNINGOS_ALLOW_MISSING_CORE:\s*""/);
+    assert.match(yml, /GITHUB_STEP_SUMMARY/);
+    assert.match(yml, /name: ui-ci-provenance/);
+    assert.ok(!yml.includes('plugin/ci-resolved-core.json'), 'provenance artifact must stay outside plugin/');
+});
+
+test('source graph bans Node builtins outside host adapters and view imports across pure layers', () => {
+    const tmp = mkdtempSync(path.join(os.tmpdir(), 'los-source-graph-'));
+    try {
+        const write = (rel, body) => {
+            const full = path.join(tmp, rel);
+            mkdirSync(path.dirname(full), { recursive: true });
+            writeFileSync(full, body, 'utf8');
+        };
+        write('src/main.ts', "import * as fs from 'node:fs';\nimport './gateway-client';\nimport './infrastructure/helper';\nimport './views/sample-view';\nimport './contracts/c';\nimport './projection/p';\nimport './application/a';\nimport './designs/d';\nimport './features/f';\nexport const m = fs;\n");
+        write('src/gateway-client.ts', "import { join } from 'node:path';\nexport const g = join;\n");
+        write('src/infrastructure/helper.ts', "import { createHash } from 'node:crypto';\nexport const h = createHash;\n");
+        write('src/views/sample-view.ts', 'export const v = 1;\n');
+        write('src/contracts/c.ts', 'export const c = 1;\n');
+        write('src/projection/p.ts', 'export const p = 1;\n');
+        write('src/application/a.ts', 'export const a = 1;\n');
+        write('src/designs/d.ts', 'export const d = 1;\n');
+        write('src/features/f.ts', 'export const f = 1;\n');
+
+        const clean = checkSourceGraph(tmp);
+        assert.equal(clean.ok, true, clean.failures.join('\n'));
+
+        write('src/contracts/c.ts', "import fs from 'node:fs';\nexport const c = fs;\n");
+        const nodePrefixed = checkSourceGraph(tmp);
+        assert.equal(nodePrefixed.ok, false);
+        assert.deepEqual(nodePrefixed.disallowedNodeImports, ['src/contracts/c.ts imports node:fs']);
+
+        write('src/contracts/c.ts', "import { readFileSync } from 'fs';\nexport const c = readFileSync;\n");
+        const bareBuiltin = checkSourceGraph(tmp);
+        assert.equal(bareBuiltin.ok, false);
+        assert.deepEqual(bareBuiltin.disallowedNodeImports, ['src/contracts/c.ts imports fs']);
+        write('src/contracts/c.ts', 'export const c = 1;\n');
+
+        for (const [rel, imp] of [
+            ['src/contracts/c.ts', '../views/sample-view'],
+            ['src/projection/p.ts', '../views/sample-view'],
+            ['src/application/a.ts', '../views/sample-view'],
+            ['src/designs/d.ts', '../views/sample-view'],
+            ['src/features/f.ts', '../views/sample-view'],
+        ]) {
+            write(rel, `import { v } from '${imp}';\nexport const x = v;\n`);
+            const badView = checkSourceGraph(tmp);
+            assert.equal(badView.ok, false, `${rel} -> views must be refused`);
+            assert.deepEqual(badView.forbidden, [`${rel} -> src/views/sample-view.ts`]);
+            write(rel, 'export const x = 1;\n');
+        }
+    } finally {
+        rmSync(tmp, { recursive: true, force: true });
+    }
 });
 
 // These two calls only format display prose; neither supplies a match/sort key.
