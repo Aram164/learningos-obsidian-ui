@@ -76,6 +76,7 @@ test('UI CI policy', () => {
     // separate producer-identity artifact (never placed inside plugin/).
     assert.match(yml, /LEARNINGOS_ALLOW_FALLBACK:\s*""/);
     assert.match(yml, /LEARNINGOS_ALLOW_MISSING_CORE:\s*""/);
+    assert.match(yml, /PYTEST_ADDOPTS:\s*""/);
     assert.match(yml, /GITHUB_STEP_SUMMARY/);
     assert.match(yml, /name: ui-ci-provenance/);
     assert.ok(!yml.includes('plugin/ci-resolved-core.json'), 'provenance artifact must stay outside plugin/');

@@ -561,7 +561,12 @@ async function runMapImportScenarios(repos) {
   const draftRel = 'work/inbox/reorder-retire-reset.yaml';
 
   // Helper to drive real UnitMapImportModal two-step flow with minimal DOM shim.
-  async function driveModalTwoStep(s, draftFile, { doubleClick = false } = {}) {
+  async function driveModalTwoStep(s, draftFile, { doubleClick = false, repo = null } = {}) {
+    const basePreviewReceipts = repo ? receiptCount(repo) : null;
+    const mapPath = repo
+      ? path.join(repo, 'curriculum/modules/module-demo/units/unit-demo-l01/study-map.yaml')
+      : null;
+    const mapBefore = mapPath ? fs.readFileSync(mapPath, 'utf8') : null;
     const unit = s.store.get('unit-demo-l01');
     const { stub } = require('./harness');
     const modal = new UnitMapImportModal(
@@ -601,6 +606,10 @@ async function runMapImportScenarios(repos) {
     await waitUntil(() => !checkBtn.disabled && statusEl.text !== 'Checking — nothing is written…', 'step-1 check');
     // Step 1 preview discovered required overrides -> Replace stays disabled!
     assert.equal(replaceBtn.disabled, true);
+    if (repo) {
+      assert.equal(receiptCount(repo), basePreviewReceipts, 'step-1 check must write zero receipts');
+      assert.equal(fs.readFileSync(mapPath, 'utf8'), mapBefore, 'step-1 check must leave map untouched');
+    }
     const retireList = root.find('los-map-import-retire-list')[0];
     const retireBox = retireList ? findByTag(retireList, 'input')[0] : null;
     const statusBeforeOverrides = statusEl ? statusEl.text : '';
@@ -623,6 +632,11 @@ async function runMapImportScenarios(repos) {
     clickButtonAsync(checkBtn);
     await waitUntil(() => !checkBtn.disabled && statusEl.text !== 'Checking — nothing is written…', 'step-2 check');
     assert.equal(replaceBtn.disabled, false, `step-2 failed: ${statusEl.text}`);
+    const previewReceiptDelta = repo ? receiptCount(repo) - basePreviewReceipts : 0;
+    if (repo) {
+      assert.equal(previewReceiptDelta, 0, 'step-2 check must write zero receipts before apply');
+      assert.equal(fs.readFileSync(mapPath, 'utf8'), mapBefore, 'step-2 check must leave map untouched');
+    }
 
     // Submit (plus optional rapid second click test).
     let closed = false;
@@ -635,7 +649,7 @@ async function runMapImportScenarios(repos) {
     }
     await waitUntil(() => closed, 'modal submit close');
     stub.Modal.last = modal;
-    return { statusBeforeOverrides };
+    return { statusBeforeOverrides, previewReceiptDelta };
   }
 
   // 1. Valid request commits canonically on disk (simultaneous reorder + state reset + stage retire via modal).
@@ -645,7 +659,7 @@ async function runMapImportScenarios(repos) {
     const baseReceipts = baseIds.size;
     const settings = path.join(repo, '.ui-settings.json');
     const s = await createSession(repo, settings);
-    const modalMeta = await driveModalTwoStep(s, path.join(repo, draftRel));
+    const modalMeta = await driveModalTwoStep(s, path.join(repo, draftRel), { repo });
     assert.equal(s.envelopes.length, 1);
     const env = s.envelopes[0];
     assert.equal(env.capability, 'unit.map.import');
@@ -657,6 +671,7 @@ async function runMapImportScenarios(repos) {
     assert.equal(newIds.length, 1);
     out.valid = {
       statusBeforeOverrides: modalMeta.statusBeforeOverrides,
+      previewReceiptDelta: modalMeta.previewReceiptDelta,
       transactionId: newIds[0],
       receiptDelta: receiptCount(repo) - baseReceipts,
     };
@@ -669,8 +684,12 @@ async function runMapImportScenarios(repos) {
     const settings = path.join(repo, '.ui-settings.json');
     const s = await createSession(repo, settings);
     const draftFile = path.join(repo, draftRel);
+    const mapPath = path.join(repo, 'curriculum/modules/module-demo/units/unit-demo-l01/study-map.yaml');
+    const mapBefore = fs.readFileSync(mapPath, 'utf8');
     // Preview reports can_apply === false when overrides missing, and --check refuses.
     const preview = await s.gateway.previewUnitMapImport('unit-demo-l01', draftFile, true);
+    assert.equal(receiptCount(repo), baseReceipts, 'previewUnitMapImport must write zero receipts');
+    assert.equal(fs.readFileSync(mapPath, 'utf8'), mapBefore, 'previewUnitMapImport must leave map untouched');
     assert.equal(preview.can_apply, false);
     assert.equal(preview.required_decisions.reorder_required, true);
     assert.equal(preview.required_decisions.state_reset_required, true);
@@ -765,7 +784,7 @@ async function runMapImportScenarios(repos) {
     const settings = path.join(repo, '.ui-settings.json');
     const s = await createSession(repo, settings);
     const draftFile = path.join(repo, draftRel);
-    await driveModalTwoStep(s, draftFile, { doubleClick: true });
+    await driveModalTwoStep(s, draftFile, { doubleClick: true, repo });
     assert.equal(s.envelopes.length, 1, 'modal button disable must prevent duplicate send');
     const envJson = JSON.stringify(s.envelopes[0]);
     const replay = spawnCore(repo, ['capability', 'unit.map.import', '--payload-file', '-'], envJson);
@@ -857,13 +876,21 @@ async function runDeliveryApplyScenarios(repos, deliveryId) {
     const baseReceipts = baseIds.size;
     const settings = path.join(repo, '.ui-settings.json');
     const s = await createSession(repo, settings);
+    const noteFile = path.join(repo, 'knowledge/garden/transcriptions/garden-note-seed.md');
+    const reqFile = path.join(repo, 'operations/ai-actions/requests/ai-request-scenario-shelve/request.yaml');
+    const reqBefore = fs.readFileSync(reqFile, 'utf8');
+    await s.gateway.previewDelivery(deliveryId);
+    const previewReceiptDelta = receiptCount(repo) - baseReceipts;
+    assert.equal(previewReceiptDelta, 0, 'previewDelivery must write zero receipts');
+    assert.equal(fs.existsSync(noteFile), false, 'previewDelivery must not create transcription note');
+    assert.equal(fs.readFileSync(reqFile, 'utf8'), reqBefore, 'previewDelivery must leave request untouched');
     const res = await s.aiActions.applyApprovedDelivery(deliveryId);
     assert.equal(res.ok, true);
     assert.equal(s.envelopes.length, 1);
     assert.equal(s.envelopes[0].capability, 'ai-action.delivery.apply');
     assert.equal(s.envelopes[0].approval.kind, 'approved-delivery');
     assert.deepEqual(receiptIds(repo).filter((id) => !baseIds.has(id)), [res.transaction_id]);
-    out.valid = { transactionId: res.transaction_id, receiptDelta: receiptCount(repo) - baseReceipts };
+    out.valid = { previewReceiptDelta, transactionId: res.transaction_id, receiptDelta: receiptCount(repo) - baseReceipts };
   }
 
   // 2. Invalid request refuses with zero canonical disk mutation.
@@ -896,6 +923,7 @@ async function runDeliveryApplyScenarios(repos, deliveryId) {
     const settings = path.join(repo, '.ui-settings.json');
     const s = await createSession(repo, settings);
     const preview = await s.gateway.previewDelivery(deliveryId);
+    assert.equal(receiptCount(repo), baseReceipts, 'previewDelivery must leave receipts unchanged before apply');
     const artifactFile = path.join(
       repo, 'operations', 'ai-actions', 'deliveries', deliveryId, 'artifacts', 'transcription.md',
     );
@@ -915,6 +943,7 @@ async function runDeliveryApplyScenarios(repos, deliveryId) {
     const settings = path.join(repo, '.ui-settings.json');
     const s = await createSession(repo, settings);
     const preview = await s.gateway.previewDelivery(deliveryId);
+    assert.equal(receiptCount(repo), baseReceipts, 'previewDelivery must leave receipts unchanged before apply');
     await sendExternalV2(
       repo,
       'capture.create',
