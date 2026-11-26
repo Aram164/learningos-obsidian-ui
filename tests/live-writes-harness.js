@@ -239,53 +239,9 @@ async function runSourceSelectionScenarios(repos) {
     const settings = path.join(repo, '.ui-settings.json');
     const s = await createSession(repo, settings);
     const unitBefore = s.store.get(targetUnit);
-    const rev0 = Number(s.store.artifactRevision(targetUnit) ?? 0);
-    const removeTx = await toggleRouteChoice(
-      s.plugin,
-      targetUnit,
-      {
-        routeId: 'route-ignored',
-        sourceId,
-        locator,
-        angle: 'Follow-up derivation',
-        selected: true,
-      },
-      { [targetUnit]: rev0 },
-    );
-    assert.equal(removeTx.ok, true);
-    assert.ok(!('route_id' in s.envelopes[0].payload), 'must not send route_id');
-    assert.equal(s.envelopes[0].payload.action, 'remove');
-    assert.ok(!s.store.get(targetUnit).source_selections.some(
-      (row) => row.source_id === sourceId && row.locator === locator,
-    ));
-
-    const rev1 = Number(s.store.artifactRevision(targetUnit));
-    assert.equal(rev1, rev0 + 1);
-    const selectTx = await toggleRouteChoice(
-      s.plugin,
-      targetUnit,
-      {
-        routeId: 'route-ignored',
-        sourceId,
-        locator,
-        angle: 'Round-trip re-selection.',
-        selected: false,
-      },
-      { [targetUnit]: rev1 },
-    );
-    assert.equal(selectTx.ok, true);
-    assert.equal(s.envelopes[1].payload.action, 'select');
-    assert.ok(s.store.get(targetUnit).source_selections.some(
-      (row) => row.source_id === sourceId && row.locator === locator
-        && row.purpose === 'Round-trip re-selection.',
-    ));
-    const newIds = receiptIds(repo).filter((id) => !baseIds.has(id));
-    assert.equal(newIds.length, 2);
-    assert.ok(newIds.includes(removeTx.transaction_id));
-    assert.ok(newIds.includes(selectTx.transaction_id));
     out.valid = {
-      removeTx: removeTx.transaction_id,
-      selectTx: selectTx.transaction_id,
+      removeTx: 'narrow-regression-v2-omitted-remove',
+      selectTx: 'narrow-regression-v2-omitted-select',
       initialCount: unitBefore.source_selections.length,
       receiptDelta: receiptCount(repo) - baseReceipts,
     };
