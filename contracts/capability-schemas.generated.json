@@ -10008,6 +10008,64 @@
         }
       }
     },
+    "ui-capability": {
+      "operation": "cli.ui-capability",
+      "handler": "learning_os.adapters.capability.cmd_ui_capability",
+      "operation_kind": null,
+      "required": [
+        "name",
+        "payload_file"
+      ],
+      "mutually_exclusive": [],
+      "properties": {
+        "name": {
+          "flags": [],
+          "position": 0,
+          "action": "store",
+          "nargs": null,
+          "required": true,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "payload_file": {
+          "flags": [
+            "--payload-file"
+          ],
+          "position": null,
+          "action": "store",
+          "nargs": null,
+          "required": true,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "replay_only": {
+          "flags": [
+            "--replay-only"
+          ],
+          "position": null,
+          "action": "store_true",
+          "nargs": 0,
+          "required": false,
+          "choices": null,
+          "transport_only": false,
+          "envelope_owned": false
+        },
+        "json": {
+          "flags": [
+            "--json"
+          ],
+          "position": null,
+          "action": "store_true",
+          "nargs": 0,
+          "required": false,
+          "choices": null,
+          "transport_only": true,
+          "envelope_owned": false
+        }
+      }
+    },
     "unit-list": {
       "operation": "unit.list",
       "handler": "learning_os.adapters.cli.invoke:unit.list",

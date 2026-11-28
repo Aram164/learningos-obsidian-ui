@@ -1815,7 +1815,7 @@ function routerPlugin(settings = {}) {
     );
     assert.equal(result.transaction_id, 'tx-1');
     // One write shape: a declared capability, its payload on stdin.
-    assert.deepEqual(received, ['capability', 'unit.note.append', '--payload-file', '-']);
+    assert.deepEqual(received, ['ui-capability', 'unit.note.append', '--payload-file', '-']);
     const envelope = JSON.parse(sent);
     assert.equal(envelope.capability, 'unit.note.append');
     assert.equal(envelope.schema_version, 2);
@@ -2343,7 +2343,7 @@ function routerPlugin(settings = {}) {
       'capture.create', 'atlas.question.save', 'unit.note.append',
     ]);
     for (const call of calls) {
-      assert.equal(call.args[0], 'capability', 'one call shape for every write');
+      assert.equal(call.args[0], 'ui-capability', 'one call shape for every write');
       assert.deepEqual(call.args.slice(2), ['--payload-file', '-']);
       assert.equal(call.envelope.schema_version, 2);
       assert.equal(call.envelope.expected_snapshot, SNAPSHOT);
@@ -2563,8 +2563,8 @@ function routerPlugin(settings = {}) {
     const calls = [];
     const gateway = new GatewayClient({
       runLos: (args, callback, stdin) => {
-        calls.push({ args, envelope: args[0] === 'capability' ? JSON.parse(stdin) : null });
-        callback(null, args[0] === 'capability'
+        calls.push({ args, envelope: args[0] === 'ui-capability' ? JSON.parse(stdin) : null });
+        callback(null, args[0] === 'ui-capability'
           ? gatewayConfirmation(stdin)
           : JSON.stringify({ ok: true, mode: 'check', canonical_files_written: 0, unit_id: 'unit-amls-l01', study_map_id: 'study-map-amls-l01', file_sha256: fileDigest(gatewayMap), snapshot_id: SNAPSHOT, expected_revisions: { 'unit-amls-l01': 1, 'study-map-amls-l01': 2 }, diff: { stages_after: [], content_changes: [] } }), '');
       },
@@ -2603,7 +2603,7 @@ function routerPlugin(settings = {}) {
     const gateway = new GatewayClient({
       runLos(args, callback, stdin) {
         calls.push({ args, stdin });
-        if (args[0] === 'capability') { callback(null, gatewayConfirmation(stdin), ''); return; }
+        if (args[0] === 'ui-capability') { callback(null, gatewayConfirmation(stdin), ''); return; }
         checkedFile = args[args.indexOf('--file') + 1];
         callback(null, JSON.stringify({ ok: true, mode: 'check', canonical_files_written: 0,
           unit_id: 'unit-demo', study_map_id: 'map-demo', file_sha256: fileDigest(checkedFile),

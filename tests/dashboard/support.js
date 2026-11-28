@@ -314,7 +314,7 @@ async function build(options = {}) {
   }
   const calls = [];
   /* Canonical writes are capability envelopes now: the args are always
-   * `capability <name> --payload-file -` and the content is on stdin, so the
+   * `ui-capability <name> --payload-file -` and the content is on stdin, so the
    * harness must read the envelope to assert anything about a write. */
   const envelopes = [];
   calls.envelope = (capability) => envelopes.find((e) => e.capability === capability);

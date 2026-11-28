@@ -25,13 +25,13 @@ here.
    `study-sequence`, `plan-template`, `unit-map-import --check`,
    `projection-observe`, `health-report`, `operations`,
    `legacy-archive-status`, `masters-planning-dashboard`, `ai-action-status`,
-   and `capability ... --replay-only`). **Never parse canonical Markdown or
+   and `ui-capability ... --replay-only`). **Never parse canonical Markdown or
    YAML from UI code.** If a view needs a field the manifest or a declared Core
    response lacks, add it CORE-side and regenerate — do not regex for it.
    Corollary: the app must render its projected views from `manifest.json` even
    when the CLI is unavailable.
 3. Send canonical mutations only through Core's gateway (`tools/los.py`):
-   sealed `GatewayEnvelopeV2` requests via `capability NAME --payload-file -`
+   sealed `GatewayEnvelopeV2` requests via `ui-capability NAME --payload-file -`
    over stdin for the gesture-admitted capabilities in
    `UI_GESTURE_CAPABILITIES` (`src/contracts/gateway-v2.ts`, mirrored against
    Core's `system/contracts/capabilities.yaml`, plus the retained

@@ -113,7 +113,7 @@ async function createSession(repo, settingsFile, { wrapRunLos } = {}) {
   const envelopes = [];
   const calls = [];
   const defaultRunLos = (args, callback, stdin) => {
-    if (stdin && args[0] === 'capability') {
+    if (stdin && args[0] === 'ui-capability') {
       envelopes.push(JSON.parse(stdin));
     }
     calls.push({ args: [...args], stdin: stdin ?? null });
@@ -219,7 +219,7 @@ async function sendExternalV2(repo, capability, payload, expectedSnapshot, expec
     },
     payload,
   };
-  const res = spawnCore(repo, ['capability', capability, '--payload-file', '-'], JSON.stringify(envelope));
+  const res = spawnCore(repo, ['ui-capability', capability, '--payload-file', '-'], JSON.stringify(envelope));
   if (res.error) throw new Error(`external ${capability} failed: ${res.stderr || res.stdout}`);
   return JSON.parse(res.stdout);
 }
@@ -410,7 +410,7 @@ async function runSourceSelectionScenarios(repos) {
     await s.plugin.reloadAndSettle(first.confirmation);
 
     // Rapid second dispatch with exact same envelope replays idempotently.
-    const secondRes = spawnCore(repo, ['capability', 'unit.source-selection.set', '--payload-file', '-'], envJson);
+    const secondRes = spawnCore(repo, ['ui-capability', 'unit.source-selection.set', '--payload-file', '-'], envJson);
     assert.equal(secondRes.error, null, secondRes.stderr);
     const secondJson = JSON.parse(secondRes.stdout);
     assert.equal(secondJson.replayed, true);
@@ -738,7 +738,7 @@ async function runMapImportScenarios(repos) {
     fs.appendFileSync(draftFile, '\n# modified after check\n', 'utf8');
     // Both client-side importUnitMap and Core-side dispatch refuse stale digest.
     await assert.rejects(() => s.gateway.importUnitMap(review), /changed after review/i);
-    const coreRes = spawnCore(repo, ['capability', 'unit.map.import', '--payload-file', '-'], envJson);
+    const coreRes = spawnCore(repo, ['ui-capability', 'unit.map.import', '--payload-file', '-'], envJson);
     assert.notEqual(coreRes.error, null);
     assert.equal(receiptCount(repo), baseReceipts);
     out.stalePreview = { refused: true, receiptDelta: receiptCount(repo) - baseReceipts };
@@ -787,7 +787,7 @@ async function runMapImportScenarios(repos) {
     await driveModalTwoStep(s, draftFile, { doubleClick: true, repo });
     assert.equal(s.envelopes.length, 1, 'modal button disable must prevent duplicate send');
     const envJson = JSON.stringify(s.envelopes[0]);
-    const replay = spawnCore(repo, ['capability', 'unit.map.import', '--payload-file', '-'], envJson);
+    const replay = spawnCore(repo, ['ui-capability', 'unit.map.import', '--payload-file', '-'], envJson);
     assert.equal(replay.error, null, replay.stderr);
     assert.equal(JSON.parse(replay.stdout).replayed, true);
     const newIds = receiptIds(repo).filter((id) => !baseIds.has(id));
@@ -805,7 +805,7 @@ async function runMapImportScenarios(repos) {
     let attempt = 0;
     const s1 = await createSession(repo, settings, {
       wrapRunLos: (args, stdin, real) => {
-        if (args[0] === 'capability') {
+        if (args[0] === 'ui-capability') {
           attempt += 1;
           if (attempt === 1) {
             const res = real(args, stdin);
@@ -977,7 +977,7 @@ async function runDeliveryApplyScenarios(repos, deliveryId) {
     assert.equal(s.envelopes.length, 1, 'rapid double click must only submit once');
     const replay = spawnCore(
       repo,
-      ['capability', 'ai-action.delivery.apply', '--payload-file', '-'],
+      ['ui-capability', 'ai-action.delivery.apply', '--payload-file', '-'],
       JSON.stringify(s.envelopes[0]),
     );
     assert.equal(replay.error, null, replay.stderr);
@@ -996,7 +996,7 @@ async function runDeliveryApplyScenarios(repos, deliveryId) {
     let attempt = 0;
     const s1 = await createSession(repo, settings, {
       wrapRunLos: (args, stdin, real) => {
-        if (args[0] === 'capability') {
+        if (args[0] === 'ui-capability') {
           attempt += 1;
           if (attempt === 1) {
             const committed = real(args, stdin);

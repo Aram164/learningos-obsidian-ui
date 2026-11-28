@@ -48,7 +48,7 @@ async function main() {
       expected_snapshot: FIXTURE_SNAPSHOT,
       expected_revisions: { 'garden-note-fixture-soft-knn': 0 },
     }), '');
-    if (args[0] === 'capability' && stdin) {
+    if (args[0] === 'ui-capability' && stdin) {
       const env = JSON.parse(stdin);
       envelopes.push(env);
       return callback(null, JSON.stringify({

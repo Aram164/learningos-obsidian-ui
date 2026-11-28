@@ -58240,7 +58240,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:7b5057a3c5c72e3820557578e2ade76752f8453a4401c86a6ca07cda016ffb9a" : "unavailable";
+  return true ? "sha256:f8379defae5dc3ddc44df9bdbb4f5d326500e424fcd04ae70a95cecdb0c67c48" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;
@@ -58745,7 +58745,7 @@ var GatewayClient = class {
       idempotencyKey: String(envelope.idempotency_key ?? ""),
       capability: String(envelope.capability ?? "")
     };
-    const args = ["capability", expected.capability, "--payload-file", "-"];
+    const args = ["ui-capability", expected.capability, "--payload-file", "-"];
     if (replayOnly) args.push("--replay-only");
     this.diagnose(diagnosticEvent(attemptCtx, "gateway.envelope.dispatched", {
       capability: expected.capability,

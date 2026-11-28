@@ -617,7 +617,7 @@ export class GatewayClient {
       idempotencyKey: String(envelope.idempotency_key ?? ''),
       capability: String(envelope.capability ?? ''),
     };
-    const args = ['capability', expected.capability, '--payload-file', '-'];
+    const args = ['ui-capability', expected.capability, '--payload-file', '-'];
     if (replayOnly) args.push('--replay-only');
     this.diagnose(diagnosticEvent(attemptCtx, 'gateway.envelope.dispatched', {
       capability: expected.capability,
