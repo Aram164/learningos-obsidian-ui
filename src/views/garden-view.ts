@@ -65,6 +65,8 @@ const GARDEN_FILTERS: ReadonlyArray<
  */
 export class GardenView extends ItemView {
   private readonly plugin: GardenPlugin;
+  /** Deliveries whose application is in flight, across every redraw. */
+  private readonly applyingDeliveries = new Set<string>();
   private planting = false;
   private filter: GardenFilter = 'all';
 
@@ -465,13 +467,15 @@ export class GardenView extends ItemView {
         && !latest.receipt_id
       ) {
         const deliveryId = latest.delivery_id;
-        let applying = false;
         const applyBtn = button(
           statusActions,
           'Apply approved delivery',
           async () => {
-            if (applying) return;
-            applying = true;
+            // Keyed to the delivery on the view, not the render closure: a
+            // redraw mid-apply builds a fresh button, and a closure flag would
+            // let that one start a second application (CL-04).
+            if (this.applyingDeliveries.has(deliveryId)) return;
+            this.applyingDeliveries.add(deliveryId);
             applyBtn.disabled = true;
             try {
               await this.plugin.aiActions
@@ -482,18 +486,18 @@ export class GardenView extends ItemView {
               new Notice(
                 'Approved AI delivery applied and projection refreshed.',
               );
-
-              this.render();
             } catch (error: unknown) {
-              applying = false;
-              applyBtn.disabled = false;
               new Notice(
                 errorMessage(error),
               );
+            } finally {
+              this.applyingDeliveries.delete(deliveryId);
+              this.render();
             }
           },
           'success',
         );
+        if (this.applyingDeliveries.has(deliveryId)) applyBtn.disabled = true;
       }
 
       if (latest.receipt_id) {

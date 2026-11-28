@@ -78,6 +78,34 @@ export type GatewayRecoveryRecord =
   | GatewayRecoveryRecordV1
   | GatewayRecoveryRecordV2;
 
+/**
+ * One AI request preparation in flight (CL-03), in the same single slot.
+ *
+ * `ai-action-prepare` is not a sealed capability, so there is no envelope to
+ * resend. What survives a crash instead is the identity the interface minted
+ * before Core was spawned: the request id, bound to the action, target,
+ * provider and snapshot it was prepared from. Core answers a retry with that
+ * id idempotently — the committed request, or a refusal when anything differs
+ * — so an interrupted response never becomes a second, orphaned request.
+ * V1 and V2 records are unchanged; only this write persists schema 3.
+ */
+export interface GatewayRecoveryRecordV3 {
+  schema_version: 3;
+  kind: 'ai-prepare';
+  phase: 'prepared' | 'recovering' | 'blocked';
+  request_id: string;
+  action_id: string;
+  target_kind: string;
+  target_id: string;
+  provider: string;
+  expected_snapshot: string;
+  created_at: string;
+  last_error: GatewayRecoveryErrorV1 | null;
+}
+
+/** Core's `REQUEST_ID_PATTERN` (store/ai_actions/support.py). */
+export const AI_REQUEST_ID_PATTERN = /^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 /** A validated record, paired with the envelope parsed out of it. */
 export interface GatewayRecoveryEntry {
   readonly record: GatewayRecoveryRecord;
@@ -87,6 +115,7 @@ export interface GatewayRecoveryEntry {
 export type GatewayRecoveryState =
   | { readonly kind: 'clear' }
   | { readonly kind: 'record'; readonly entry: GatewayRecoveryEntry }
+  | { readonly kind: 'ai-prepare'; readonly record: GatewayRecoveryRecordV3 }
   | { readonly kind: 'malformed'; readonly error: string };
 
 export type GatewayRecoveryValidation =
@@ -261,6 +290,73 @@ export async function validateGatewayRecoveryRecord(
   };
 }
 
+const RECORD_KEYS_V3 = [
+  'schema_version', 'kind', 'phase', 'request_id', 'action_id', 'target_kind',
+  'target_id', 'provider', 'expected_snapshot', 'created_at', 'last_error',
+] as const;
+
+const AI_PREPARE_PHASES = ['prepared', 'recovering', 'blocked'] as const;
+
+/** Strict, closed validation of one persisted AI prepare record. */
+export function validateAiPrepareRecord(
+  value: unknown,
+): { readonly ok: true; readonly record: GatewayRecoveryRecordV3 }
+  | { readonly ok: false; readonly error: string } {
+  const refuse = (error: string) => ({ ok: false as const, error });
+  const candidate = record(value);
+  if (!candidate) return refuse('the AI prepare record is not an object');
+  if (candidate.schema_version !== 3 || candidate.kind !== 'ai-prepare') {
+    return refuse('an AI prepare record must be schema_version 3, kind ai-prepare');
+  }
+  if (!exactKeys(candidate, RECORD_KEYS_V3)) {
+    return refuse(`recovery schema_version 3 must carry exactly ${RECORD_KEYS_V3.join(', ')}`);
+  }
+  if (!AI_PREPARE_PHASES.includes(candidate.phase as typeof AI_PREPARE_PHASES[number])) {
+    return refuse(`unknown AI prepare phase ${JSON.stringify(candidate.phase)}`);
+  }
+  if (typeof candidate.request_id !== 'string'
+    || !AI_REQUEST_ID_PATTERN.test(candidate.request_id)) {
+    return refuse('the AI prepare record carries no valid request_id');
+  }
+  for (const key of ['action_id', 'target_kind', 'target_id', 'provider'] as const) {
+    if (!nonEmpty(candidate[key])) return refuse(`the AI prepare record has no ${key}`);
+  }
+  if (typeof candidate.expected_snapshot !== 'string'
+    || !/^sha256:[0-9a-f]{64}$/.test(candidate.expected_snapshot)) {
+    return refuse('the AI prepare record carries no expected_snapshot');
+  }
+  if (!nonEmpty(candidate.created_at) || !Number.isFinite(Date.parse(candidate.created_at))) {
+    return refuse('the AI prepare record has no readable creation timestamp');
+  }
+  let lastError: GatewayRecoveryErrorV1 | null = null;
+  if (candidate.last_error !== null) {
+    const failure = record(candidate.last_error);
+    if (!failure
+      || !exactKeys(failure, ['code', 'message'])
+      || !nonEmpty(failure.code)
+      || typeof failure.message !== 'string') {
+      return refuse('the recorded error is not a {code, message} pair');
+    }
+    lastError = { code: failure.code, message: failure.message };
+  }
+  return {
+    ok: true,
+    record: {
+      schema_version: 3,
+      kind: 'ai-prepare',
+      phase: candidate.phase as GatewayRecoveryRecordV3['phase'],
+      request_id: candidate.request_id,
+      action_id: candidate.action_id as string,
+      target_kind: candidate.target_kind as string,
+      target_id: candidate.target_id as string,
+      provider: candidate.provider as string,
+      expected_snapshot: candidate.expected_snapshot,
+      created_at: candidate.created_at,
+      last_error: lastError,
+    },
+  };
+}
+
 /** What the Gateway client needs from whatever remembers the write. */
 export interface GatewayRecoveryPort {
   /** True while any record — valid or malformed — remains unresolved. */
@@ -406,6 +502,15 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
       this.status = { kind: 'clear' };
       return this.status;
     }
+    if (record(raw)?.schema_version === 3) {
+      const prepare = validateAiPrepareRecord(raw);
+      this.saveVersion += 1;
+      this.current = null;
+      this.status = prepare.ok
+        ? { kind: 'ai-prepare', record: prepare.record }
+        : { kind: 'malformed', error: prepare.error };
+      return this.status;
+    }
     const validated = await validateGatewayRecoveryRecord(raw);
     if (version !== this.saveVersion || this.settings.gatewayRecovery !== raw) return this.status;
     this.saveVersion += 1;
@@ -429,6 +534,64 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
    * restoring on rejection keeps `unresolved` true and new writes blocked.
    */
   protected async write(entry: GatewayRecoveryEntry | null): Promise<void> {
+    if (this.status.kind === 'ai-prepare') {
+      throw new Error('An AI request preparation is unresolved; nothing was written.');
+    }
+    await this.writeSlot(
+      entry ? entry.record : null,
+      entry ? { kind: 'record', entry } : { kind: 'clear' },
+      entry,
+    );
+  }
+
+  /** The persisted AI prepare intent, or null. */
+  aiPrepare(): GatewayRecoveryRecordV3 | null {
+    return this.status.kind === 'ai-prepare' ? this.status.record : null;
+  }
+
+  /** Persist a prepare intent before Core is spawned; awaited, like `begin`. */
+  async beginAiPrepare(next: GatewayRecoveryRecordV3): Promise<void> {
+    if (this.status.kind !== 'clear') {
+      throw new Error('A Gateway write is unresolved; the AI request was not started.');
+    }
+    const validated = validateAiPrepareRecord(next);
+    if (!validated.ok) {
+      throw new Error(`Refusing to persist an invalid AI prepare record: ${validated.error}`);
+    }
+    await this.writeSlot(validated.record, { kind: 'ai-prepare', record: validated.record }, null);
+  }
+
+  /** Advance the stored intent; refuses when a different request is stored. */
+  async markAiPrepare(
+    expected: GatewayRecoveryRecordV3,
+    phase: 'recovering' | 'blocked',
+    error: GatewayRecoveryErrorV1 | null,
+  ): Promise<GatewayRecoveryRecordV3> {
+    const stored = this.requiredAiPrepare(expected);
+    const next: GatewayRecoveryRecordV3 = { ...stored, phase, last_error: error };
+    await this.writeSlot(next, { kind: 'ai-prepare', record: next }, null);
+    return next;
+  }
+
+  /** Retire the intent once Core has confirmed or definitively refused it. */
+  async clearAiPrepare(expected: GatewayRecoveryRecordV3): Promise<void> {
+    this.requiredAiPrepare(expected);
+    await this.writeSlot(null, { kind: 'clear' }, null);
+  }
+
+  private requiredAiPrepare(expected: GatewayRecoveryRecordV3): GatewayRecoveryRecordV3 {
+    const stored = this.aiPrepare();
+    if (!stored || stored.request_id !== expected.request_id) {
+      throw new Error('The stored AI request changed; the older result was ignored.');
+    }
+    return stored;
+  }
+
+  private async writeSlot(
+    slot: GatewayRecoveryRecord | GatewayRecoveryRecordV3 | null,
+    status: GatewayRecoveryState,
+    entry: GatewayRecoveryEntry | null,
+  ): Promise<void> {
     if (this.status.kind === 'malformed') {
       throw new Error('A malformed Gateway recovery record is unresolved; nothing was written.');
     }
@@ -436,9 +599,9 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
     const previousCurrent = this.current;
     const previousStatus = this.status;
     const version = ++this.saveVersion;
-    this.settings.gatewayRecovery = entry ? entry.record : null;
+    this.settings.gatewayRecovery = slot;
     this.current = entry;
-    this.status = entry ? { kind: 'record', entry } : { kind: 'clear' };
+    this.status = status;
     try {
       await this.persist();
     } catch (error: unknown) {
@@ -702,6 +865,19 @@ export function gatewayRecoverySummary(
       ['Capability', 'unreadable'],
       ['Phase', 'blocked'],
       ['Validation error', state.error],
+    ];
+  }
+  if (state.kind === 'ai-prepare') {
+    const stored = state.record;
+    return [
+      ['Capability', `ai-action-prepare (${stored.action_id})`],
+      ['Phase', stored.phase],
+      ['Created', stored.created_at],
+      ['Request ID', stored.request_id],
+      ['Target', `${stored.target_kind} ${stored.target_id}`],
+      ['Last error', stored.last_error
+        ? `${stored.last_error.code}: ${stored.last_error.message}`
+        : 'none'],
     ];
   }
   const { record: stored, envelope } = state.entry;

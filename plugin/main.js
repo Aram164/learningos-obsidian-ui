@@ -52233,6 +52233,8 @@ var GARDEN_FILTERS = [
 ];
 var GardenView = class extends import_obsidian14.ItemView {
   plugin;
+  /** Deliveries whose application is in flight, across every redraw. */
+  applyingDeliveries = /* @__PURE__ */ new Set();
   planting = false;
   filter = "all";
   constructor(leaf, plugin) {
@@ -52525,13 +52527,12 @@ var GardenView = class extends import_obsidian14.ItemView {
       }
       if (latest.delivery_id && latest.status === "delivery-ready" && !latest.receipt_id) {
         const deliveryId = latest.delivery_id;
-        let applying = false;
         const applyBtn = button(
           statusActions,
           "Apply approved delivery",
           async () => {
-            if (applying) return;
-            applying = true;
+            if (this.applyingDeliveries.has(deliveryId)) return;
+            this.applyingDeliveries.add(deliveryId);
             applyBtn.disabled = true;
             try {
               await this.plugin.aiActions.applyApprovedDelivery(
@@ -52540,17 +52541,18 @@ var GardenView = class extends import_obsidian14.ItemView {
               new import_obsidian14.Notice(
                 "Approved AI delivery applied and projection refreshed."
               );
-              this.render();
             } catch (error) {
-              applying = false;
-              applyBtn.disabled = false;
               new import_obsidian14.Notice(
                 errorMessage(error)
               );
+            } finally {
+              this.applyingDeliveries.delete(deliveryId);
+              this.render();
             }
           },
           "success"
         );
+        if (this.applyingDeliveries.has(deliveryId)) applyBtn.disabled = true;
       }
       if (latest.receipt_id) {
         badge(
@@ -57695,6 +57697,7 @@ ${row3.text.trim()}`).join("\n\n");
 };
 
 // src/application/gateway-recovery.ts
+var AI_REQUEST_ID_PATTERN = /^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 var PHASES = [
   "prepared",
   "recovering",
@@ -57836,6 +57839,70 @@ async function validateGatewayRecoveryRecord(value) {
     }
   };
 }
+var RECORD_KEYS_V3 = [
+  "schema_version",
+  "kind",
+  "phase",
+  "request_id",
+  "action_id",
+  "target_kind",
+  "target_id",
+  "provider",
+  "expected_snapshot",
+  "created_at",
+  "last_error"
+];
+var AI_PREPARE_PHASES = ["prepared", "recovering", "blocked"];
+function validateAiPrepareRecord(value) {
+  const refuse = (error) => ({ ok: false, error });
+  const candidate2 = record4(value);
+  if (!candidate2) return refuse("the AI prepare record is not an object");
+  if (candidate2.schema_version !== 3 || candidate2.kind !== "ai-prepare") {
+    return refuse("an AI prepare record must be schema_version 3, kind ai-prepare");
+  }
+  if (!exactKeys(candidate2, RECORD_KEYS_V3)) {
+    return refuse(`recovery schema_version 3 must carry exactly ${RECORD_KEYS_V3.join(", ")}`);
+  }
+  if (!AI_PREPARE_PHASES.includes(candidate2.phase)) {
+    return refuse(`unknown AI prepare phase ${JSON.stringify(candidate2.phase)}`);
+  }
+  if (typeof candidate2.request_id !== "string" || !AI_REQUEST_ID_PATTERN.test(candidate2.request_id)) {
+    return refuse("the AI prepare record carries no valid request_id");
+  }
+  for (const key of ["action_id", "target_kind", "target_id", "provider"]) {
+    if (!nonEmpty2(candidate2[key])) return refuse(`the AI prepare record has no ${key}`);
+  }
+  if (typeof candidate2.expected_snapshot !== "string" || !/^sha256:[0-9a-f]{64}$/.test(candidate2.expected_snapshot)) {
+    return refuse("the AI prepare record carries no expected_snapshot");
+  }
+  if (!nonEmpty2(candidate2.created_at) || !Number.isFinite(Date.parse(candidate2.created_at))) {
+    return refuse("the AI prepare record has no readable creation timestamp");
+  }
+  let lastError = null;
+  if (candidate2.last_error !== null) {
+    const failure = record4(candidate2.last_error);
+    if (!failure || !exactKeys(failure, ["code", "message"]) || !nonEmpty2(failure.code) || typeof failure.message !== "string") {
+      return refuse("the recorded error is not a {code, message} pair");
+    }
+    lastError = { code: failure.code, message: failure.message };
+  }
+  return {
+    ok: true,
+    record: {
+      schema_version: 3,
+      kind: "ai-prepare",
+      phase: candidate2.phase,
+      request_id: candidate2.request_id,
+      action_id: candidate2.action_id,
+      target_kind: candidate2.target_kind,
+      target_id: candidate2.target_id,
+      provider: candidate2.provider,
+      expected_snapshot: candidate2.expected_snapshot,
+      created_at: candidate2.created_at,
+      last_error: lastError
+    }
+  };
+}
 var MemoryGatewayRecoveryStore = class {
   current = null;
   gate;
@@ -57935,6 +58002,13 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
       this.status = { kind: "clear" };
       return this.status;
     }
+    if (record4(raw)?.schema_version === 3) {
+      const prepare = validateAiPrepareRecord(raw);
+      this.saveVersion += 1;
+      this.current = null;
+      this.status = prepare.ok ? { kind: "ai-prepare", record: prepare.record } : { kind: "malformed", error: prepare.error };
+      return this.status;
+    }
     const validated = await validateGatewayRecoveryRecord(raw);
     if (version !== this.saveVersion || this.settings.gatewayRecovery !== raw) return this.status;
     this.saveVersion += 1;
@@ -57955,6 +58029,50 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
    * restoring on rejection keeps `unresolved` true and new writes blocked.
    */
   async write(entry) {
+    if (this.status.kind === "ai-prepare") {
+      throw new Error("An AI request preparation is unresolved; nothing was written.");
+    }
+    await this.writeSlot(
+      entry ? entry.record : null,
+      entry ? { kind: "record", entry } : { kind: "clear" },
+      entry
+    );
+  }
+  /** The persisted AI prepare intent, or null. */
+  aiPrepare() {
+    return this.status.kind === "ai-prepare" ? this.status.record : null;
+  }
+  /** Persist a prepare intent before Core is spawned; awaited, like `begin`. */
+  async beginAiPrepare(next) {
+    if (this.status.kind !== "clear") {
+      throw new Error("A Gateway write is unresolved; the AI request was not started.");
+    }
+    const validated = validateAiPrepareRecord(next);
+    if (!validated.ok) {
+      throw new Error(`Refusing to persist an invalid AI prepare record: ${validated.error}`);
+    }
+    await this.writeSlot(validated.record, { kind: "ai-prepare", record: validated.record }, null);
+  }
+  /** Advance the stored intent; refuses when a different request is stored. */
+  async markAiPrepare(expected, phase, error) {
+    const stored = this.requiredAiPrepare(expected);
+    const next = { ...stored, phase, last_error: error };
+    await this.writeSlot(next, { kind: "ai-prepare", record: next }, null);
+    return next;
+  }
+  /** Retire the intent once Core has confirmed or definitively refused it. */
+  async clearAiPrepare(expected) {
+    this.requiredAiPrepare(expected);
+    await this.writeSlot(null, { kind: "clear" }, null);
+  }
+  requiredAiPrepare(expected) {
+    const stored = this.aiPrepare();
+    if (!stored || stored.request_id !== expected.request_id) {
+      throw new Error("The stored AI request changed; the older result was ignored.");
+    }
+    return stored;
+  }
+  async writeSlot(slot, status, entry) {
     if (this.status.kind === "malformed") {
       throw new Error("A malformed Gateway recovery record is unresolved; nothing was written.");
     }
@@ -57962,9 +58080,9 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
     const previousCurrent = this.current;
     const previousStatus = this.status;
     const version = ++this.saveVersion;
-    this.settings.gatewayRecovery = entry ? entry.record : null;
+    this.settings.gatewayRecovery = slot;
     this.current = entry;
-    this.status = entry ? { kind: "record", entry } : { kind: "clear" };
+    this.status = status;
     try {
       await this.persist();
     } catch (error) {
@@ -58150,6 +58268,17 @@ function gatewayRecoverySummary(state) {
       ["Validation error", state.error]
     ];
   }
+  if (state.kind === "ai-prepare") {
+    const stored2 = state.record;
+    return [
+      ["Capability", `ai-action-prepare (${stored2.action_id})`],
+      ["Phase", stored2.phase],
+      ["Created", stored2.created_at],
+      ["Request ID", stored2.request_id],
+      ["Target", `${stored2.target_kind} ${stored2.target_id}`],
+      ["Last error", stored2.last_error ? `${stored2.last_error.code}: ${stored2.last_error.message}` : "none"]
+    ];
+  }
   const { record: stored, envelope } = state.entry;
   return [
     ["Capability", envelope.capability],
@@ -58240,7 +58369,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:f8379defae5dc3ddc44df9bdbb4f5d326500e424fcd04ae70a95cecdb0c67c48" : "unavailable";
+  return true ? "sha256:4752e0395df332c4db44dcf1c21b4ea3caeb23b1099cc0441f81bd86a3dd11f5" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 21 : 0;
@@ -62828,6 +62957,24 @@ var AbilityHorizon = class {
 };
 
 // src/infrastructure/ai-action-client.ts
+function pad(value) {
+  return String(value).padStart(2, "0");
+}
+function mintAiRequestId(now2 = /* @__PURE__ */ new Date()) {
+  const bytes = new Uint8Array(4);
+  globalThis.crypto.getRandomValues(bytes);
+  const hex2 = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const date = `${now2.getUTCFullYear()}${pad(now2.getUTCMonth() + 1)}${pad(now2.getUTCDate())}`;
+  const time = `${pad(now2.getUTCHours())}${pad(now2.getUTCMinutes())}${pad(now2.getUTCSeconds())}`;
+  return `ai-request-${date}-${time}-${hex2}`;
+}
+function recoveryError(error) {
+  const code = error instanceof GatewayError && error.gatewayCode ? error.gatewayCode : error instanceof GatewayError && error.exitCode !== null ? `EXIT_${error.exitCode}` : "UNCONFIRMED";
+  return { code, message: error instanceof Error ? error.message : String(error) };
+}
+function coreAnswered(error) {
+  return error instanceof GatewayError && error.exitCode !== null && [1, 2, 3].includes(error.exitCode);
+}
 var AIActionClient = class {
   plugin;
   constructor(plugin) {
@@ -62836,22 +62983,114 @@ var AIActionClient = class {
   providers() {
     return this.plugin.store.aiProviders();
   }
+  /**
+   * Prepare one Garden shelving request under an identity minted here.
+   *
+   * The id is recorded in the recovery slot before Core is spawned (CL-03).
+   * A response that is lost — Obsidian quit, the process died — is then
+   * settled by retrying that same id, which Core answers idempotently, rather
+   * than by a second press that would leave an orphaned request behind.
+   */
   prepareGardenShelving(targetId, provider = "manual-bundle") {
-    const args = [
+    return this.plugin.mutate(async () => {
+      const guard = this.plugin.gateway.guard();
+      const intent = {
+        schema_version: 3,
+        kind: "ai-prepare",
+        phase: "prepared",
+        request_id: mintAiRequestId(),
+        action_id: "garden.shelve",
+        target_kind: "garden-note",
+        target_id: targetId,
+        provider,
+        expected_snapshot: guard[1] ?? "",
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        last_error: null
+      };
+      await this.plugin.recovery.beginAiPrepare(intent);
+      let result;
+      try {
+        result = await this.plugin.gateway.call(this.prepareArgs(intent));
+      } catch (error) {
+        const settled = await this.settlePrepare(intent, error);
+        if (settled.kind === "prepared") return settled.result;
+        throw settled.error;
+      }
+      await this.plugin.recovery.clearAiPrepare(intent);
+      return result;
+    });
+  }
+  /**
+   * Settle an interrupted prepare (startup or Diagnostics), outside `mutate`:
+   * the global write gate is closed exactly because this record is unresolved.
+   */
+  settleInterruptedPrepare() {
+    return this.plugin.gateway.enqueue(async () => {
+      const stored = this.plugin.recovery.aiPrepare();
+      if (!stored) throw new Error("There is no interrupted AI request to settle.");
+      return this.settlePrepare(stored, null);
+    });
+  }
+  prepareArgs(intent) {
+    return [
       "ai-action-prepare",
       "--action-id",
-      "garden.shelve",
+      intent.action_id,
       "--target-kind",
-      "garden-note",
+      intent.target_kind,
       "--target-id",
-      targetId,
+      intent.target_id,
       "--provider",
-      provider,
-      ...this.plugin.gateway.guard()
+      intent.provider,
+      "--request-id",
+      intent.request_id,
+      "--expected-snapshot",
+      intent.expected_snapshot
     ];
-    return this.plugin.mutate(
-      () => this.plugin.gateway.call(args)
-    );
+  }
+  /**
+   * One retry under the same id, then a definite classification.
+   *
+   * Core checks a known id before its snapshot guard, so its answer settles the
+   * question: success is the committed request (now or earlier); a refusal for
+   * an id with no request on disk means nothing was prepared; a refusal for an
+   * id that does exist means a conflicting or damaged request, kept blocked for
+   * Diagnostics. A process that never answered leaves the record recovering.
+   */
+  async settlePrepare(intent, first) {
+    let stored = intent;
+    if (first !== null) {
+      stored = await this.plugin.recovery.markAiPrepare(intent, "recovering", recoveryError(first));
+    }
+    let failure;
+    try {
+      const result = await this.plugin.gateway.call(this.prepareArgs(stored));
+      await this.plugin.recovery.clearAiPrepare(stored);
+      return { kind: "prepared", result };
+    } catch (error) {
+      failure = error;
+    }
+    if (!coreAnswered(failure)) {
+      await this.plugin.recovery.markAiPrepare(stored, "recovering", recoveryError(failure));
+      return { kind: "unknown", error: failure };
+    }
+    let exists;
+    try {
+      await this.plugin.gateway.call(["ai-action-status", stored.request_id]);
+      exists = true;
+    } catch (error) {
+      if (!coreAnswered(error)) {
+        await this.plugin.recovery.markAiPrepare(stored, "recovering", recoveryError(failure));
+        return { kind: "unknown", error: failure };
+      }
+      exists = false;
+    }
+    if (exists) {
+      await this.plugin.recovery.markAiPrepare(stored, "blocked", recoveryError(failure));
+      return { kind: "blocked", error: failure };
+    }
+    await this.plugin.recovery.clearAiPrepare(stored);
+    return { kind: "not-prepared", error: first ?? failure };
   }
   status(requestId) {
     return this.plugin.gateway.call([
@@ -63878,6 +64117,15 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
       this.notify("LearningOS found an unreadable record of an unfinished write and will not send anything until it is reviewed. Open Diagnostics \u2192 Gateway recovery.");
       return;
     }
+    if (state.kind === "ai-prepare") {
+      if (state.record.phase === "blocked") {
+        this.recoveryBlocked = true;
+        this.notify(GATEWAY_RECOVERY_BLOCKED);
+        return;
+      }
+      await this.settleInterruptedPrepare();
+      return;
+    }
     const phase = state.entry.record.phase;
     if (phase === "blocked" || phase === "recovering") {
       this.recoveryBlocked = true;
@@ -64018,6 +64266,24 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
       for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
     }
   }
+  /** Settle an interrupted AI request preparation and say how it ended. */
+  async settleInterruptedPrepare() {
+    try {
+      const settled = await this.aiActions.settleInterruptedPrepare();
+      this.recoveryBlocked = this.recovery.unresolved;
+      if (settled.kind === "prepared") {
+        await this.reloadStore();
+        this.notify("An interrupted AI request was confirmed; it is ready in the Garden.");
+      } else if (settled.kind === "not-prepared") {
+        this.notify(`An interrupted AI request was not prepared, so nothing was kept: ${errorMessage4(settled.error)}`);
+      } else {
+        this.notify(GATEWAY_RECOVERY_BLOCKED);
+      }
+    } catch (error) {
+      this.recoveryBlocked = this.recovery.unresolved;
+      this.notify(errorMessage4(error));
+    }
+  }
   /** Metadata about an unresolved write, for Diagnostics. Never payload text. */
   gatewayRecoveryState() {
     return this.recovery.state;
@@ -64034,6 +64300,10 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
     }
     if (this.recovery.state.kind === "malformed") {
       new import_obsidian28.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
+      return;
+    }
+    if (this.recovery.state.kind === "ai-prepare") {
+      await this.settleInterruptedPrepare();
       return;
     }
     try {

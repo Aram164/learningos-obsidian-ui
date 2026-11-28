@@ -270,6 +270,17 @@ export class LearningOSUI extends Plugin implements AppSurface {
       this.notify('LearningOS found an unreadable record of an unfinished write and will not send anything until it is reviewed. Open Diagnostics → Gateway recovery.');
       return;
     }
+    if (state.kind === 'ai-prepare') {
+      if (state.record.phase === 'blocked') {
+        this.recoveryBlocked = true;
+        this.notify(GATEWAY_RECOVERY_BLOCKED);
+        return;
+      }
+      // An AI request has no canonical effect, and Core answers its own id
+      // idempotently, so the interrupted preparation is settled right away.
+      await this.settleInterruptedPrepare();
+      return;
+    }
     const phase = state.entry.record.phase;
     if (phase === 'blocked' || phase === 'recovering') {
       // `recovering` was persisted before the automatic replay started. If the
@@ -446,6 +457,25 @@ export class LearningOSUI extends Plugin implements AppSurface {
       for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
     }
   }
+  /** Settle an interrupted AI request preparation and say how it ended. */
+  private async settleInterruptedPrepare(): Promise<void> {
+    try {
+      const settled = await this.aiActions.settleInterruptedPrepare();
+      this.recoveryBlocked = this.recovery.unresolved;
+      if (settled.kind === 'prepared') {
+        await this.reloadStore();
+        this.notify('An interrupted AI request was confirmed; it is ready in the Garden.');
+      } else if (settled.kind === 'not-prepared') {
+        this.notify(`An interrupted AI request was not prepared, so nothing was kept: ${errorMessage(settled.error)}`);
+      } else {
+        this.notify(GATEWAY_RECOVERY_BLOCKED);
+      }
+    } catch (error: unknown) {
+      this.recoveryBlocked = this.recovery.unresolved;
+      this.notify(errorMessage(error));
+    }
+  }
+
   /** Metadata about an unresolved write, for Diagnostics. Never payload text. */
   gatewayRecoveryState(): GatewayRecoveryState {
     return this.recovery.state;
@@ -462,6 +492,10 @@ export class LearningOSUI extends Plugin implements AppSurface {
     }
     if (this.recovery.state.kind === 'malformed') {
       new Notice('The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.');
+      return;
+    }
+    if (this.recovery.state.kind === 'ai-prepare') {
+      await this.settleInterruptedPrepare();
       return;
     }
     try {
